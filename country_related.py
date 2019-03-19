@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 
+import csv
+import logging
+import pdb
+import os
 
 def derive_country_from_price(raw_price):
+    # Unfortunately currency *symbols* don't seem to be in the CSV
     if not raw_price:
         return None
     price = raw_price.upper()
@@ -20,18 +25,95 @@ def derive_country_from_price(raw_price):
         # pdb.set_trace()
         return None
 
-# Surely there's an open source version of this?
-country2code = {
+
+# These are historical, slight variations on what's in the country code file,
+# etc
+COUNTRY_CODE_HACKS = {
+    'West Germany': 'DE',
+    'East Germany': 'DE',
+    'Germany': 'DE',
+    'German Empire': 'DE', # Is this the same as 'Greater Germany'?
+    'Holy Roman Empire': 'DE', # This is dubious
+    'Vienna': 'AT', # "Vienna, Ostmark, Greater Germany"
+
+    'French Fourth Republic': 'FR', # Or maybe de?  See Wolfgang Brenner/280988
+    'Grand Duchy of Finland': 'FI',
+
+    'British India': 'IN',
+    'Persia': 'IR',
+
+    'Union of South Africa': 'ZA',
+    'Orange Free State': 'ZA',
+    'Portuguese West Africa': 'AO', # https://en.wikipedia.org/wiki/Portuguese_Angola
+    'French Algeria': 'DZ',
+
+    # Not sure if these are in any ISFDB data, but adding them just in case
+    'England': 'UK',
+    'Scotland': 'UK',
+    'Wales': 'UK',
+    'Northern Ireland': 'UK',
+
+    # These are 'the Czech Republic' or 'Czechia' in the CSV
+    'Czechoslovakia': 'CZ', # Or could be sv?
+    'Czech Republic': 'CZ',
+
+    'US Virgin Islands': 'VB', # "U.S. Virgin Islands" or "United States..." in the CSV
+
+    'Allentown': 'US', # Carmen Maria Machado entry lacks country
+    'Andalusia': 'ES', # Marian Womack entry lacks country
+
+    # More to add...
+
+}
+
+def get_country_name_to_code_mappings(filename=None):
+    if not filename:
+        filename = os.path.join(os.path.dirname(__file__),
+                            'country-codes', 'data', 'country-codes.csv')
+    ret = {}
+    with open(filename) as csvfile:
+        reader = csv.DictReader(csvfile)
+        for line_num, row in enumerate(reader, 1):
+            ret[ row['CLDR display name'] ] = row['ISO3166-1-Alpha-2']
+            ret[ row['FIFA'] ] = row['ISO3166-1-Alpha-2']
+
+    ret.update(COUNTRY_CODE_HACKS)
+    return ret
+
+country2code = get_country_name_to_code_mappings()
+
+OLD_country2code = {
+    # Americas
     'USA': 'us',
     'Canada': 'ca',
+    'Grenada': 'gd',
+    'Jamaica': 'jm',
+    'Mexico': 'mx',
+    'Cuba': 'cu',
+    'Barbados': 'bb',
+    'Guyana': 'gy',
 
+    # Asia/Australasia/Pacific
     'China': 'cn',
     'Japan': 'jp',
     'Australia': 'oz',
+    'New Zealand': 'nz',
     'Malaysia': 'my',
     'Singapore': 'sg',
     'India': 'in',
+    'British India': 'in',
+    'Pakistan':  'pk',
+    'Thailand': 'th',
+    'Taiwan': 'tw',
+    'Iran': 'ir',
 
+    # Africa
+    'Zambia': 'zm',
+    'South Africa': 'za',
+    'Egypt': 'tg',
+    'Uganda': 'ug',
+
+    # Europe
     'UK': 'uk',
     'England': 'uk',
     'Scotland': 'uk',
@@ -48,17 +130,48 @@ country2code = {
     'Austria': 'au',
     'Austro-Hungarian Empire': 'au', # This is dubious
     'Czechoslovakia': 'cz', # Or could be sv?
+    'Czech Republic': 'cz',
+    'Hungary': 'hu',
+    'Russia': 'ru',
+    'Israel': 'il',
+    'Malta': 'mt',
+    'Netherlands': 'nl',
+    'Serbia': 'rs', # This may be debatable?
+    'Portugal': 'pt'
 }
 
-def get_country(author_birthplace):
-    if not author_birthplace:
+def get_country(location):
+    if not location:
         return None
-    _, country_bit = author_birthplace.rsplit(',', 1)
-    clean_country = country_bit.strip()
+    if ',' in location:
+        country_bits = reversed(location.split(','))
+    else:
+        country_bits = [location]
 
-    # pdb.set_trace()
-    try:
-        return country2code[clean_country]
-    except KeyError:
-        logging.warning('Country "%s" unrecognized (from %s)' % (clean_country, author_birthplace))
-        return None
+    for cb in country_bits:
+        clean_country = cb.strip()
+        try:
+            return country2code[clean_country]
+        except KeyError:
+            pass
+    logging.warning('Country not found/recognized in "%s"' % (location))
+    return None
+
+
+
+if __name__ == '__main__':
+    CSV_FILE = os.path.join(os.path.dirname(__file__),
+                            'country-codes', 'data', 'country-codes.csv')
+    with open(CSV_FILE) as csvfile:
+        reader = csv.DictReader(csvfile)
+        for line_num, row in enumerate(reader, 1):
+            print(row['ISO3166-1-Alpha-2'],
+                  row['FIPS'],
+                  row['TLD'], # This seems to be *mostly*  same as ISO3166, but with . & lower case
+                  row['CLDR display name'],
+                  row['ISO4217-currency_alphabetic_code'],
+                  row['ISO4217-currency_numeric_code'],
+            )
+
+
+
