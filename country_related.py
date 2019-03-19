@@ -82,64 +82,6 @@ def get_country_name_to_code_mappings(filename=None):
 
 country2code = get_country_name_to_code_mappings()
 
-OLD_country2code = {
-    # Americas
-    'USA': 'us',
-    'Canada': 'ca',
-    'Grenada': 'gd',
-    'Jamaica': 'jm',
-    'Mexico': 'mx',
-    'Cuba': 'cu',
-    'Barbados': 'bb',
-    'Guyana': 'gy',
-
-    # Asia/Australasia/Pacific
-    'China': 'cn',
-    'Japan': 'jp',
-    'Australia': 'oz',
-    'New Zealand': 'nz',
-    'Malaysia': 'my',
-    'Singapore': 'sg',
-    'India': 'in',
-    'British India': 'in',
-    'Pakistan':  'pk',
-    'Thailand': 'th',
-    'Taiwan': 'tw',
-    'Iran': 'ir',
-
-    # Africa
-    'Zambia': 'zm',
-    'South Africa': 'za',
-    'Egypt': 'tg',
-    'Uganda': 'ug',
-
-    # Europe
-    'UK': 'uk',
-    'England': 'uk',
-    'Scotland': 'uk',
-    'Wales': 'uk',
-    'Northern Ireland': 'uk',
-    'Ireland': 'ie',
-    'Finland': 'fi',
-    'West Germany': 'de',
-    'East Germany': 'de',
-    'Germany': 'de',
-    'German Empire': 'de',
-    'Holy Roman Empire': 'de', # This is dubious
-    'French Fourth Republic': 'fr', # Or maybe de?  See Wolfgang Brenner/280988
-    'Austria': 'au',
-    'Austro-Hungarian Empire': 'au', # This is dubious
-    'Czechoslovakia': 'cz', # Or could be sv?
-    'Czech Republic': 'cz',
-    'Hungary': 'hu',
-    'Russia': 'ru',
-    'Israel': 'il',
-    'Malta': 'mt',
-    'Netherlands': 'nl',
-    'Serbia': 'rs', # This may be debatable?
-    'Portugal': 'pt'
-}
-
 def get_country(location):
     if not location:
         return None
@@ -160,6 +102,7 @@ def get_country(location):
 
 
 if __name__ == '__main__':
+    # This is just for manual testing/checking
     CSV_FILE = os.path.join(os.path.dirname(__file__),
                             'country-codes', 'data', 'country-codes.csv')
     with open(CSV_FILE) as csvfile:
