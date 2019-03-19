@@ -48,10 +48,11 @@ COUNTRY_CODE_HACKS = {
     'French Algeria': 'DZ',
 
     # Not sure if these are in any ISFDB data, but adding them just in case
-    'England': 'UK',
-    'Scotland': 'UK',
-    'Wales': 'UK',
-    'Northern Ireland': 'UK',
+    # Note that ISO3166 Alpha-2 uses GB rather than UK :-|
+    'England': 'GB',
+    'Scotland': 'GB',
+    'Wales': 'GB',
+    'Northern Ireland': 'GB',
 
     # These are 'the Czech Republic' or 'Czechia' in the CSV
     'Czechoslovakia': 'CZ', # Or could be sv?
@@ -74,6 +75,8 @@ def get_country_name_to_code_mappings(filename=None):
     with open(filename) as csvfile:
         reader = csv.DictReader(csvfile)
         for line_num, row in enumerate(reader, 1):
+            # Hmm, ISO3166 uses "GB" rather than "UK" - not sure that's what I
+            # want
             ret[ row['CLDR display name'] ] = row['ISO3166-1-Alpha-2']
             ret[ row['FIFA'] ] = row['ISO3166-1-Alpha-2']
 
@@ -108,12 +111,15 @@ if __name__ == '__main__':
     with open(CSV_FILE) as csvfile:
         reader = csv.DictReader(csvfile)
         for line_num, row in enumerate(reader, 1):
-            print(row['ISO3166-1-Alpha-2'],
+            print(line_num,
+                  row['ISO3166-1-Alpha-2'],
                   row['FIPS'],
+                  row['WMO'],
                   row['TLD'], # This seems to be *mostly*  same as ISO3166, but with . & lower case
                   row['CLDR display name'],
                   row['ISO4217-currency_alphabetic_code'],
                   row['ISO4217-currency_numeric_code'],
+                  row['EDGAR']
             )
 
 
