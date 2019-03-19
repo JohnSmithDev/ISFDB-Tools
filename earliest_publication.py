@@ -16,10 +16,6 @@ import pdb
 import re
 import sys
 
-# Hmm, this works for Python 2, but not found for Python 3 - but it seems I have
-# the Fedora packages installed for both?  Will use Py2 for now and worry about
-# it later.
-from sqlalchemy import create_engine
 from sqlalchemy.sql import text
 
 from country_related import (derive_country_from_price, get_country)
@@ -29,10 +25,7 @@ class AmbiguousArgumentsError(Exception):
     pass
 
 
-def xxx_get_connection():
-    engine = create_engine(CONNECTION_DETAILS)
-    conn = engine.connect()
-    return conn
+
 
 AuthorBook = namedtuple('AuthorBook', 'author, book')
 
@@ -74,65 +67,7 @@ def get_filters_and_params_from_args(filter_args):
 
     return filter, params
 
-# Surely there's an open source version of this?
-country2code = {
-    'USA': 'us',
-    'Canada': 'ca',
 
-    'China': 'cn',
-    'Japan': 'jp',
-    'Australia': 'oz',
-    'Malaysia': 'my',
-    'Singapore': 'sg',
-    'India': 'in',
-
-    'UK': 'uk',
-    'England': 'uk',
-    'Scotland': 'uk',
-    'Wales': 'uk',
-    'Northern Ireland': 'uk',
-    'Ireland': 'ie',
-    'Finland': 'fi',
-    'West Germany': 'de',
-    'East Germany': 'de',
-    'Germany': 'de',
-    'German Empire': 'de',
-    'Holy Roman Empire': 'de', # This is dubious
-    'French Fourth Republic': 'fr', # Or maybe de?  See Wolfgang Brenner/280988
-    'Austria': 'au',
-    'Austro-Hungarian Empire': 'au', # This is dubious
-    'Czechoslovakia': 'cz', # Or could be sv?
-}
-
-def xxx_get_country(author_birthplace):
-    if not author_birthplace:
-        return None
-    _, country_bit = author_birthplace.rsplit(',', 1)
-    clean_country = country_bit.strip()
-
-    # pdb.set_trace()
-    try:
-        return country2code[clean_country]
-    except KeyError:
-        logging.warning('Country "%s" unrecognized (from %s)' % (clean_country, author_birthplace))
-        return None
-
-def get_author_country(conn, filter_args):
-    fltr, params = get_filters_and_params_from_args(filter_args)
-
-    query = text("""select author_id, author_canonical, author_birthplace
-      from authors a
-      where %s""" % fltr)
-    results = conn.execute(query, **params).fetchall()
-
-    if not results:
-        logging.error('No author found matching %s' % (filter_args))
-        return None
-    elif len(results) > 1:
-        raise AmbiguousArgumentsError('Multiple authors matching %s: %s' %
-                                        (filter_args, results))
-    else:
-        return get_country(results[0]['author_birthplace'])
 
 def get_title_id(conn, filter_args):
     filter, params = get_filters_and_params_from_args(filter_args)
@@ -163,24 +98,6 @@ def get_title_id(conn, filter_args):
     return ret
 
 
-def xxx_derive_country_from_price(raw_price):
-    if not raw_price:
-        return None
-    price = raw_price.upper()
-    if price[0] == '$':
-        return 'us' # What oz, etc?
-    elif price.startswith('C$'):
-        return 'ca'
-    elif price[0] == '\xa3':
-        return 'uk' # arguably it should be gb as per GBP, but whatever...
-    elif re.match('\d+/[\d\-]+', price):
-        return 'uk' # Pre-decimalization
-    elif price[0] == '\x80':
-        return 'eu' # Not a country, but will have to do
-    else:
-        logging.error('Dunno know what country price "%s" refers to' % (price))
-        # pdb.set_trace()
-        return None
 
 def get_publications(title_id):
     query = text("""select *
@@ -211,8 +128,6 @@ if __name__ == '__main__':
     args = parse_args(sys.argv[1:])
 
     conn = get_connection()
-    # print(get_author_country(conn, args))
-    # sys.exit(1)
 
 
     title_id_dict = get_title_id(conn, args)
