@@ -20,6 +20,7 @@ def get_connection(connection_string=None):
     conn = engine.connect()
     return conn
 
+
 def parse_args(cli_args, description, supported_args=None):
     parser = ArgumentParser(description=description)
 
@@ -62,32 +63,23 @@ def parse_args(cli_args, description, supported_args=None):
     args = parser.parse_args(cli_args)
     return args
 
+
 def get_filters_and_params_from_args(filter_args):
     # This theoretically is generic, but the tablename_foo column names
     # make it less so.  (TODO (maybe): have extra prefix arg?)
 
     filters = []
     params = {}
-    # pdb.set_trace()
-
 
     arg_dict = filter_args.__dict__ # Q: Is there another way to do []/.get() style access?
 
     param2column_names = {
         'author': ('author_canonical', 'pe'),
-        #'exact_author': 'author_canonical',
-
         'title': ('title_title', 'pe'),
-        #'exact_title': 'title_title',
-
         'award': ('award_type_name', 'pe'),
-        #'exact_award': 'award_type_name',
-
         'award_category': ('award_cat_name', 'pe'),
-        #'exact_award_category': 'award_cat_name',
 
         'year': ('award_year', 'y'),
-        #'exact_author': 'author_canonical'
     }
     # pdb.set_trace()
     for prm, (col, variants) in param2column_names.items():
@@ -113,35 +105,6 @@ def get_filters_and_params_from_args(filter_args):
                 continue
             params[prm] = val
             filters.append('YEAR(%s) = :%s' % (col, prm))
-
-
-    OLD_STYLE = """
-    if filter_args.author:
-        filters.append('lower(author_canonical) like :author')
-        params['author'] = '%%%s%%' % (filter_args.author.lower())
-    if filter_args.exact_author:
-        filters.append('author_canonical = :exact_author')
-        params['exact_author'] = filter_args.exact_author
-    if filter_args.title:
-        filters.append('lower(title_title) like :title')
-        params['title'] = '%%%s%%' % (filter_args.title.lower())
-    if filter_args.exact_title:
-        filters.append('title_title = :exact_title')
-        params['exact_title'] = filter_args.exact_title
-
-    if filter_args.award:
-        filters.append('lower(award_type_name) like :award')
-        params['award'] = '%%%s%%' % (filter_args.award.lower())
-    if filter_args.exact_award:
-        filters.append('award_type_name = :exact_award')
-        params['exact_award'] = filter_args.exact_award
-    if filter_args.award_category:
-        filters.append('lower(award_cat_name) like :award_category')
-        params['award'] = '%%%s%%' % (filter_args.award_category.lower())
-    if filter_args.exact_award_category:
-        filters.append('award_cat_name = :exact_award_category')
-        params['exact_award_category'] = filter_args.exact_award_category
-    """
 
     filter = ' AND '.join(filters)
 
