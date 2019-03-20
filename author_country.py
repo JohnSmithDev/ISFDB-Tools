@@ -30,7 +30,8 @@ def get_author_country(conn, filter_args):
 
 
 if __name__ == '__main__':
-    args = parse_args(sys.argv[1:], 'a')
+    args = parse_args(sys.argv[1:], description='Report birth country of author',
+                      supported_args='a')
 
     conn = get_connection()
     print(get_author_country(conn, args))
