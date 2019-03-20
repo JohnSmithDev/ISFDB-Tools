@@ -11,15 +11,15 @@ def derive_country_from_price(raw_price):
         return None
     price = raw_price.upper()
     if price[0] == '$':
-        return 'us' # What oz, etc?
+        return 'US' # What about Australia, etc?
     elif price.startswith('C$'):
-        return 'ca'
+        return 'CA'
     elif price[0] == '\xa3':
-        return 'uk' # arguably it should be gb as per GBP, but whatever...
+        return 'GB'
     elif re.match('\d+/[\d\-]+', price):
-        return 'uk' # Pre-decimalization
+        return 'GB' # Pre-decimalization
     elif price[0] == '\x80':
-        return 'eu' # Not a country, but will have to do
+        return 'EU' # Not a country, but will have to do
     else:
         logging.error('Dunno know what country price "%s" refers to' % (price))
         # pdb.set_trace()
