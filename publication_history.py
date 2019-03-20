@@ -7,6 +7,7 @@ Show all the different formats and countries a book was published in.
 """
 
 from argparse import ArgumentParser
+from datetime import date
 from collections import namedtuple, defaultdict
 import logging
 import pdb
@@ -22,6 +23,8 @@ from common import (get_connection, parse_args,
                     AmbiguousArgumentsError)
 
 AuthorBook = namedtuple('AuthorBook', 'author, book')
+
+UNKNOWN_COUNTRY = 'XX'
 
 def get_title_id(conn, filter_args):
     filter, params = get_filters_and_params_from_args(filter_args)
@@ -52,27 +55,46 @@ def get_title_id(conn, filter_args):
     return ret
 
 
+def convert_dateish_to_date(txt):
+    """
+    0 days of month (and I suspect month) are possible in the database, but
+    convert to None-ish by SQLAlchemy.  Here we fake them as 1st of month or
+    January.
+    """
+    bits = [int(z) for z in txt.split('-')]
+    if not bits[0]: # probably '0000-00-00':
+        return None
+    if bits[1] == 0:
+        bits[1] = 1
+    if bits[2] == 0:
+        bits[2] = 1
+    return date(*bits)
 
-def get_publications(title_id):
-    query = text("""select *
-      from pub_content pc
+def get_publications(conn, title_id, verbose=False):
+    query = text("""SELECT pub_ptype format,
+                           CAST(pub_year AS CHAR) dateish,
+                           pub_isbn isbn,
+                           pub_price price
+      FROM pub_content pc
       left outer join pubs p on p.pub_id = pc.pub_id
       where pc.title_id = :title_id
         order by p.pub_year""")
     results = conn.execute(query, title_id=title_id)
+    # pdb.set_trace()
     rows = list(results)
     ret = defaultdict(list)
     for row in rows:
         # print(row['pub_price'])
-        country = derive_country_from_price(row['pub_price'])
+        country = derive_country_from_price(row['price'])
         if not country:
-            country = 'Unknown'
-        # Hmm, Childhood's End has a load of None values, that don't show up
-        # on the website
-        # print(row['pub_year'])
-        ret[country].append((row['pub_ptype'],
-                             row['pub_year'] or 'Unknown Date',
-                             row['pub_isbn'] or 'Unknown'))
+            if verbose:
+                logging.warning('Unable to derive country fom price "%s"' %
+                                row['price'])
+            country = UNKNOWN_COUNTRY
+        dt = convert_dateish_to_date(row['dateish'])
+        ret[country].append((row['format'],
+                             dt or None,
+                             row['isbn'] or None))
     return ret
 
 
@@ -81,7 +103,7 @@ def get_publications(title_id):
 if __name__ == '__main__':
     args = parse_args(sys.argv[1:],
                       description='List publication countries and dates for a book',
-                      supported_args='at')
+                      supported_args='atv')
 
     conn = get_connection()
 
@@ -98,7 +120,7 @@ if __name__ == '__main__':
                                         (args.author, args.title))
 
     title_id = title_id_dict.keys()[0]
-    pubs = get_publications(title_id)
+    pubs = get_publications(conn, title_id, verbose=args.verbose)
     for country, details in pubs.items():
         print(country)
         for detail in details:
