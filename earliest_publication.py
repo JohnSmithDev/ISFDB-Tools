@@ -1,11 +1,8 @@
 #!/usr/bin/env python
 """
-Using SQLAlchemy to access a MySQL/MariaDB (in a hopefully reasonably DB-independent
-manner), but not using any ORM stuff (for now).
+Show all the different formats and countries a book was published in.
 
-Similar to these threads:
-
-https://stackoverflow.com/questions/679806/what-are-the-viable-database-abstraction-layers-for-python
+(The script name is a bit of misnomer.  TODO: rename it.)
 
 """
 
@@ -20,54 +17,11 @@ from sqlalchemy.sql import text
 
 from country_related import (derive_country_from_price, get_country)
 from common import get_connection
-
-class AmbiguousArgumentsError(Exception):
-    pass
-
-
-
+from common import (get_connection, parse_args,
+                    get_filters_and_params_from_args,
+                    AmbiguousArgumentsError)
 
 AuthorBook = namedtuple('AuthorBook', 'author, book')
-
-def parse_args(cli_args):
-    parser = ArgumentParser(description='Report on earliest publication of a book')
-
-    parser.add_argument('-a', nargs='?', dest='author',
-                        help='Author to search on (pattern match, case insensitive)')
-    parser.add_argument('-A', nargs='?', dest='exact_author',
-                        help='Author to search on (exact match, case sensitive)')
-    parser.add_argument('-t', nargs='?', dest='title',
-                        help='Title to search on (pattern match, case insensitive)')
-    parser.add_argument('-T', nargs='?', dest='exact_title',
-                        help='Title to search on (exact match, case sensitive)')
-    args = parser.parse_args(cli_args)
-    return args
-
-def get_filters_and_params_from_args(filter_args):
-    # This theoretically is generic, but the horrible tablename_foo column names
-    # make it less so
-
-    filters = []
-    params = {}
-    if filter_args.author:
-        filters.append('lower(author_canonical) like :author')
-        params['author'] = '%%%s%%' % (filter_args.author.lower())
-    if filter_args.exact_author:
-        filters.append('author_canonical = :exact_author')
-        params['exact_author'] = filter_args.exact_author
-    if filter_args.title:
-        filters.append('lower(title_title) like :title')
-        params['title'] = '%%%s%%' % (filter_args.title.lower())
-    if filter_args.exact_title:
-        filters.append('title_title = :exact_title')
-        params['exact_title'] = filter_args.exact_title
-
-
-    filter = ' AND '.join(filters)
-
-    return filter, params
-
-
 
 def get_title_id(conn, filter_args):
     filter, params = get_filters_and_params_from_args(filter_args)
@@ -125,7 +79,9 @@ def get_publications(title_id):
 
 
 if __name__ == '__main__':
-    args = parse_args(sys.argv[1:])
+    args = parse_args(sys.argv[1:],
+                      description='List publication countries and dates for a book',
+                      supported_args='at')
 
     conn = get_connection()
 
