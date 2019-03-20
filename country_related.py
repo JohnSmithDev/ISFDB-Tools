@@ -4,6 +4,7 @@ import csv
 import logging
 import pdb
 import os
+import re
 
 def derive_country_from_price(raw_price):
     # Unfortunately currency *symbols* don't seem to be in the CSV
