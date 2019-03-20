@@ -56,9 +56,12 @@ def parse_args(cli_args, description, supported_args=None):
                             help='Award category to search on (exact match, case sensitive)')
 
     if not supported_args or 'y' in low_args:
-        parser.add_argument('-y', nargs='?', dest='year', type=int,
+        parser.add_argument('-y', nargs='?', dest='year',
                             help='Year to search on (publication year for books, '
-                            'ceremony year for awards)')
+                            'ceremony year for awards; from-to ranges are acceptable')
+
+    parser.add_argument('-v', action='store_true', dest='verbose',
+                        help='Log verbosely')
 
     args = parser.parse_args(cli_args)
     return args
@@ -76,6 +79,7 @@ def get_filters_and_params_from_args(filter_args):
     param2column_names = {
         'author': ('author_canonical', 'pe'),
         'title': ('title_title', 'pe'),
+        # TODO: award should also support award_type_short_name - primarily for BSFA
         'award': ('award_type_name', 'pe'),
         'award_category': ('award_cat_name', 'pe'),
 
@@ -88,7 +92,7 @@ def get_filters_and_params_from_args(filter_args):
         if variants == 'pe': # pattern and exact match
             try:
                 if val is not None:
-                    # pattern variant
+                   # pattern variant
                     params[prm] = '%%%s%%' % (val.lower())
                     filters.append('lower(%s) like :%s' % (col, prm))
 
@@ -103,9 +107,15 @@ def get_filters_and_params_from_args(filter_args):
         elif variants == 'y': # year
             if val is None:
                 continue
-            params[prm] = val
-            filters.append('YEAR(%s) = :%s' % (col, prm))
+            if '-' in val:
+                from_year, to_year = val.split('-')
+                params['from_year'] = int(from_year)
+                params['to_year'] = int(to_year)
+                filters.append('YEAR(%s) BETWEEN :from_year and :to_year' % (col))
+            else:
+                params[prm] = int(val)
+                filters.append('YEAR(%s) = :%s' % (col, prm))
 
-    filter = ' AND '.join(filters)
+    fltr = ' AND '.join(filters)
 
-    return filter, params
+    return fltr, params
