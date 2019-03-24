@@ -44,9 +44,16 @@ if __name__ == '__main__':
                     if args.verbose:
                         logging.warning('Country unknown for author "%s"' % (author))
                     val = UNKNOWN_COUNTRY
-                author_countries[author] = val
+                # The author might be a pseudonym for one or more authors (e.g.
+                # James S. A. Corey), hence the splitting.  This is separate from
+                # open collaborations indicated by a + in the name, and handled
+                # further up.
+                author_countries[author] = val.split(',')
 
-            country_counts[author_countries[author]] += increment
+            acs = author_countries[author]
+            for c in acs:
+                country_counts[c] += increment / len(acs)
+
             overall_total += increment
 
         # print('%d : %s %s' % (row.year, author_countries[row.author], row.author))
