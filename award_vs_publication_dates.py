@@ -25,14 +25,14 @@ from publication_history import get_title_id, get_publications
 
 def find_earliest_pub_date(pubs, preferred_countries=None):
     if not preferred_countries:
-        preferred_countries = ['GB', 'US'] # TODO: this should be determined by award
+        # preferred_countries = ['GB', 'US'] # TODO: this should be determined by award
         preferred_countries = ['US', 'GB'] # TODO: this should be determined by award
 
     earliest_so_far = None
     for country in preferred_countries:
         if country not in pubs:
             continue
-        pub_dates = [z[1] for z in pubs[country] if z[1] != 'Unknown Date']
+        pub_dates = [z[1] for z in pubs[country] if z[1]]
         if pub_dates:
             return min(pub_dates)
     return None
@@ -45,6 +45,8 @@ if __name__ == '__main__':
     args = parse_args(sys.argv[1:],
                       description='Compare award nominations to publication dates',
                       supported_args='cwyv')
+    if not args.award and not args.exact_award:
+        raise Exception('Must specify an award (-w or -W)')
 
     def warn(txt):
         if args.verbose:
