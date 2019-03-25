@@ -59,6 +59,8 @@ COUNTRY_CODE_HACKS = {
     'Czechoslovakia': 'CZ', # Or could be sv?
     'Czech Republic': 'CZ',
 
+    'Russian Empire': 'RU',
+
     'US Virgin Islands': 'VB', # "U.S. Virgin Islands" or "United States..." in the CSV
 
     'Allentown': 'US', # Carmen Maria Machado entry lacks country
