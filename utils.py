@@ -15,6 +15,10 @@ def pretty_list(lst, max_items=3, others_label='items'):
     * others_label could be stuff like 'other people'
     """
 
+    # Hang on: I don't think there's a case where we'll use the singular
+    # label - if we get down to one item (either on it's own, or in the
+    # "... and" bit, then we display that item literally instead of "...
+    # "and one other item".  Leave as-is for now but TODO: revisit
     if '/' in others_label:
         singular_label, plural_label = others_label.split('/')
     else:
@@ -36,7 +40,7 @@ def pretty_list(lst, max_items=3, others_label='items'):
             second_bit = lst[-1]
         else:
             first_bit = ', '.join(['%s' % z for z in lst[:max_items-1]])
-            if lenl - max_items == 1:
+            if lenl - max_items + 1 == 1:
                 label = singular_label
             else:
                 label = plural_label
