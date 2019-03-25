@@ -5,6 +5,7 @@ of this script) of a particular award/category/year
 """
 
 from collections import namedtuple
+import json
 from os.path import basename
 import pdb
 import sys
@@ -17,6 +18,10 @@ from common import get_connection, parse_args, get_filters_and_params_from_args
 AwardFinalist = namedtuple('AwardFinalist',
                            'title, author, rank, year, award, category')
 
+with open('category_groupings.json') as inputstream:
+    CATEGORY_GROUPINGS = json.load(inputstream)
+
+
 def get_type_and_filter(txt):
     # TODO (probably): would be better/safer to return the award level number,
     # and only inject it into the query via SQLAlchemy
@@ -25,7 +30,9 @@ def get_type_and_filter(txt):
         level_filter = 'award_level = 1'
     elif 'finalist' in txt:
         typestring = 'finalists'
-        level_filter = 'award_level < 10'
+        # 90 is the right value for Hugos (see 1974 and 1975), not sure about other
+        # awards
+        level_filter = 'award_level <= 90'
     elif 'longlist' in txt:
         typestring = 'long list'
         level_filter = 'award_level < 100'
@@ -58,7 +65,13 @@ def get_finalists(conn, args, level_filter):
     results = conn.execute(query, **params).fetchall()
 
     return [AwardFinalist(*z.values()) for z in results]
-
+    WIP_HACKERY = """
+    ret = []
+    for z in results:
+        if z['award_cat_name'] in CATEGORY_GROUPINGS['Hugo Award']['written-fiction']:
+            ret.append(AwardFinalist(*z.values()))
+    return ret
+    """
 
 
 if __name__ == '__main__':
