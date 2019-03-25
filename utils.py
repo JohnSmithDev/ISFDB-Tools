@@ -31,13 +31,14 @@ def pretty_list(lst, max_items=3, others_label='items'):
         # return '%s and %s' % lst # Not sure why this thows TypeError, oh well
         return '%s and %s' % (lst[0], lst[1])
     else:
-        first_bit = ', '.join(['%s' % z for z in lst[:max_items-1]])
-        if lenl == max_items + 1:
+        if lenl < max_items:
+            first_bit = ', '.join(['%s' % z for z in lst[:-1]])
             second_bit = lst[-1]
         else:
-            if lenl - 2 == 1:
+            first_bit = ', '.join(['%s' % z for z in lst[:max_items-1]])
+            if lenl - max_items == 1:
                 label = singular_label
             else:
                 label = plural_label
-            second_bit = '%d other %s' % (lenl - 2, label)
+            second_bit = '%d other %s' % (lenl - max_items + 1, label)
         return '%s and %s' % (first_bit, second_bit)
