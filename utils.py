@@ -5,6 +5,7 @@ Misc helper functions.
 Anything that will be widely (~90% of scripts) should o into common.py
 """
 
+from datetime import date
 
 def pretty_list(lst, max_items=3, others_label='items'):
     """
@@ -46,3 +47,40 @@ def pretty_list(lst, max_items=3, others_label='items'):
                 label = plural_label
             second_bit = '%d other %s' % (lenl - max_items + 1, label)
         return '%s and %s' % (first_bit, second_bit)
+
+def convert_dateish_to_date(txt):
+    """
+    0 days of month (and I suspect month) are possible in the database, but
+    convert to None-ish by SQLAlchemy.  Here we fake them as 1st of month or
+    January.
+    """
+    bits = [int(z) for z in txt.split('-')]
+    if not bits[0]: # probably '0000-00-00':
+        return None
+    if bits[1] == 0:
+        bits[1] = 1
+    if bits[2] == 0:
+        bits[2] = 1
+    return date(*bits)
+
+def plural(qty, noun, plural_form=None, number_length=None, pad=False):
+    if number_length is None:
+        number_format = '%d'
+    else:
+        number_format = '%%%dd' % (number_length)
+    if not plural_form:
+        plural_form = noun + 's'
+    pad_length = len(plural_form) - len(noun)
+    if pad:
+        pad_spaces = ' ' * pad_length
+    else:
+        pad_spaces = ''
+    if qty == 1:
+        end_bit = '%s%s' % (noun, pad_spaces)
+    else:
+        end_bit = plural_form
+    fmt = '%s %s' % (number_format, end_bit)
+    return fmt % (qty)
+
+def padded_plural(qty, noun, plural_form=None, number_length=None):
+    return plural(qty, noun, plural_form, number_length, pad=True)
