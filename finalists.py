@@ -32,7 +32,7 @@ def get_type_and_filter(txt):
         typestring = 'finalists'
         # 90 is the right value for Hugos (see 1974 and 1975), not sure about other
         # awards
-        level_filter = 'award_level <= 90'
+        level_filter = '(award_level <= 10 or award_level = 90)'
     elif 'longlist' in txt:
         typestring = 'long list'
         level_filter = 'award_level < 100'
