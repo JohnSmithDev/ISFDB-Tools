@@ -10,7 +10,7 @@ import re
 import sys
 
 from common import get_connection, parse_args, get_filters_and_params_from_args
-from utils import pretty_list
+from utils import pretty_list, padded_plural
 from finalists import get_type_and_filter, get_finalists
 from author_country import get_author_country
 
@@ -29,6 +29,10 @@ DODGY_TITLES_AND_PSEUDO_AUTHORS = {
 DONT_USE_THESE_REAL_NAMES = (
     'Compton Crook',
 )
+
+# TODO: Add argument to override MAX_AUTHORS
+MAX_AUTHORS = 3
+# MAX_AUTHORS = 10
 
 
 def extract_authors_from_author_field(raw_txt):
@@ -119,24 +123,17 @@ if __name__ == '__main__':
     country_counts, country_authors, overall_total = get_award_countries(
         conn, args, level_filter)
 
-    for k, v in sorted(country_counts.items(), key=lambda z: z[1], reverse=True):
+    for k, num_works in sorted(country_counts.items(), key=lambda z: z[1], reverse=True):
         # authors = country_authors[k]
         author_counts = Counter(country_authors[k])
         num_authors = len(author_counts)
         # pdb.set_trace()
 
-        OLD = """
-        most_awarded = [z[0] for z in author_counts.most_common(2)]
-        if num_authors == 1:
-            a = most_awarded[0]
-        elif num_authors == 2:
-            a = '%s and %s' % (most_awarded[0], most_awarded[1])
-        else:
-            a = '%s, %s and %d others' % (most_awarded[0], most_awarded[1], num_authors-2)
-        """
         ordered_authors = [z[0] for z in author_counts.most_common()]
-        a = pretty_list(ordered_authors, max_items=3, others_label='author/authors')
+        a = pretty_list(ordered_authors, max_items=MAX_AUTHORS, others_label='author/authors')
 
-        print('%s : %3d works (%2d%%), %3d authors - %s' % (k,
-                                                            v, (100 * v / overall_total),
-                                                            num_authors, a))
+        print('%s : %s (%2d%%), %s - %s' % (k,
+                                            padded_plural(num_works, 'work', number_length=3),
+                                            (100 * num_works / overall_total),
+                                            padded_plural(num_authors, 'author', number_length=3),
+                                            a))
