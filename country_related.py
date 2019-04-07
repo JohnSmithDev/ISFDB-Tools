@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+"""
+Generic functions related to countries
+
+"""
 
 import csv
 import logging
@@ -6,29 +10,57 @@ import pdb
 import os
 import re
 
-def derive_country_from_price(raw_price):
+TWO_CHAR_PRICE_PREFIXES = {
+    'C$': 'CA',
+    'A$': 'AU',
+    'R$': 'BR', # Brazilian real
+    'DM': 'DE'
+}
+
+def derive_country_from_price(raw_price, ref=None):
+    """
+    Given a string containing a price, return a 2-character country code, or
+    None if one could not be derived.
+    """
     # Unfortunately currency *symbols* don't seem to be in the CSV
     if not raw_price:
         return None
     price = raw_price.upper()
+    price2ch = price[:2]
+
+    if price2ch in TWO_CHAR_PRICE_PREFIXES:
+        return TWO_CHAR_PRICE_PREFIXES[price2ch]
     if price[0] == '$':
-        return 'US' # What about Australia, etc?
-    elif price.startswith('C$'):
+        return 'US' # Q: Is a naked $ ever used for CA, AU, etc?
+    elif price.startswith('CX$'): # http://www.isfdb.org/cgi-bin/pl.cgi?617032 - poss error?
         return 'CA'
-    elif price[0] == '\xa3':
+    elif price.startswith('AU$'):
+        return 'AU'
+    elif price[0] == '\xa3': # pound sterling symbol
         return 'GB'
     elif re.match('\d+/[\d\-]+', price):
         return 'GB' # Pre-decimalization
-    elif price[0] == '\x80':
+    elif price.startswith('DM'):
+        return 'DE'
+    elif price[0] == '\x80': # Euro symbol
         return 'EU' # Not a country, but will have to do
+    elif price[0] == '\xa5': # Japanese yen symbol
+        return 'JP' # Q: Could this be Chinese Yuan (renminbi) also?
+    elif price[0] == 'R':
+        return 'ZA' # Rand?  See http://www.isfdb.org/cgi-bin/title.cgi?2422094
+    elif price.startswith('&#8377;'): # HTML entity for rupee - http://www.isfdb.org/cgi-bin/pl.cgi?643560
+        return 'IN'
     else:
-        logging.error('Dunno know what country price "%s" refers to' % (price))
+        logging.error('Dunno know what country price "%s" refers to (ref=%s)' % \
+                      (price, ref))
         # pdb.set_trace()
         return None
 
 
 # These are historical, slight variations on what's in the country code file,
-# etc
+# etc.
+# TODO (probably): move these into their own file, possibly JSON for wider
+#                  reusability
 COUNTRY_CODE_HACKS = {
     'West Germany': 'DE',
     'East Germany': 'DE',
