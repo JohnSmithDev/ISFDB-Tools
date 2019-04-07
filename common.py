@@ -31,6 +31,7 @@ def parse_args(cli_args, description, supported_args=None):
 
     # PRESUMPTION: if we support the pattern match form, we also want to support
     #              the exact form
+    # TODO: I don't think we need/want the "not supported_args or" test
     if not supported_args or 'a' in low_args:
         parser.add_argument('-a', nargs='?', dest='author',
                             help='Author to search on (pattern match, case insensitive)')
@@ -42,6 +43,20 @@ def parse_args(cli_args, description, supported_args=None):
                             help='Title to search on (pattern match, case insensitive)')
         parser.add_argument('-T', nargs='?', dest='exact_title',
                             help='Title to search on (exact match, case sensitive)')
+
+    if not supported_args or 'p' in low_args:
+        parser.add_argument('-p', nargs='?', dest='publisher',
+                            help='Publisher to search on (pattern match, case insensitive)')
+        parser.add_argument('-P', nargs='?', dest='exact_publisher',
+                            help='Publisher to search on (exact match, case sensitive)')
+
+    if not supported_args or 'n' in low_args:
+        parser.add_argument('-n', dest='work_types', action='append', default=[],
+                            help='Types of work to search on e.g. novels, novellas, etc '
+                            '(pattern match)')
+        parser.add_argument('-N', nargs='?', dest='exact_title',
+                            help='Types of work to search on e.g. novels, novellas, etc '
+                            '(exact match)')
 
     if not supported_args or 'w' in low_args:
         parser.add_argument('-w', nargs='?', dest='award',
@@ -60,6 +75,10 @@ def parse_args(cli_args, description, supported_args=None):
                             help='Year to search on (publication year for books, '
                             'ceremony year for awards; from-to ranges are acceptable')
 
+    if not supported_args or 'k' in low_args:
+        parser.add_argument('-k', dest='countries', action='append', default=[],
+                            help='2-character code for country/countries to filter/report on')
+
     parser.add_argument('-v', action='store_true', dest='verbose',
                         help='Log verbosely')
 
@@ -67,9 +86,15 @@ def parse_args(cli_args, description, supported_args=None):
     return args
 
 
-def get_filters_and_params_from_args(filter_args):
+def get_filters_and_params_from_args(filter_args, column_name_prefixes=None):
     # This theoretically is generic, but the tablename_foo column names
     # make it less so.  (TODO (maybe): have extra prefix arg?)
+    # TODO: this should support a bog-standard Python dict, as well as the
+    #            output from parse_args()
+
+    if not column_name_prefixes:
+        column_name_prefixes = {}
+
 
     filters = []
     params = {}
@@ -83,7 +108,8 @@ def get_filters_and_params_from_args(filter_args):
         'award': ('award_type_name', 'pe'),
         'award_category': ('award_cat_name', 'pe'),
 
-        'year': ('award_year', 'y'),
+        'publisher': ('publisher_name', 'pe'),
+        'year': ('%s_year' % (column_name_prefixes.get('year', 'award')), 'y'),
     }
     # pdb.set_trace()
     for prm, (col, variants) in param2column_names.items():
