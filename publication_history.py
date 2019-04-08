@@ -17,10 +17,10 @@ import sys
 from sqlalchemy.sql import text
 
 from country_related import (derive_country_from_price, get_country)
-from common import get_connection
 from common import (get_connection, parse_args,
                     get_filters_and_params_from_args,
                     AmbiguousArgumentsError)
+from utils import convert_dateish_to_date
 
 AuthorBook = namedtuple('AuthorBook', 'author, book')
 
@@ -54,21 +54,6 @@ def get_title_id(conn, filter_args):
             ret[bits[0]] = AuthorBook(bits[1], bits[2])
     return ret
 
-
-def convert_dateish_to_date(txt):
-    """
-    0 days of month (and I suspect month) are possible in the database, but
-    convert to None-ish by SQLAlchemy.  Here we fake them as 1st of month or
-    January.
-    """
-    bits = [int(z) for z in txt.split('-')]
-    if not bits[0]: # probably '0000-00-00':
-        return None
-    if bits[1] == 0:
-        bits[1] = 1
-    if bits[2] == 0:
-        bits[2] = 1
-    return date(*bits)
 
 def get_publications(conn, title_id, verbose=False):
     query = text("""SELECT pub_ptype format,
