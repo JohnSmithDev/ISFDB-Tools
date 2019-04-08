@@ -34,6 +34,8 @@ DONT_USE_THESE_REAL_NAMES = (
 MAX_AUTHORS = 3
 # MAX_AUTHORS = 10
 
+# TODO: make this configurable via command-line argument
+EXCLUDED_AUTHORS = set(['Noah Ward'])
 
 def extract_authors_from_author_field(raw_txt):
     txt = raw_txt.strip()
@@ -82,6 +84,11 @@ def get_award_countries(conn, args, level_filter):
             authors = [replace_name_if_necessary(row.title, z) for z in authors]
         if '' in authors:
             logging.warning('Empty author for title "%s"' % (row.title))
+
+        if set(authors) & EXCLUDED_AUTHORS:
+            logging.debug('Ignoring book %s with excluded author(s) %s' %
+                          (row.title, authors))
+            continue
 
         # print(authors)
         increment = 1 / len(authors)
