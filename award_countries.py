@@ -13,24 +13,11 @@ from common import get_connection, parse_args, get_filters_and_params_from_args
 from utils import pretty_list, padded_plural
 from finalists import get_type_and_filter, get_finalists
 from author_country import get_author_country
-from award_related import (extract_authors_from_author_field,
+from award_related import (extract_real_authors_from_author_field,
                            sanitise_authors_for_dodgy_titles)
 
 UNKNOWN_COUNTRY = '??'
 
-MULTIPLE_AUTHORS_SEPARATOR = '+' # e.g. Brandon Sanderson + someone I think?
-PSEUDONYM_SEPARATOR = '^' # e.g. Edmond Hamilton^Brett Sterling (Retro Hugo Novel 1946)
-
-XXX_BOGUS_AUTHOR_NAMES = ('', '********')
-
-XXX_DODGY_TITLES_AND_PSEUDO_AUTHORS = {
-    'No Award': 'Noah Ward'
-}
-
-# This is a nasty hack for pseudonyms, TODO: think how to do it better
-XXX_DONT_USE_THESE_REAL_NAMES = (
-    'Compton Crook',
-)
 
 # TODO: Add argument to override MAX_AUTHORS
 MAX_AUTHORS = 3
@@ -38,32 +25,6 @@ MAX_AUTHORS = 3
 
 # TODO: make this configurable via command-line argument
 EXCLUDED_AUTHORS = set(['Noah Ward'])
-
-def xxx_extract_authors_from_author_field(raw_txt):
-    txt = raw_txt.strip()
-    if txt.startswith('(') and txt.endswith(')'): # "(Henry Kuttner+C. L. Moore)" - but see below
-        txt = txt[1:-1].strip()
-    if PSEUDONYM_SEPARATOR in txt:
-        # We only want to use one of these
-        real_name, pseudonym = txt.split(PSEUDONYM_SEPARATOR)
-        # For now assume the real name is right TODO: test both, and use the best
-        # UPDATE: That assumption turned out to be wrong for "Compton Crook^Stephen Tall"
-
-        # Note that we can have both separators e.g.
-        # '(Henry Kuttner+C. L. Moore)^Lewis Padgett' hence the recursion
-        if real_name in DONT_USE_THESE_REAL_NAMES:
-            return extract_authors_from_author_field(pseudonym)
-        else:
-            return extract_authors_from_author_field(real_name)
-    else:
-        authors = txt.split(MULTIPLE_AUTHORS_SEPARATOR)
-    return [z.strip() for z in authors] # extra strip just to be super-sure
-
-def xxx_replace_name_if_necessary(title, author):
-    if title in DODGY_TITLES_AND_PSEUDO_AUTHORS and author in BOGUS_AUTHOR_NAMES:
-        return DODGY_TITLES_AND_PSEUDO_AUTHORS[title]
-    else:
-        return author
 
 
 def get_award_countries(conn, args, level_filter):
@@ -75,18 +36,13 @@ def get_award_countries(conn, args, level_filter):
     overall_total = 0
 
     for row in award_results:
-        authors = extract_authors_from_author_field(row.author)
+        authors = extract_real_authors_from_author_field(row.author)
 
         if not authors or len(authors) == 0:
             logging.warning('No author for title "%s"' % (row.title))
             continue
         # print(authors, row.title)
         authors = sanitise_authors_for_dodgy_titles(row.title, authors)
-        REPLACED_BY_ABOVE_LINE = """
-        if row.title in DODGY_TITLES_AND_PSEUDO_AUTHORS:
-            replacement = DODGY_TITLES_AND_PSEUDO_AUTHORS[row.title]
-            authors = [replace_author_name_if_necessary(row.title, z) for z in authors]
-        """
         if '' in authors:
             logging.warning('Empty author for title "%s"' % (row.title))
 
