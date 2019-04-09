@@ -2,7 +2,7 @@
 """
 Misc helper functions.
 
-Anything that will be widely (~90% of scripts) should o into common.py
+Anything that will be widely used (~90% of scripts) should go into common.py
 """
 
 from datetime import date
@@ -12,7 +12,7 @@ def pretty_list(lst, max_items=3, others_label='items'):
     Given a list of things (doesn't matter what as long as they have __str__
     or __repr__ type behaviour), return a string of the form
     "foo, bar, baz and N others"
-    * max_items include the final "N others"
+    * max_items includes the final "N others"
     * others_label could be stuff like 'other people'
     """
 
@@ -85,3 +85,13 @@ def plural(qty, noun, plural_form=None, number_length=None, pad=False):
 
 def padded_plural(qty, noun, plural_form=None, number_length=None):
     return plural(qty, noun, plural_form, number_length, pad=True)
+
+def pretty_nth(number):
+    if 11 <= number <= 13:
+        return '%dth' % number
+    remainder = number % 10
+    try:
+        suffix = ['th', 'st', 'nd', 'rd'][remainder]
+    except IndexError:
+        suffix = 'th'
+    return '%d%s' % (number, suffix)
