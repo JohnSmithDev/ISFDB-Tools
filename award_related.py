@@ -20,13 +20,20 @@ DONT_USE_THESE_REAL_NAMES = (
 MULTIPLE_AUTHORS_SEPARATOR = '+' # e.g. Brandon Sanderson + someone I think?
 PSEUDONYM_SEPARATOR = '^' # e.g. Edmond Hamilton^Brett Sterling (Retro Hugo Novel 1946)
 
+class BadArgumentError(Exception):
+    pass
 
-def extract_authors_from_author_field(raw_txt):
+def extract_authors_from_author_field(raw_txt, wanted_types='all'):
     """
-    AFAIK the use of MULTIPLE_AUTHORS_SEPARATOR and PSEUDONUM_SEPARATOR is
+    AFAIK the use of MULTIPLE_AUTHORS_SEPARATOR and PSEUDONYM_SEPARATOR is
     unique to the awards table - if not, then this function would probably
     be best moved elsewhere.
+
+    wanted_types is one of 'all', 'credited', or 'real'
     """
+    if wanted_types not in ('all', 'credited', 'real'):
+        raise BadArgumentError('Invalid wanted_types (%s) - should be one of all/credited/real' %
+                               (wanted_types))
 
     txt = raw_txt.strip()
     if txt.startswith('(') and txt.endswith(')'): # "(Henry Kuttner+C. L. Moore)" - but see below
@@ -39,13 +46,27 @@ def extract_authors_from_author_field(raw_txt):
 
         # Note that we can have both separators e.g.
         # '(Henry Kuttner+C. L. Moore)^Lewis Padgett' hence the recursion
-        if real_name in DONT_USE_THESE_REAL_NAMES:
-            return extract_authors_from_author_field(pseudonym)
+        if wanted_types == 'all':
+            authors = extract_authors_from_author_field(pseudonym)
+            authors.extend(extract_authors_from_author_field(real_name))
+            return authors
+        elif wanted_types == 'real':
+            if real_name in DONT_USE_THESE_REAL_NAMES:
+                return extract_authors_from_author_field(pseudonym)
+            else:
+                return extract_authors_from_author_field(real_name)
         else:
-            return extract_authors_from_author_field(real_name)
+            return extract_authors_from_author_field(pseudonym)
     else:
         authors = txt.split(MULTIPLE_AUTHORS_SEPARATOR)
     return [z.strip() for z in authors] # extra strip just to be super-sure
+
+def extract_real_authors_from_author_field(raw_txt):
+    return extract_authors_from_author_field(raw_txt, wanted_types='real')
+
+def extract_credited_authors_from_author_field(raw_txt):
+    return extract_authors_from_author_field(raw_txt, wanted_types='credited')
+
 
 def replace_author_name_if_necessary(title, author):
     if title in DODGY_TITLES_AND_PSEUDO_AUTHORS and author in BOGUS_AUTHOR_NAMES:
