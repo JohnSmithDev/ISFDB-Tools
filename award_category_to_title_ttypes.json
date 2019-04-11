@@ -1,0 +1,18 @@
+{
+  "Best Novel": ["NOVEL"],
+  "Best Novella": ["CHAPBOOK", "SHORTFICTION"],
+  "Best Novelette": ["SHORTFICTION"],
+  "Best Short Story": ["SHORTFICTION"],
+
+  "Novel": ["NOVEL"],
+  "Novella": ["CHAPBOOK", "SHORTFICTION"],
+  "Novelette": ["SHORTFICTION"],
+  "Short Story": ["SHORTFICTION"],
+
+  "Best SF Novel": ["NOVEL"],
+  "Best Fantasy Novel": ["NOVEL"],
+  "Best Horror Novel": ["NOVEL"],
+  "Best First Novel": ["NOVEL"],
+  "Best Debut Novel": ["NOVEL"]
+}
+
