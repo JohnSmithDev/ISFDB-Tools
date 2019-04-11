@@ -9,7 +9,7 @@ import pdb
 import re
 import sys
 
-from common import get_connection, parse_args, get_filters_and_params_from_args
+from common import get_connection, parse_args
 from utils import pretty_list, padded_plural, pretty_nth
 from finalists import get_type_and_filter, get_finalists
 from author_country import get_author_country
@@ -257,7 +257,16 @@ def get_award_and_series(conn, args, level_filter):
         authors = extract_authors_from_author_field(af.author)
         titles = extract_variant_titles(af.title)
 
-        ttypes = CATEGORY_TO_TTYPES.get(af.category, None)
+        try:
+            category_group = CATEGORY_TO_TTYPES[af.award]
+        except KeyError:
+            category_group = CATEGORY_TO_TTYPES['Default']
+        try:
+            ttypes = category_group[af.category]
+        except KeyError:
+            logging.warning('No type definition found for %s/%s - accepting anything' %
+                            (af.award, af.category))
+            ttypes = []
 
         # TODO: Similar for title variants
         details = discover_title_details(conn, authors, titles,

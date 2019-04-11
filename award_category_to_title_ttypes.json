@@ -1,18 +1,26 @@
 {
-  "Best Novel": ["NOVEL"],
-  "Best Novella": ["CHAPBOOK", "SHORTFICTION"],
-  "Best Novelette": ["SHORTFICTION"],
-  "Best Short Story": ["SHORTFICTION"],
+  "Default": {
+      "Best Novel": ["NOVEL"],
+      "Best Novella": ["CHAPBOOK", "SHORTFICTION"],
+      "Best Novelette": ["SHORTFICTION"],
+      "Best Short Story": ["SHORTFICTION"],
 
-  "Novel": ["NOVEL"],
-  "Novella": ["CHAPBOOK", "SHORTFICTION"],
-  "Novelette": ["SHORTFICTION"],
-  "Short Story": ["SHORTFICTION"],
+      "Novel": ["NOVEL"],
+      "Novella": ["CHAPBOOK", "SHORTFICTION"],
+      "Novelette": ["SHORTFICTION"],
+      "Short Story": ["SHORTFICTION"],
 
-  "Best SF Novel": ["NOVEL"],
-  "Best Fantasy Novel": ["NOVEL"],
-  "Best Horror Novel": ["NOVEL"],
-  "Best First Novel": ["NOVEL"],
-  "Best Debut Novel": ["NOVEL"]
+      "Best SF Novel": ["NOVEL"],
+      "Best Fantasy Novel": ["NOVEL"],
+      "Best Horror Novel": ["NOVEL"],
+      "Best First Novel": ["NOVEL"],
+      "Best Debut Novel": ["NOVEL"]
+  },
+  "Arthur C. Clarke Award": {
+    "__comment__": "Next are ugly hacks for Clarke Award - hopefully temporary",
+    "Winner": ["NOVEL"],
+    "Runner-Up": ["NOVEL"],
+    "Shortlist": ["NOVEL"]
+  }
 }
 
