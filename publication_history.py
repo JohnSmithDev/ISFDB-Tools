@@ -21,13 +21,69 @@ from common import (get_connection, parse_args,
                     get_filters_and_params_from_args,
                     AmbiguousArgumentsError)
 from utils import convert_dateish_to_date
+from author_aliases import get_author_aliases
 
 AuthorBook = namedtuple('AuthorBook', 'author, book')
 
 UNKNOWN_COUNTRY = 'XX'
 
-def get_title_id(conn, filter_args):
-    filter, params = get_filters_and_params_from_args(filter_args)
+class AmbiguousResultsError(Exception):
+    pass
+
+
+def discover_title_details(conn, author_variations, title_variations,
+                           extra_columns=None, exact_match=True,
+                           title_types=None,
+                           try_even_more_variations=True):
+    """
+    Try multiple combinations of author and title until we find a match.
+    Returns either a single row if exact_match==True, or a list of matching
+    rows if exact_match==False (which could be a list with one member), or
+    None if nothing could be found
+    """
+    if try_even_more_variations:
+        authors = []
+        for author in author_variations:
+            authors.extend(get_author_aliases(conn, author))
+    else:
+        authors = author_variations
+
+
+    for author in authors:
+        for title in title_variations:
+             title_args = parse_args(['-A', author, '-T', title],
+                                description='whatever')
+             results = get_title_details(conn, title_args, extra_columns,
+                                         title_types=title_types)
+             if results:
+                 if exact_match:
+                     if len(results) == 1:
+                         return results[0]
+                     else:
+                         raise AmbiguousResultsError('Search for %s/%s had %d matches' % (
+                             author, title, len(results)))
+                 else:
+                     return results
+    return None # Q: Would raising be better?
+
+
+DEFAULT_TITLE_TYPES = ('NOVEL', 'CHAPBOOK', 'ANTHOLOGY', 'COLLECTION', 'SHORTFICTION')
+
+def get_title_details(conn, filter_args, extra_columns=None, title_types=None):
+    """
+    Return a dictionary mapping title_id to dict of matching book(s),
+    with (some) duplicate/irrelevant entries removed
+    """
+
+    if extra_columns:
+        extra_col_str = ', ' + ', '.join(extra_columns)
+    else:
+        extra_col_str = ''
+    fltr, params = get_filters_and_params_from_args(filter_args)
+
+    params['title_types'] = title_types or DEFAULT_TITLE_TYPES
+
+    # print(params)
 
     # This query isn't right - it fails to pick up "Die Kinder der Zeit"
     # The relevant ID is 1856439, not sure what column name that's for
@@ -35,11 +91,52 @@ def get_title_id(conn, filter_args):
 
     # https://docs.sqlalchemy.org/en/latest/core/tutorial.html#using-textual-sql
     query = text("""select t.title_id, author_canonical author, title_title title, title_parent
+        %s
       from titles t
       left outer join canonical_author ca on ca.title_id = t.title_id
       left outer join authors a on a.author_id = ca.author_id
       where %s AND
-        title_ttype in ('NOVEL', 'CHAPBOOK', 'ANTHOLOGY', 'COLLECTION', 'SHORTFICTION')""" % (filter))
+        title_ttype in :title_types""" % \
+                 (extra_col_str, fltr))
+
+    # print(query)
+
+    results = list(conn.execute(query, **params).fetchall())
+    title_ids = set([z[0] for z in results])
+    ret = []
+    for bits in results:
+        # Exclude rows that have a parent that is in the results (I think these
+        # are typically translations)
+        # TODO: merge these into the returned results
+        if not bits[3] and bits[3] not in title_ids:
+            ret.append(bits)
+    return ret
+
+# TODO: get this to use get_title_details
+def get_title_id(conn, filter_args, extra_columns=None):
+    """
+    Return a dictionary mapping title_id to AuthorBook of matching book(s)
+    """
+
+    if extra_columns:
+        extra_col_str = ', ' + ', '.join(extra_columns)
+    else:
+        extra_col_str = ''
+    fltr, params = get_filters_and_params_from_args(filter_args)
+
+    # This query isn't right - it fails to pick up "Die Kinder der Zeit"
+    # The relevant ID is 1856439, not sure what column name that's for
+    # Hmm, that's the correct title_id, perhaps there's more to it...
+
+    # https://docs.sqlalchemy.org/en/latest/core/tutorial.html#using-textual-sql
+    query = text("""select t.title_id, author_canonical author, title_title title, title_parent
+        %s
+      from titles t
+      left outer join canonical_author ca on ca.title_id = t.title_id
+      left outer join authors a on a.author_id = ca.author_id
+      where %s AND
+        title_ttype in ('NOVEL', 'CHAPBOOK', 'ANTHOLOGY', 'COLLECTION', 'SHORTFICTION')""" % \
+                 (extra_col_str, fltr))
 
     # print(query)
 
@@ -53,6 +150,7 @@ def get_title_id(conn, filter_args):
         if not bits[3] and bits[3] not in title_ids:
             ret[bits[0]] = AuthorBook(bits[1], bits[2])
     return ret
+
 
 
 def get_publications(conn, title_id, verbose=False):
