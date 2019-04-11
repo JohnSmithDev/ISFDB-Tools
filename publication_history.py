@@ -30,6 +30,7 @@ UNKNOWN_COUNTRY = 'XX'
 class AmbiguousResultsError(Exception):
     pass
 
+DEFAULT_TITLE_TYPES = ('NOVEL', 'CHAPBOOK', 'ANTHOLOGY', 'COLLECTION', 'SHORTFICTION')
 
 def discover_title_details(conn, author_variations, title_variations,
                            extra_columns=None, exact_match=True,
@@ -67,7 +68,6 @@ def discover_title_details(conn, author_variations, title_variations,
     return None # Q: Would raising be better?
 
 
-DEFAULT_TITLE_TYPES = ('NOVEL', 'CHAPBOOK', 'ANTHOLOGY', 'COLLECTION', 'SHORTFICTION')
 
 def get_title_details(conn, filter_args, extra_columns=None, title_types=None):
     """
@@ -112,45 +112,18 @@ def get_title_details(conn, filter_args, extra_columns=None, title_types=None):
             ret.append(bits)
     return ret
 
-# TODO: get this to use get_title_details
-def get_title_id(conn, filter_args, extra_columns=None):
+def get_title_id(conn, filter_args, extra_columns=None, title_types=None):
     """
-    Return a dictionary mapping title_id to AuthorBook of matching book(s)
+    This is a rework of the original get_title_id() to use the newer get_title_details()
+    function.  It is likely that the stuff that calls this function could be easily
+    changed to use get_title_details directly, making this redundant.  However,
+    I don't want to look into that right now.
     """
-
-    if extra_columns:
-        extra_col_str = ', ' + ', '.join(extra_columns)
-    else:
-        extra_col_str = ''
-    fltr, params = get_filters_and_params_from_args(filter_args)
-
-    # This query isn't right - it fails to pick up "Die Kinder der Zeit"
-    # The relevant ID is 1856439, not sure what column name that's for
-    # Hmm, that's the correct title_id, perhaps there's more to it...
-
-    # https://docs.sqlalchemy.org/en/latest/core/tutorial.html#using-textual-sql
-    query = text("""select t.title_id, author_canonical author, title_title title, title_parent
-        %s
-      from titles t
-      left outer join canonical_author ca on ca.title_id = t.title_id
-      left outer join authors a on a.author_id = ca.author_id
-      where %s AND
-        title_ttype in ('NOVEL', 'CHAPBOOK', 'ANTHOLOGY', 'COLLECTION', 'SHORTFICTION')""" % \
-                 (extra_col_str, fltr))
-
-    # print(query)
-
-    results = list(conn.execute(query, **params).fetchall())
-    title_ids = set([z[0] for z in results])
+    raw_data = get_title_details(conn, filter_args, extra_columns, title_types)
     ret = {}
-    for bits in results:
-        # Exclude rows that have a parent that is in the results (I think these
-        # are typically translations)
-        # TODO: merge these into the returned results
-        if not bits[3] and bits[3] not in title_ids:
-            ret[bits[0]] = AuthorBook(bits[1], bits[2])
+    for bits in raw_data:
+        ret[bits[0]] = AuthorBook(bits[1], bits[2])
     return ret
-
 
 
 def get_publications(conn, title_id, verbose=False):
@@ -186,18 +159,14 @@ def get_publications(conn, title_id, verbose=False):
 if __name__ == '__main__':
     args = parse_args(sys.argv[1:],
                       description='List publication countries and dates for a book',
-                      supported_args='atv')
+                      supported_args='antv')
 
     conn = get_connection()
-
-
     title_id_dict = get_title_id(conn, args)
-
-
     if len(title_id_dict) > 1:
         raise AmbiguousArgumentsError('More than one book matching: %s' %
-                                        ('; '.join([('%s - %s' % z)
-                                                    for z in title_id_dict.values()])))
+                                        ('; '.join([('%s - %s (%d)' % (bk[0], bk[1], idnum))
+                                                     for idnum, bk in title_id_dict.items()])))
     elif not title_id_dict:
         raise AmbiguousArgumentsError('No books matching %s/%s found' %
                                         (args.author, args.title))

@@ -3,6 +3,7 @@
 from argparse import ArgumentParser
 import os
 import pdb
+import sys
 
 from sqlalchemy import create_engine
 from sqlalchemy.sql import text
@@ -53,16 +54,16 @@ def parse_args(cli_args, description, supported_args=None):
     if not supported_args or 'n' in low_args:
         parser.add_argument('-n', dest='work_types', action='append', default=[],
                             help='Types of work to search on e.g. novels, novellas, etc '
-                            '(pattern match)')
-        parser.add_argument('-N', nargs='?', dest='exact_title',
-                            help='Types of work to search on e.g. novels, novellas, etc '
-                            '(exact match)')
+                            '(case insensitive but otherwise exact match, multiple "OR" values allowed)')
 
     if not supported_args or 'w' in low_args:
         parser.add_argument('-w', nargs='?', dest='award',
                             help='Award to search on (pattern match, case insensitive)')
         parser.add_argument('-W', nargs='?', dest='exact_award',
                             help='Award to search on (exact match, case sensitive)')
+
+    # Q: Could we merge n and c args in some cases?  Locus' "Best SF Novel" etc
+    # means maybe not though
     if not supported_args or 'c' in low_args:
         # -c is a bit flakey, given that novel is a substring of novella and novellette
         parser.add_argument('-c', nargs='?', dest='award_category',
@@ -95,7 +96,6 @@ def get_filters_and_params_from_args(filter_args, column_name_prefixes=None):
     if not column_name_prefixes:
         column_name_prefixes = {}
 
-
     filters = []
     params = {}
 
@@ -107,6 +107,7 @@ def get_filters_and_params_from_args(filter_args, column_name_prefixes=None):
         # TODO: award should also support award_type_short_name - primarily for BSFA
         'award': ('award_type_name', 'pe'),
         'award_category': ('award_cat_name', 'pe'),
+        'work_types': ('title_ttype', 'g'),
 
         'publisher': ('publisher_name', 'pe'),
         'year': ('%s_year' % (column_name_prefixes.get('year', 'award')), 'y'),
@@ -115,12 +116,17 @@ def get_filters_and_params_from_args(filter_args, column_name_prefixes=None):
     for prm, (col, variants) in param2column_names.items():
 
         val = arg_dict.get(prm)
+        # print(prm, val)
+        # print(val)
+        if not val: # Does this break anything?  Not sure why I didn't do it originally
+            # continue
+            pass
         if variants == 'pe': # pattern and exact match
             try:
                 if val is not None:
                    # pattern variant
                     params[prm] = '%%%s%%' % (val.lower())
-                    filters.append('lower(%s) like :%s' % (col, prm))
+                    filters.append('LOWER(%s) LIKE :%s' % (col, prm))
 
                 # TODO: double check we didn't raise beforehand
                 exact_prm = 'exact_' + prm
@@ -130,6 +136,10 @@ def get_filters_and_params_from_args(filter_args, column_name_prefixes=None):
                     filters.append('%s = :%s' % (col, exact_prm))
             except KeyError:
                 pass
+        elif variants == 'g': # group (exact) match
+            pass # TODO
+            # params[prm] = [z.lower() for z in val]
+            # filters.append('LOWER(%s) IN :%s' % (col, prm))
         elif variants == 'y': # year
             if val is None:
                 continue
@@ -137,11 +147,13 @@ def get_filters_and_params_from_args(filter_args, column_name_prefixes=None):
                 from_year, to_year = val.split('-')
                 params['from_year'] = int(from_year)
                 params['to_year'] = int(to_year)
-                filters.append('YEAR(%s) BETWEEN :from_year and :to_year' % (col))
+                filters.append('YEAR(%s) BETWEEN :from_year AND :to_year' % (col))
             else:
                 params[prm] = int(val)
                 filters.append('YEAR(%s) = :%s' % (col, prm))
 
     fltr = ' AND '.join(filters)
 
+    #print(fltr, params)
+    #sys.exit(1)
     return fltr, params
