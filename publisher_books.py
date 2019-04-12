@@ -4,7 +4,7 @@ Show what books a publisher published, optionally over a year range
 """
 
 from collections import namedtuple
-from datetime import timedelta
+from datetime import timedelta, date
 import json
 from os.path import basename
 import pdb
@@ -18,6 +18,12 @@ from utils import convert_dateish_to_date, pretty_list
 
 OLD_BOOK_INTERVAL = timedelta(days=365*2)
 
+ZERO_DAY = date(1,1,1)
+def none_tolerant_date_sort_key(dt):
+    """Stop max(), sorted() etc blowing up if a set of date values includes None"""
+    if not dt:
+        return ZERO_DAY
+    return dt
 
 class InvalidCountryError(Exception):
     pass
@@ -82,7 +88,8 @@ class CountrySpecificBook(object):
             self.add_publication(value_dict)
 
     def __repr__(self):
-        newest_pub_date = max([z.publication_date for z in self.publications])
+        newest_pub_date = max([z.publication_date for z in self.publications],
+                              key=none_tolerant_date_sort_key)
         if newest_pub_date - self.copyright_date > OLD_BOOK_INTERVAL:
             extra_bit = ' (original copyright date %s)' % (self.copyright_date)
         else:
@@ -96,6 +103,7 @@ class CountrySpecificBook(object):
              # self.publication_date,
              pubs,
              extra_bit)
+
 
 def get_publisher_books(conn, args, countries=None):
     fltr, params = get_filters_and_params_from_args(
