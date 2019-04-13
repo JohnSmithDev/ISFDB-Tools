@@ -101,16 +101,66 @@ def get_title_details(conn, filter_args, extra_columns=None, title_types=None):
 
     # print(query)
 
-    results = list(conn.execute(query, **params).fetchall())
-    title_ids = set([z[0] for z in results])
+    return postprocess_titles(conn.execute(query, **params).fetchall())
+
+
+def get_title_details_from_id(conn, title_id, extra_columns=None,
+                              parent_search_depth=0):
+    """
+    Return either the matching row, or None.
+
+    Set parent_search_depth to non-zero if you want parent (or grandparent etc)
+    records instead)
+    """
+    # TODO: merge/refactor common bits in get_title_details
+    if extra_columns:
+        extra_col_str = ', ' + ', '.join(extra_columns)
+    else:
+        extra_col_str = ''
+
+
+    query = text("""SELECT t.title_id, author_canonical author, title_title title, title_parent
+        %s
+      FROM titles t
+      LEFT OUTER JOIN canonical_author ca ON ca.title_id = t.title_id
+      LEFT OUTER JOIN authors a ON a.author_id = ca.author_id
+      WHERE t.title_id = :title_id;""" % (extra_col_str))
+
+    results = conn.execute(query, {'title_id': title_id}).fetchall()
+    if results:
+        res = results[0]
+        if res['title_parent'] and parent_search_depth:
+            return get_title_details_from_id(conn, res['title_parent'],
+                                             extra_columns=extra_columns,
+                                             parent_search_depth=parent_search_depth-1)
+        return res
+    else:
+        return None
+
+def postprocess_titles(title_rows):
+    """
+    Merge multiple title rows into a dict that maps title_id to details.
+    This is for cases like books with multiple authors causing the SQL joins
+    to return multiple rows.
+    """
+    results = list(title_rows)
+    #title_ids = set([z[0] for z in results])
+    title_ids = set([z['title_id'] for z in results])
     ret = []
     for bits in results:
         # Exclude rows that have a parent that is in the results (I think these
-        # are typically translations)
+        # are typically translations).
+        # No, An example is Girl with all the Gifts (title_id=166651) which
+        # has parent of 1763907.  The only notable difference I can see is that
+        # the latter is credited to Mike Carey rather than M.R. Carey, and as
+        # a consequence that has all the series references.  (The fact it has
+        # a higher title_id makes be dubious it's really a "parent")
         # TODO: merge these into the returned results
-        if not bits[3] and bits[3] not in title_ids:
+        if not bits['title_parent'] and bits['title_parent'] not in title_ids:
             ret.append(bits)
     return ret
+
+
 
 def get_title_id(conn, filter_args, extra_columns=None, title_types=None):
     """

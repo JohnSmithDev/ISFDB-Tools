@@ -16,7 +16,7 @@ from common import get_connection, parse_args, get_filters_and_params_from_args
 
 # Do we need this, or can we use RowProxy directly?
 AwardFinalist = namedtuple('AwardFinalist',
-                           'title, author, rank, year, award, category')
+                           'title, author, rank, year, award, category, award_id, title_id')
 
 with open('category_groupings.json') as inputstream:
     CATEGORY_GROUPINGS = json.load(inputstream)
@@ -50,15 +50,20 @@ def get_finalists(conn, args, level_filter):
 
     # Hmm - award_level is a string, but currently only contains int values
     # (not even NULL), which means the sort doesn't work as expected without
-    # the cast
+    # the cast.
+    # award_id and title_id are for use by any other code that builds upon this
+    # output (although I don't know if award_id is used anywhere outside of
+    # awards and title_awards?)
 
     query = text("""SELECT award_title, award_author,
           CAST(award_level AS UNSIGNED) award_level,
           YEAR(award_year) year,
-          at.award_type_name, ac.award_cat_name
+          at.award_type_name, ac.award_cat_name,
+          a.award_id, ta.title_id
       FROM awards a
         LEFT OUTER JOIN award_types at ON at.award_type_id = a.award_type_id
         LEFT OUTER JOIN award_cats ac ON ac.award_cat_id = a.award_cat_id
+        LEFT OUTER JOIN title_awards ta ON ta.award_id = a.award_id
       WHERE %s ORDER BY year, CAST(award_level AS UNSIGNED)""" % fltr)
     #print(query)
     # pdb.set_trace()

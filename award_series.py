@@ -17,7 +17,8 @@ from award_related import (extract_real_authors_from_author_field, # Maybe not n
                            extract_authors_from_author_field,
                            extract_variant_titles,
                            sanitise_authors_for_dodgy_titles)
-from publication_history import get_title_details, discover_title_details
+from publication_history import (get_title_details, discover_title_details,
+                                 get_title_details_from_id)
 
 from colorama_wrapper import Fore, Back, Style, COLORAMA_RESET
 
@@ -37,7 +38,7 @@ with open('hugo_nominations.json') as inputstream:
 with open('award_category_to_title_ttypes.json') as inputstream:
     CATEGORY_TO_TTYPES = json.load(inputstream)
 
-
+# This should be removed
 def max_number_of_finalists(year, award=None):
     # TODO: something better
     if award == 'Hugo Award' and year >= 2017:
@@ -131,36 +132,6 @@ def output_revised_finalists(finalist_data, reject_repeats=True):
             # logging.warning('No nomination data for %s/%s' % (category, year))
             relevant_nominees = None
 
-        FIRST_ATTEMPT = """
-        # Hmm, got the finalists and nominees inoptimally structured
-        # TODO: rework more efficiently
-        # ... or maybe not
-        actual_finalists = finalist_data[(year,category)]
-        allowed_finalists = []
-        for nominee in relevant_nominees:
-            ignore_this_one = False
-            for af in actual_finalists:
-                if af[0].title == nominee:
-                    for title_details in af[1]:
-                        # Q: Should we check series_id and/or title_seriesnum?
-                        # e.g. Provenance has the former but not the latter
-                        series_id = title_details['series_id']
-                        if not series_id:
-                            pass
-                        else:
-                            if series_id not in already_honoured_series:
-                                pass
-                                already_honoured_series[series_id] = year
-                            elif not title_details['title_seriesnum']:
-                                # This is allowable e.g. Provenance
-                                pass
-                            else:
-                                ignore_this_one = True
-                                logging.warning('Ignoring %s - series=%d' % (af[0].title,
-                                                                           series_id))
-            if not ignore_this_one:
-                allowed_finalists.append(nominee)
-        """
         allowed_finalists = []
         rejected_finalists = []
         for finalist, details in finalist_data[ayc_key]:
@@ -173,7 +144,7 @@ def output_revised_finalists(finalist_data, reject_repeats=True):
             for title_details in [details]: # ugly hack due to changing return type elsewhere
                 # Q: Should we check series_id and/or title_seriesnum?
                 # e.g. Provenance has the former but not the latter
-                print(title_details)
+                logging.debug('title_details: %s' % (title_details))
                 series_id = title_details['series_id']
                 series_num = title_details['title_seriesnum']
                 if series_id and not series_num:
@@ -199,10 +170,13 @@ def output_revised_finalists(finalist_data, reject_repeats=True):
             volume_counter[series_num] += 1
 
         print('== %s %s %s finalists/nominees/shortlist ==' % (award, year, category))
-        # TODO: this function needs to know the award name
+        # TODO: Revisit this "trimming"/replacement concept, it should instead
+        # be based on the number of finalists we had to start with
         max_finalists = max_number_of_finalists(year, award)
+
         # print(year, max_finalists)
-        for allowed in allowed_finalists[:max_finalists]:
+        # for allowed in allowed_finalists[:max_finalists]:
+        for allowed in allowed_finalists:
             print('* %s' % colourize(allowed))
         if reject_repeats and len(allowed_finalists) < max_finalists:
             if relevant_nominees:
@@ -254,6 +228,11 @@ def get_award_and_series(conn, args, level_filter):
         details = get_title_details(conn, title_args,
                                     ['series_id', 'title_seriesnum'])
         """
+
+
+        SECOND_ATTEMPT = """
+        TH
+
         authors = extract_authors_from_author_field(af.author)
         titles = extract_variant_titles(af.title)
 
@@ -273,12 +252,21 @@ def get_award_and_series(conn, args, level_filter):
                                          ['series_id', 'title_seriesnum'],
                                          exact_match=True,
                                          title_types=ttypes)
-
-
         if not details:
             logging.warning('Failed to get details for %s/%s' % (authors, titles))
-        key = (af.award, af.year, af.category)
-        ret[key].append((af, details))
+        """
+        details = get_title_details_from_id(conn, af.title_id,
+                                            extra_columns=['series_id', 'title_seriesnum'],
+                                            parent_search_depth=5)
+        if not details:
+            # Example: Paul Kincaid special Clarke Award in 2006.  This wouldn't
+            # be a problem except for the Clarke is (currently) semi-borked with
+            # weird Winner vs Nominees vs Runnerup categories
+            logging.warning('Failed to get details for title_id=%s (%s/%s)' %
+                            (af.title_id, af.author, af.title))
+        else:
+            key = (af.award, af.year, af.category)
+            ret[key].append((af, details))
     return ret
 
 if __name__ == '__main__':
