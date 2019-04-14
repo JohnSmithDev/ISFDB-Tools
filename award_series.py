@@ -30,8 +30,8 @@ MAX_AUTHORS = 3
 # MAX_AUTHORS = 10
 
 
-with open('hugo_nominations.json') as inputstream:
-    HUGO_NOMINEES = json.load(inputstream)
+with open('award_nominations.json') as inputstream:
+    AWARD_NOMINEES = json.load(inputstream)
 with open('award_category_to_title_ttypes.json') as inputstream:
     CATEGORY_TO_TTYPES = json.load(inputstream)
 
@@ -125,42 +125,41 @@ def output_revised_finalists(finalist_data, reject_repeats=True,
     for ayc_key in sorted(finalist_data.keys()):
         award, year, category = ayc_key
         try:
-            relevant_nominees = HUGO_NOMINEES[category][str(year)]
+            relevant_nominees = AWARD_NOMINEES[award][category][str(year)]
         except (KeyError) as err:
             # logging.warning('No nomination data for %s/%s' % (category, year))
             relevant_nominees = None
 
         allowed_finalists = []
         rejected_finalists = []
-        for finalist, details in finalist_data[ayc_key]:
+        for finalist, title_details in finalist_data[ayc_key]:
             series_id = None
             series_num = None
             ignore_this_one = False
             appearance_number = 0
-            if not details: # Ugly hack for now
+            if not title_details: # Ugly hack for now
                 continue
-            for title_details in [details]: # ugly hack due to changing return type elsewhere
-                # Q: Should we check series_id and/or title_seriesnum?
-                # e.g. Provenance has the former but not the latter
-                logging.debug('title_details: %s' % (title_details))
-                series_id = title_details['series_id']
-                series_num = title_details['title_seriesnum']
-                if series_id and not series_num:
-                    series_num = UNNUMBERED_SERIES_VOLUME
-                if not series_id:
+            # Q: Should we check series_id and/or title_seriesnum?
+            # e.g. Provenance has the former but not the latter
+            logging.debug('title_details: %s' % (title_details))
+            series_id = title_details['series_id']
+            series_num = title_details['title_seriesnum']
+            if series_id and not series_num:
+                series_num = UNNUMBERED_SERIES_VOLUME
+            if not series_id:
+                pass
+            else:
+                if series_id not in already_honoured_series:
+                    pass
+                elif series_num == UNNUMBERED_SERIES_VOLUME:
+                    # This is allowable e.g. Provenance
                     pass
                 else:
-                    if series_id not in already_honoured_series:
-                        pass
-                    elif series_num == UNNUMBERED_SERIES_VOLUME:
-                        # This is allowable e.g. Provenance
-                        pass
-                    else:
-                        ignore_this_one = True
-                        # logging.warning('Ignoring %s - series=%d' % (finalist.title,
-                        #                                            series_id))
-                    already_honoured_series[series_id].append(year)
-                    appearance_number = len(already_honoured_series[series_id])
+                    ignore_this_one = True
+                    # logging.warning('Ignoring %s - series=%d' % (finalist.title,
+                    #                                            series_id))
+                already_honoured_series[series_id].append(year)
+                appearance_number = len(already_honoured_series[series_id])
             if reject_repeats and ignore_this_one:
                 rejected_finalists.append((finalist.title, series_num, appearance_number))
             else:

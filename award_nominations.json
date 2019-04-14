@@ -1,0 +1,96 @@
+{
+  "Hugo Award": {
+        "__comment__": "Overly Puppy-tainted years/categories are not (currently) included",
+        "Best Novel": {
+        "2019": ["Record of a Spaceborn Few", "The Calculating Stars", "Revenant Gun",
+                 "Spinning Silver", "Trail of Lightning", "Space Opera"
+              ],
+        "2018": ["The Stone Sky", "Raven Stratagem", "Six Wakes",
+               "Provenance", "The Collapsing Empire", "New York 2140",
+
+               "The Stars are Legion", "Autonomous", "Seven Surrenders",
+               "An Unkindness of Ghosts", "Artemis", "Winter Tide",
+               "Borne", "Persepolis Rising", "The Strange Case of the Alchemist's Daughter"
+              ],
+        "2017": ["The Obelisk Gate", "All the Birds in the Sky", "Ninefox Gambit",
+               "Too Like the Lightning", "Death's End", "A Closed and Common Orbit",
+
+               "Ghost Talkers", "Everfair", "An Equation of Almost Infinite Complexity",
+               "Babylon's Ashes", "The Core of the Sun", "City of Blades",
+               "Gentleman Jole and the Red Queen", "Borderline", "Infomocracy",
+               "Children of Earth and Sky"
+              ],
+        "2016": ["Seveneves", "Ancillary Mercy", "The Fifth Season",
+               "Uprooted", "The Aeronaut's Windlass",
+
+               "Somewhither: A Tale of the Unwithering Realm", "Golden Sun",
+               "Agent of the Imperium", "Aurora", "Karen Memory",
+               "The Traitor Baru Cormorant", "The Just City",
+               "Sorcerer to the Crown", "The Water Knife"
+              ],
+
+        "2015": ["Skin Game", "Ancillary Sword", "The Dark Between the Stars",
+               "The Goblin Emperor", "The Three-Body Problem",
+
+               "Trial By Fire", "The Chaplain's War", "Lock In",
+               "City of Stairs", "The Martian", "Words of Radiance",
+               "My Real Children", "The Mirror Empire", "Lagoon",
+               "Annihilation"
+              ],
+        "2014": ["Ancillary Justice", "Warbound", "The Wheel of Time",
+               "Neptune's Brood", "Parasite",
+
+               "The Shining Girls", "A Stranger in Olondria", "A Few Good Men",
+               "The Golem and the Djinni", "The Republic of Thieves",
+               "Under a Graveyard Sky", "London Falling", "Abaddon's Gate",
+               "Steelheart", "River of Stars"
+               ]
+        },
+
+      "Best Novella": {
+        "2019": ["Artificial Condition", "Beneath the Sugar Sky",
+                 "Binti: The Night Masquerade", "The Black God's Drums",
+                 "Gods, Monsters, and the Lucky Peach", "The Tea Master and the Detective"],
+
+        "2018": ["All Systems Red", "And Then There Were (N-One)",
+               "Down Among the Sticks and Bones", "River of Teeth",
+               "The Black Tides of Heaven", "Binti: Home",
+
+               "Passing Strange", "Dusk or Dark or Dawn or Day",
+               "The Furthest Station", "The Prisoner of Limnos", "17776",
+               "The Red Threads of Fortune", "Mira's Last Dance",
+               "The Refridgerator Monologues", "In Calabria"
+              ],
+        "2017": ["Every Heart a Doorway", "The Dream-Quest of Vellitt Boe",
+               "This Census-Taker", "A Taste of Honey", "The Ballad of Black Tom",
+               "Penric and the Shaman",
+
+               "The Dispatcher", "Penric's Mission", "Runtime",
+               "The Last Days of New Paris", "The Lost Child of Lychford",
+               "Forest of Memory", "Hammers on Bone", "The Vanishing Kind",
+               "Cold Forged Flame", "Chimera"
+              ],
+        "2016": ["Penric's Demon", "Binti", "Slow Bullets",
+               "Perfect State", "The Builders",
+
+               "Fear of the Unknown and Self-Loathing in Hollywood",
+               "The Pauper Prince and the Eucalyptus Jinn",
+               "Waters of Versaille",
+               "The Citadel of Weeping Pearls", "Witches of Lychford",
+               "Sorcerer of the Wildeeps", "The New Mother",
+               "The Bone Swans of Amandale",
+               "The Four Thousand, the Eight Hundred", "Rolling in the Deep"
+              ],
+        "2014": ["Six-Gun Snow White", "Equiod", "The Chaplain's Legacy",
+               "The Butcher of Khardov", "Wakulla Springs",
+
+               "How Green This Land, How Blue this Sea", "burning girls",
+               "Shadows for Silence in the Forests of Hell", "Spin",
+               "The Princess and the Queen", "Hook Agonistes",
+               "The Weight of the Sunrise", "Iseul's Lexicon",
+               "Pittsburgh Backyard and Garden", "Precious Mental",
+               "We Both Go Down Together"
+                ]
+      }
+  }
+}
