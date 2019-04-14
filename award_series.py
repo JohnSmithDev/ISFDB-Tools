@@ -16,21 +16,18 @@ from author_country import get_author_country
 from award_related import (extract_real_authors_from_author_field, # Maybe not needed here?
                            extract_authors_from_author_field,
                            extract_variant_titles,
-                           sanitise_authors_for_dodgy_titles)
+                           sanitise_authors_for_dodgy_titles,
+                           EXCLUDED_AUTHORS)
 from publication_history import (get_title_details, discover_title_details,
                                  get_title_details_from_id)
 
 from colorama_wrapper import Fore, Back, Style, COLORAMA_RESET
 
-UNKNOWN_COUNTRY = '??'
 
 
 # TODO: Add argument to override MAX_AUTHORS
 MAX_AUTHORS = 3
 # MAX_AUTHORS = 10
-
-# TODO: make this configurable via command-line argument
-EXCLUDED_AUTHORS = set(['Noah Ward'])
 
 
 with open('hugo_nominations.json') as inputstream:
@@ -119,7 +116,8 @@ def get_best_remaining_nominees(qty, extant_finalists, rejected_finalists, all_n
     return ret
 
 
-def output_revised_finalists(finalist_data, reject_repeats=True):
+def output_revised_finalists(finalist_data, reject_repeats=True,
+                             output_function=print):
     # BUG/TODO/QUESION: If for example, series X has been honoured in Best Novella,
     # should we allow it for Best Novel?  (e.g. Lady Astronaut)
     already_honoured_series = defaultdict(list) # Maps series ID to years honoured
@@ -169,7 +167,7 @@ def output_revised_finalists(finalist_data, reject_repeats=True):
                 allowed_finalists.append((finalist.title, series_num, appearance_number))
             volume_counter[series_num] += 1
 
-        print('== %s %s %s finalists/nominees/shortlist ==' % (award, year, category))
+        output_function('== %s %s %s finalists/nominees/shortlist ==' % (award, year, category))
         # TODO: Revisit this "trimming"/replacement concept, it should instead
         # be based on the number of finalists we had to start with
         max_finalists = max_number_of_finalists(year, award)
@@ -177,7 +175,7 @@ def output_revised_finalists(finalist_data, reject_repeats=True):
         # print(year, max_finalists)
         # for allowed in allowed_finalists[:max_finalists]:
         for allowed in allowed_finalists:
-            print('* %s' % colourize(allowed))
+            output_function('* %s' % colourize(allowed))
         if reject_repeats and len(allowed_finalists) < max_finalists:
             if relevant_nominees:
                 extras = get_best_remaining_nominees(max_finalists - len(allowed_finalists),
@@ -186,30 +184,30 @@ def output_revised_finalists(finalist_data, reject_repeats=True):
                                                      relevant_nominees)
                 for extra in extras:
                     # TODO: lookup this so that we have real series details
-                    print('* %s' % colourize((extra, ROGUE_SERIES, 0)))
+                    output_function('* %s' % colourize((extra, ROGUE_SERIES, 0)))
             else:
                 extras = []
             shortfall = max_finalists - (len(allowed_finalists) + len(extras))
             if shortfall:
-                print('* ... plus %d others (%d rejected due to series prior appearance)' % \
-                      (shortfall, len(rejected_finalists)))
+                output_function('* ... plus %d others (%d rejected due to series prior appearance)' % \
+                                (shortfall, len(rejected_finalists)))
 
         print()
 
-    # pdb.set_trace()
+    render_count_summary(award, category, volume_counter, output_function)
+
+
+def render_count_summary(award, category, volume_counter, output_function=print):
     total_items = sum(volume_counter.values())
     MAX_LABEL_LEN = max([len(z) for z in VOLUME_LABELS.values()])
-    print('= %s %s finalists/nominees/shortlist =' % (award, category))
+    output_function('= %s %s finalists/nominees/shortlist =' % (award, category))
     for vn, freq in volume_counter.most_common():
-        # vol_label = vn or 'Standalone'
         try:
             vol_label = VOLUME_LABELS[vn]
         except KeyError:
             vol_label = 'Volume %d in a series' % (vn)
         fmt = '%%-%ds : %%3d (%%.1f%%%%)' % (MAX_LABEL_LEN)
-        print(fmt % (vol_label, freq, 100 * freq / total_items))
-
-
+        output_function(fmt % (vol_label, freq, 100 * freq / total_items))
 
 
 def get_award_and_series(conn, args, level_filter):
@@ -218,43 +216,10 @@ def get_award_and_series(conn, args, level_filter):
 
     for af in award_results:
         # The "not af.author" check should not be required, - removal of No
-        # Award should be done in get_finalists (maybe with a switch arg)
+        # Award should be done in get_finalists (maybe with a switch arg). TODO: implement that
         if not af.author or af.author in EXCLUDED_AUTHORS:
             continue
-        # print(af)
-        FIRST_ATTEMPT = """
-        title_args = parse_args(['-A', af.author, '-T', af.title],
-                                description='whatever')
-        details = get_title_details(conn, title_args,
-                                    ['series_id', 'title_seriesnum'])
-        """
 
-
-        SECOND_ATTEMPT = """
-        TH
-
-        authors = extract_authors_from_author_field(af.author)
-        titles = extract_variant_titles(af.title)
-
-        try:
-            category_group = CATEGORY_TO_TTYPES[af.award]
-        except KeyError:
-            category_group = CATEGORY_TO_TTYPES['Default']
-        try:
-            ttypes = category_group[af.category]
-        except KeyError:
-            logging.warning('No type definition found for %s/%s - accepting anything' %
-                            (af.award, af.category))
-            ttypes = []
-
-        # TODO: Similar for title variants
-        details = discover_title_details(conn, authors, titles,
-                                         ['series_id', 'title_seriesnum'],
-                                         exact_match=True,
-                                         title_types=ttypes)
-        if not details:
-            logging.warning('Failed to get details for %s/%s' % (authors, titles))
-        """
         details = get_title_details_from_id(conn, af.title_id,
                                             extra_columns=['series_id', 'title_seriesnum'],
                                             parent_search_depth=5)
@@ -268,6 +233,7 @@ def get_award_and_series(conn, args, level_filter):
             key = (af.award, af.year, af.category)
             ret[key].append((af, details))
     return ret
+
 
 if __name__ == '__main__':
     typestring, level_filter = get_type_and_filter('finalists')

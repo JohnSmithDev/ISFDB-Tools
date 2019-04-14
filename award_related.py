@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Functions relevant to how ISFDB handles awards, but which don't have any
-direct connection to the databse.
+direct connection to the database.
 """
 
 
@@ -11,6 +11,9 @@ BOGUS_AUTHOR_NAMES = ('', '********')
 DODGY_TITLES_AND_PSEUDO_AUTHORS = {
     'No Award': 'Noah Ward'
 }
+
+# TODO: make this configurable/overridable via command-line argument
+EXCLUDED_AUTHORS = set(['Noah Ward'])
 
 # This is a nasty hack for pseudonyms, TODO: think how to do it better
 DONT_USE_THESE_REAL_NAMES = (
