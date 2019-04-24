@@ -61,6 +61,7 @@ if __name__ == '__main__':
                  (finalist.title, finalist.author))
             continue
 
+        FIRST_ATTEMPT = """
         book_args = parse_args(['-A', finalist.author, '-T' , finalist.title],
                                description='whatever', supported_args='at')
         title_id = get_title_id(conn, book_args)
@@ -75,10 +76,14 @@ if __name__ == '__main__':
         # print('%s / %s / %s' % (finalist.author, finalist.title, title_id))
 
         pubs = get_publications(conn, list(title_id.keys())[0])
+        """
+        pubs = get_publications(conn, finalist.title_id)
+
+
         earliest_pub_date = find_earliest_pub_date(pubs)
         if not earliest_pub_date:
-            warn('No pub dates found for "%s/%s" (%s)- ignoring' %
-                 (finalist.title, finalist.author, pubs))
+            warn('No pub dates found for "%s/%s" (title_id=%d)- ignoring' %
+                 (finalist.title, finalist.author, finalist.title_id))
             continue
 
         # print(pub_dates)
