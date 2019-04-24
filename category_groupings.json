@@ -7,6 +7,40 @@
       "Best Novella",
       "Best Short Fiction",
       "Best Short Story"
+    ],
+    "dramatic": [
+      "Best Dramatic Presentation",
+      "Best Dramatic Presentation, Long Form",
+      "Best Dramatic Presentation, Short Form",
+      "Best Dramatic Production",
+      "Best SF or Fantasy Movie"
+    ],
+    "series": [
+      "Best All-Time Series",
+      "Best Series"
+    ]
+  },
+  "Nebula Award": {
+    "written-fiction": [
+      "Novel",
+      "Novella",
+      "Novelette",
+      "Short Story"
+    ]
+  },
+  "British Science Fiction Award": {
+    "written-fiction": [
+      "Best Novel",
+      "Best Short Fiction"
+    ]
+  },
+  "Locus Poll Award": {
+    "novel": [
+      "Best Fantasy Novel",
+      "Best First Novel",
+      "Best Horror Novel",
+      "Best Horror/Dark Fantasy Novel",
+      "Best SF Novel"
     ]
   }
 }
