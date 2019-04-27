@@ -40,12 +40,24 @@ def derive_country_from_price(raw_price, ref=None):
         return 'GB'
     elif re.match('\d+/[\d\-]+', price):
         return 'GB' # Pre-decimalization
-    elif price.startswith('DM'):
-        return 'DE'
+    elif price.startswith('HUF'): # Hungarian forint
+        return 'HU'
+    elif price.startswith('Z&#322;'): # Polish zloty
+        return 'PL'
+    elif price.startswith('KN'): # Croatian kuna
+        return 'HR'
+    elif price.startswith('K&#269;'): # Czech koruna
+        return 'CZ'
+    elif price.startswith('NIS'): # Israeli new shekel
+        return 'IL'
+    #elif price.startswith('DM'):
+    #    return 'DE'
     elif price[0] == '\x80': # Euro symbol
         return 'EU' # Not a country, but will have to do
     elif price[0] == '\xa5': # Japanese yen symbol
         return 'JP' # Q: Could this be Chinese Yuan (renminbi) also?
+    elif price.endswith('&#20803;'): # Chinese renminbi
+        return 'CN'
     elif price[0] == 'R':
         return 'ZA' # Rand?  See http://www.isfdb.org/cgi-bin/title.cgi?2422094
     elif price.startswith('&#8377;'): # HTML entity for rupee - http://www.isfdb.org/cgi-bin/pl.cgi?643560
