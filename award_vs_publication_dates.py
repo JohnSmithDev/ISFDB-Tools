@@ -62,6 +62,15 @@ if __name__ == '__main__':
                  (finalist.title, finalist.author))
             continue
 
+        title_id = finalist.title_id
+        if not title_id:
+            warn('Missing title_id for "%s/%s" - ignoring' %
+                 (finalist.title, finalist.author))
+            # TODO: some sort of lookup
+            # Only known example so far is
+            # "The Wheel of Time (series)/Robert Jordan+Brandon Sanderson"
+            continue
+
         FIRST_ATTEMPT = """
         book_args = parse_args(['-A', finalist.author, '-T' , finalist.title],
                                description='whatever', supported_args='at')
@@ -78,14 +87,17 @@ if __name__ == '__main__':
 
         pubs = get_publications(conn, list(title_id.keys())[0])
         """
-        title_ids = get_all_related_title_ids(conn, finalist.title_id)
+        title_ids = get_all_related_title_ids(conn, title_id)
+        if not title_ids:
+            logging.error('No title_ids found for %s' % (title_id))
+            pdb.set_trace()
         pubs = get_publications(conn, title_ids)
 
 
         earliest_pub_date = find_earliest_pub_date(pubs)
         if not earliest_pub_date:
             warn('No pub dates found for "%s/%s" (title_id=%d)- ignoring' %
-                 (finalist.title, finalist.author, finalist.title_id))
+                 (finalist.title, finalist.author, title_id))
             continue
 
         # print(pub_dates)
