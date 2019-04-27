@@ -20,7 +20,8 @@ from common import get_connection, parse_args, get_filters_and_params_from_args
 
 from finalists import get_type_and_filter, get_finalists
 # from author_country import get_author_country
-from publication_history import get_title_id, get_publications
+from publication_history import get_publications
+from title_related import get_all_related_title_ids
 
 
 def find_earliest_pub_date(pubs, preferred_countries=None):
@@ -77,7 +78,8 @@ if __name__ == '__main__':
 
         pubs = get_publications(conn, list(title_id.keys())[0])
         """
-        pubs = get_publications(conn, finalist.title_id)
+        title_ids = get_all_related_title_ids(conn, finalist.title_id)
+        pubs = get_publications(conn, title_ids)
 
 
         earliest_pub_date = find_earliest_pub_date(pubs)

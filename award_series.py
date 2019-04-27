@@ -13,13 +13,9 @@ from common import get_connection, parse_args
 from utils import pretty_list, padded_plural, pretty_nth
 from finalists import get_type_and_filter, get_finalists
 from author_country import get_author_country
-from award_related import (extract_real_authors_from_author_field, # Maybe not needed here?
-                           extract_authors_from_author_field,
-                           extract_variant_titles,
-                           sanitise_authors_for_dodgy_titles,
-                           EXCLUDED_AUTHORS)
-from publication_history import (get_title_details, discover_title_details,
-                                 get_title_details_from_id)
+from award_related import  EXCLUDED_AUTHORS
+from title_related import (get_title_details, discover_title_details,
+                           get_title_details_from_id)
 
 from colorama_wrapper import Fore, Back, Style, COLORAMA_RESET
 
