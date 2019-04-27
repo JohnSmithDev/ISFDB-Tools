@@ -287,7 +287,8 @@ def get_publications(conn, title_ids, verbose=False):
     query = text("""SELECT pub_ptype format,
                            CAST(pub_year AS CHAR) dateish,
                            pub_isbn isbn,
-                           pub_price price
+                           pub_price price,
+                           pc.title_id title_id
       FROM pub_content pc
       LEFT OUTER JOIN pubs p ON p.pub_id = pc.pub_id
       WHERE pc.title_id IN :title_ids
@@ -298,7 +299,8 @@ def get_publications(conn, title_ids, verbose=False):
     ret = defaultdict(list)
     for row in rows:
         # print(row['pub_price'])
-        country = derive_country_from_price(row['price'])
+        ref = 'title_id=%d,ISBN=%s' % (row['title_id'], row['isbn'])
+        country = derive_country_from_price(row['price'], ref=ref)
         if not country:
             if verbose:
                 logging.warning('Unable to derive country fom price "%s"' %
