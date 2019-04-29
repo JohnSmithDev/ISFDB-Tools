@@ -81,6 +81,46 @@ def get_author_aliases(conn, author):
     return ret
 
 
+def get_author_alias_ids(conn, author):
+    """
+    Return all [*] IDs for an author, inc.  pseudonyms, alternate spellings, etc
+    Basically the same query as get_author_aliases, just returning different
+    values.
+    TODO (probably): merge common code from get_author_aliases.
+
+    [*] See commented example in the tests for a flaw in this - if given a
+        pseudonym, this doesn't currently return other pseudonyms - e.g. results
+        for "Robert Heinlein" vs "Robert A. Heinlein" are very different.
+        Perhaps maybe instead do one lookup to exstablish the "official" author_id
+        (which may well be the same as the supplied name), and then a second
+        one to get all of its aliases?  (Or perhaps, a single query that
+        effectively does that?)
+    """
+
+    # This would be much nicer if I had a newer MySQL/Maria with CTEs...
+    # The two lots of joins are because we don't know if we have been given
+    # a real name or an alias, so we try going "in both directions".
+    query = text("""SELECT a1.author_id id1, a2.author_id id2, a3.author_id id3
+  FROM authors a1
+  left outer join pseudonyms p1 on p1.author_id = a1.author_id
+  left outer join authors a2 on p1.pseudonym = a2.author_id
+  left outer join pseudonyms p2 on p2.pseudonym = a1.author_id
+  left outer join authors a3 on p2.author_id = a3.author_id
+  where a1.author_canonical = :author
+     or a1.author_legalname = :author;""")
+    results = conn.execute(query, author=author).fetchall()
+    ret = set()
+    for row in results:
+        ret.update(row)
+    for ignore in (0, None):
+        try:
+            ret.remove(ignore)
+        except KeyError:
+            pass
+    return sorted(ret)
+
+
+
 if __name__ == '__main__':
     conn = get_connection()
     for i, name in enumerate(sys.argv[1:]):

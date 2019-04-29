@@ -7,7 +7,8 @@ essentially SQL queries with a bit of tweaking in Python.
 import unittest
 
 from ..common import get_connection
-from ..author_aliases import unlegalize, get_author_aliases
+from ..author_aliases import (unlegalize, get_author_aliases,
+                              get_author_alias_ids)
 
 class TestUnlegalize(unittest.TestCase):
     def test_none(self):
@@ -93,3 +94,14 @@ class TestGetAuthorAliases(unittest.TestCase):
 
 
 
+
+class TestGetAuthorAliasIds(unittest.TestCase):
+    conn = get_connection()
+
+    def test_get_alias_ids_for_real_name(self):
+        self.assertEqual([129348, 133814],
+                         get_author_alias_ids(self.conn, 'Seanan McGuire'))
+
+    def test_get_alias_ids_for_real_name(self):
+        self.assertEqual([129348, 133814],
+                         get_author_alias_ids(self.conn, 'Mira Grant'))
