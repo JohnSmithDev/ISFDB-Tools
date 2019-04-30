@@ -6,6 +6,7 @@ Anything that will be widely used (~90% of scripts) should go into common.py
 """
 
 from datetime import date
+import re
 
 def pretty_list(lst, max_items=3, others_label='items'):
     """
@@ -49,15 +50,18 @@ def pretty_list(lst, max_items=3, others_label='items'):
             second_bit = '%d other %s' % (lenl - max_items + 1, label)
         return '%s and %s' % (first_bit, second_bit)
 
-def convert_dateish_to_date(txt):
+def convert_dateish_to_date(txt, default=None):
     """
     0 days of month (and I suspect month) are possible in the database, but
     convert to None-ish by SQLAlchemy.  Here we fake them as 1st of month or
     January.
+
+    Set default to something if you need to sort the output (and can't be bothered
+    to do something like https://stackoverflow.com/questions/12971631/sorting-list-by-an-attribute-that-can-be-none
     """
     bits = [int(z) for z in txt.split('-')]
     if not bits[0]: # probably '0000-00-00':
-        return None
+        return default
     if bits[1] == 0:
         bits[1] = 1
     if bits[2] == 0:
@@ -86,6 +90,7 @@ def plural(qty, noun, plural_form=None, number_length=None, pad=False):
 def padded_plural(qty, noun, plural_form=None, number_length=None):
     return plural(qty, noun, plural_form, number_length, pad=True)
 
+
 def pretty_nth(number):
     if 11 <= number <= 13:
         return '%dth' % number
@@ -95,3 +100,48 @@ def pretty_nth(number):
     except IndexError:
         suffix = 'th'
     return '%d%s' % (number, suffix)
+
+
+# Q: prefices, suffices?
+BOGUS_PREFIXES = ['The ']
+BOGUS_SUFFIXES = [': A Novel', ' (Boxed)']
+
+def merge_similar_titles(titles):
+    """
+    Given a list (well, iterable) of titles, remove any that are too similar to
+    others e.g. "Look to Windward" vs "Look To Windward"
+
+    Currently this just does case insensitivity, potentially it could do:
+    * Levenshtein distance or similar
+    * Removal of meta text e.g. "The Difference Engine (Boxed)"
+    """
+
+    lc_dict = dict([(t.lower().strip(), t.strip()) for t in titles])
+    to_remove = []
+
+    def has_bogus_prefix(title):
+        for prefix in BOGUS_PREFIXES:
+            if title.startswith(prefix):
+                clean_lc = title[len(prefix):].lower()
+                if clean_lc in lc_dict:
+                    return True
+        else:
+            return False
+
+    def has_bogus_suffix(title):
+        for suffix in BOGUS_SUFFIXES:
+            if title.endswith(suffix):
+                clean_lc = title[:-len(suffix)].lower()
+                if clean_lc in lc_dict:
+                    return True
+        else:
+            return False
+
+    for title in titles:
+        if has_bogus_prefix(title) or has_bogus_suffix(title):
+            # Q: Does this blow up if there are multiple matches?
+            del lc_dict[title.lower()]
+
+    return lc_dict.values()
+
+
