@@ -4,7 +4,8 @@ Functions relevant to how ISFDB handles awards, but which don't have any
 direct connection to the database.
 """
 
-
+import json
+import os
 
 BOGUS_AUTHOR_NAMES = ('', '********')
 
@@ -24,11 +25,23 @@ MULTIPLE_AUTHORS_SEPARATOR = '+' # e.g. Brandon Sanderson + someone I think?
 PSEUDONYM_SEPARATOR = '^' # e.g. Edmond Hamilton^Brett Sterling (Retro Hugo Novel 1946)
 VARIANT_TITLE_SEPARATOR = '^' # e.g. Way Station^Here Gather the Stars
 
+
+CATEGORY_CONFIG = os.path.join(os.path.dirname(__file__),
+                               'category_groupings.json')
+
+
+
 class BadArgumentError(Exception):
     pass
 
 def extract_variant_titles(raw_txt):
     return [z.strip() for z in raw_txt.split(VARIANT_TITLE_SEPARATOR)]
+
+def load_category_groupings(category_cfg_file=CATEGORY_CONFIG):
+    with open(CATEGORY_CONFIG) as inputstream:
+        cfg = json.load(inputstream)
+    return cfg
+
 
 
 def extract_authors_from_author_field(raw_txt, wanted_types='all'):
