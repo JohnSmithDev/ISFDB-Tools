@@ -12,9 +12,11 @@ import sys
 
 from sqlalchemy.sql import text
 
+
 from common import get_connection, parse_args, get_filters_and_params_from_args
 from country_related import derive_country_from_price
-from utils import convert_dateish_to_date, pretty_list
+from isfdb_utils import convert_dateish_to_date, pretty_list
+
 
 OLD_BOOK_INTERVAL = timedelta(days=365*2)
 
@@ -90,7 +92,8 @@ class CountrySpecificBook(object):
     def __repr__(self):
         newest_pub_date = max([z.publication_date for z in self.publications],
                               key=none_tolerant_date_sort_key)
-        if newest_pub_date - self.copyright_date > OLD_BOOK_INTERVAL:
+        if newest_pub_date and self.copyright_date and \
+           (newest_pub_date - self.copyright_date > OLD_BOOK_INTERVAL):
             extra_bit = ' (original copyright date %s)' % (self.copyright_date)
         else:
             extra_bit = ''
@@ -140,6 +143,7 @@ def get_publisher_books(conn, args, countries=None):
     ret_list = []
     pubid_dict = {}
     titleid_dict = {}
+    # print(len(results))
     for row in results:
         pubid = row['pub_id']
         titleid = row['title_id']

@@ -25,7 +25,7 @@ from country_related import (derive_country_from_price, get_country)
 from common import (get_connection, parse_args,
                     get_filters_and_params_from_args,
                     AmbiguousArgumentsError)
-from utils import convert_dateish_to_date
+from isfdb_utils import convert_dateish_to_date
 from author_aliases import get_author_aliases
 from title_related import get_title_ids
 

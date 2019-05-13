@@ -10,7 +10,7 @@ import re
 import sys
 
 from common import get_connection, parse_args
-from utils import pretty_list, padded_plural, pretty_nth
+from isfdb_utils import pretty_list, padded_plural, pretty_nth
 from finalists import get_type_and_filter, get_finalists
 from author_country import get_author_country
 from award_related import  EXCLUDED_AUTHORS

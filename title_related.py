@@ -21,7 +21,7 @@ from sqlalchemy.sql import text
 from common import (get_connection, parse_args,
                     get_filters_and_params_from_args,
                     AmbiguousArgumentsError)
-from utils import convert_dateish_to_date
+from isfdb_utils import convert_dateish_to_date
 from author_aliases import get_author_aliases
 
 AuthorBook = namedtuple('AuthorBook', 'author, book')
@@ -29,6 +29,9 @@ AuthorBook = namedtuple('AuthorBook', 'author, book')
 class AmbiguousResultsError(Exception):
     pass
 
+# Beware: the "mysql+mysqlconnector" driver doesn't support tuples or lists
+# https://bugs.mysql.com/bug.php?id=89112
+# Other connectors do however
 DEFAULT_TITLE_TYPES = ('NOVEL', 'CHAPBOOK', 'ANTHOLOGY', 'COLLECTION', 'SHORTFICTION')
 
 def discover_title_details(conn, author_variations, title_variations,

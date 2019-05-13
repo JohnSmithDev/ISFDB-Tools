@@ -21,7 +21,7 @@ import sys
 from sqlalchemy.sql import text
 
 from common import (get_connection, parse_args, AmbiguousArgumentsError)
-from utils import convert_dateish_to_date
+from isfdb_utils import (convert_dateish_to_date, merge_similar_titles)
 from author_aliases import get_author_alias_ids
 
 
@@ -57,6 +57,7 @@ def postprocess_bibliography(raw_rows):
     title_id_to_titles = defaultdict(set)
     publication_dict = defaultdict(set)
     # TODO: might be nice to order the titles by most popular first?
+    # TODO: better to call merge_similar_titles() here?
     for row in raw_rows:
         key = row['title_parent'] or row['title_id']
         title_id_to_titles[key].update([row['title_title'], row['pub_title']])
@@ -83,5 +84,6 @@ if __name__ == '__main__':
     conn = get_connection()
     bibliography = get_author_bibliography(conn, args.exact_author)
     for i, (titles, pub_date) in enumerate(bibliography, 1):
-        print('%2d. [%d] %s' % (i, pub_date.year, ' aka '.join(titles)))
+        print('%2d. [%d] %s' % (i, pub_date.year,
+                                ' aka '.join(merge_similar_titles(titles))))
 
