@@ -36,9 +36,12 @@ def derive_country_from_price(raw_price, ref=None):
         return 'CA'
     elif price.startswith('AU$'):
         return 'AU'
-    elif price[0] == '\xa3': # pound sterling symbol
+    elif (price[0] == '\xa3' or # pound sterling symbol
+          re.match('\d+P', price)): # pence
         return 'GB'
-    elif re.match('\d+/[\d\-]+', price):
+    elif re.match('\d+/[\d\-]+', price) or \
+         re.match('\-/[\d\-]+', price) or \
+         re.match('\d+D', price):
         return 'GB' # Pre-decimalization
     elif price.startswith('HUF'): # Hungarian forint
         return 'HU'
@@ -52,6 +55,12 @@ def derive_country_from_price(raw_price, ref=None):
         return 'IL'
     #elif price.startswith('DM'):
     #    return 'DE'
+    elif price[0] == '\x83': # Pre-Euro - used on an edition of Ringworld
+        return 'NL' # Guilder - apparently symbol is derived from Florin
+    elif price[0] == 'F': # Pre-Euro - used on an edition of Ringworld
+        return 'FR' # Franc
+    elif price.endswith('LIT'): # Pre-Euro - used on an edition of Ringworld
+        return 'IT' # Lira
     elif price[0] == '\x80': # Euro symbol
         return 'EU' # Not a country, but will have to do
     elif price[0] == '\xa5': # Japanese yen symbol
