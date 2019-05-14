@@ -1,34 +1,21 @@
 #!/usr/bin/env python
 """
 Show all the different formats and countries a book was published in.
-
-(The script name is a bit of misnomer.  TODO: rename it.)
-
-TODO: Clean up this right mess, in large part due to confusiom over parent and
-child IDs.
-
-
 """
 
 from argparse import ArgumentParser
-from datetime import date
 from collections import namedtuple, defaultdict
 import logging
 import pdb
-import re
 import sys
 
 from sqlalchemy.sql import text
 
-from country_related import (derive_country_from_price, get_country)
+from country_related import (derive_country_from_price)
 from common import (get_connection, parse_args,
-                    get_filters_and_params_from_args,
-                    AmbiguousArgumentsError)
+                    get_filters_and_params_from_args)
 from isfdb_utils import convert_dateish_to_date
-from author_aliases import get_author_aliases
 from title_related import get_title_ids
-
-AuthorBook = namedtuple('AuthorBook', 'author, book')
 
 UNKNOWN_COUNTRY = 'XX'
 
