@@ -92,6 +92,7 @@ COUNTRY_CODE_HACKS = {
 
     'French Fourth Republic': 'FR', # Or maybe de?  See Wolfgang Brenner/280988
     'Grand Duchy of Finland': 'FI',
+    'Kingdom of Belgium': 'BE',
 
     'British India': 'IN',
     'Persia': 'IR',
@@ -141,7 +142,7 @@ def get_country_name_to_code_mappings(filename=None):
 
 country2code = get_country_name_to_code_mappings()
 
-def get_country(location):
+def get_country(location, ref=None):
     if not location:
         return None
     if ',' in location:
@@ -155,7 +156,8 @@ def get_country(location):
             return country2code[clean_country]
         except KeyError:
             pass
-    logging.warning('Country not found/recognized in "%s"' % (location))
+    logging.warning('Country not found/recognized in "%s (ref=%s)"' %
+                    (location, ref))
     return None
 
 

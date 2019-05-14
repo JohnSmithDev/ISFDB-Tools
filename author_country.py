@@ -88,15 +88,16 @@ def get_author_country(conn, filter_args, check_pseudonyms=True,
                                         (len(results), filter_args, results[:5]))
     else:
         rec = results[0]
-        if overrides and rec['author_canonical'] in overrides:
-            return overrides[ rec['author_canonical'] ]
+        author_name = rec['author_canonical']
+        if overrides and author_name in overrides:
+            return overrides[ author_name ]
         birthplace = rec['author_birthplace']
         if not birthplace and check_pseudonyms:
             all_bps = get_birthplaces_for_pseudonym(conn, rec['author_id'])
             bps = [z for z in all_bps if z is not None] # because [None] is True-ish
             if bps:
-                return ','.join([get_country(z) for z in bps])
-        return get_country(birthplace)
+                return ','.join([get_country(z, ref=author_name) for z in bps])
+        return get_country(birthplace, ref=author_name)
 
 
 
