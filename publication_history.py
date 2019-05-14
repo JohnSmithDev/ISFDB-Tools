@@ -32,8 +32,14 @@ AuthorBook = namedtuple('AuthorBook', 'author, book')
 
 UNKNOWN_COUNTRY = 'XX'
 
+PublicationDetails = namedtuple('PublicationDetails', 'format, date, isbn')
+
 def get_publications(conn, title_ids, verbose=False):
     """
+    Return a dictionary mapping countries to a list of editions published
+    there.  Countries are derived from price, so maybe be vague e.g. Eurozone
+    publications.  (Possibly we might be able to derive country from publisher?)
+
     This takes a list of title_ids because it seems we have to use both the
     child and the parent to be sure of finding matching pubs
     """
@@ -60,17 +66,19 @@ def get_publications(conn, title_ids, verbose=False):
                                 row['price'])
             country = UNKNOWN_COUNTRY
         dt = convert_dateish_to_date(row['dateish'])
-        ret[country].append((row['format'],
+        ret[country].append(PublicationDetails(row['format'],
                              dt or None,
                              row['isbn'] or None))
     return ret
 
 def render_details(pubs, output_function=print):
     # print(pubs)
-    for country, details in pubs.items():
-        output_function(country)
+    for i, (country, details) in enumerate(sorted(pubs.items())):
+        if i > 0:
+            output_function()
+        output_function('== %s (%d editions) ==\n' % (country, len(details)))
         for detail in details:
-            output_function('%10s published %-12s (ISBN:%s)' % (detail))
+            output_function('* %10s published %-12s (ISBN:%s)' % (detail))
 
 
 if __name__ == '__main__':
