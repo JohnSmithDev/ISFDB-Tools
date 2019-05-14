@@ -87,20 +87,6 @@ if __name__ == '__main__':
                       supported_args='antv')
 
     conn = get_connection()
-    FIRST_ATTEMPT = """
-    title_id_dict = get_title_id(conn, args)
-    if len(title_id_dict) > 1:
-        raise AmbiguousArgumentsError('More than one book matching: %s' %
-                                        ('; '.join([('%s - %s (%d)' % (bk[0], bk[1], idnum))
-                                                     for idnum, bk in title_id_dict.items()])))
-    elif not title_id_dict:
-        raise AmbiguousArgumentsError('No books matching %s/%s found' %
-                                        (args.author, args.title))
-
-    title_id = title_id_dict.keys()[0]
-    print(title_id)
-    pubs = get_publications(conn, [title_id], verbose=args.verbose)
-    """
     title_ids = get_title_ids(conn, args)
     if not title_ids:
         logging.error('No matching titles found')
