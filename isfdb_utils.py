@@ -104,7 +104,30 @@ def pretty_nth(number):
 
 # Q: prefices, suffices?
 BOGUS_PREFIXES = ['The ']
-BOGUS_SUFFIXES = [': A Novel', ' (Boxed)']
+BOGUS_SUFFIXES = [': A Novel', ' (Boxed)', ' (series)']
+
+def generate_variant_titles(original_title):
+    """
+    Return a list of variant titles, based on removing any possibly unnecessary
+    prefixes for suffixes.
+    """
+    variants = set([original_title])
+    prev_len = 0
+
+    while len(variants) != prev_len:
+        prev_len = len(variants)
+        to_add = set() # can't update variants whilst iterating over it
+        for title in variants:
+            for prefix in BOGUS_PREFIXES:
+                if title.startswith(prefix):
+                    clean = title[len(prefix):]
+                    to_add.add(clean)
+            for suffix in BOGUS_SUFFIXES:
+                if title.endswith(suffix):
+                    clean = title[:-len(suffix)]
+                    to_add.add(clean)
+        variants.update(to_add)
+    return variants
 
 def merge_similar_titles(titles):
     """
@@ -143,5 +166,11 @@ def merge_similar_titles(titles):
             del lc_dict[title.lower()]
 
     return lc_dict.values()
+
+
+if __name__ == '__main__':
+    # Some stubs for basic sanity testing
+    print(generate_variant_titles('The Inverted World'))
+    print(generate_variant_titles('The Wheel of Time (series)'))
 
 
