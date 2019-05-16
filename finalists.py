@@ -17,14 +17,34 @@ import sys
 from sqlalchemy.sql import text
 
 from common import get_connection, parse_args, get_filters_and_params_from_args
+from isfdb_utils import pretty_nth
 from award_related import (BOGUS_AUTHOR_NAMES, DODGY_TITLES_AND_PSEUDO_AUTHORS,
                            EXCLUDED_AUTHORS,
                            load_category_groupings)
 
 
 # Do we need this, or can we use RowProxy directly?
+# UPDATE: Turn it into a class, for the benefit of other code that builds upon this
 AwardFinalist = namedtuple('AwardFinalist',
                            'title, author, rank, year, award, category, award_id, title_id')
+
+class AwardFinalist(object):
+    def __init__(self, title, author, rank, year, award, category,
+                 award_id, title_id):
+        self.title = title
+        self.author = author
+        self.rank = rank
+        self.year = year
+        self.award = award
+        self.category = category
+        self.award_id = award_id
+        self.title_id = title_id
+
+    def __repr__(self):
+        return '"%s" by %s was %s in the %d %s for %s' % \
+            (self.title, self.author,
+             pretty_nth(self.rank), self.year, self.award, self.category)
+
 
 MOVED = """
 CATEGORY_CONFIG = os.path.join(dirname(__file__), 'category_groupings.json')
@@ -87,6 +107,8 @@ def get_finalists(conn, args, level_filter, ignore_no_award=True):
 
     finalists = []
     for row in results:
+        # The title/DODGY... and author/EXCLUDED checks will likely always
+        # have the same value, but better safe than sorry.
         if ignore_no_award and \
            (row['award_title'] in DODGY_TITLES_AND_PSEUDO_AUTHORS or
             row['award_author'] in EXCLUDED_AUTHORS):
