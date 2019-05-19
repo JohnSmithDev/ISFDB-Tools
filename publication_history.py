@@ -19,9 +19,9 @@ from title_related import get_title_ids
 
 UNKNOWN_COUNTRY = 'XX'
 
-PublicationDetails = namedtuple('PublicationDetails', 'format, date, isbn')
+PublicationDetails = namedtuple('PublicationDetails', 'type, format, date, isbn')
 
-def get_publications(conn, title_ids, verbose=False):
+def get_publications(conn, title_ids, verbose=False, allowed_ctypes=None):
     """
     Return a dictionary mapping countries to a list of editions published
     there.  Countries are derived from price, so maybe be vague e.g. Eurozone
@@ -30,16 +30,23 @@ def get_publications(conn, title_ids, verbose=False):
     This takes a list of title_ids because it seems we have to use both the
     child and the parent to be sure of finding matching pubs
     """
+
+    fltrs = ['pc.title_id IN :title_ids']
+    if allowed_ctypes is not None:
+        fltrs.append('p.pub_ctype IN :allowed_ctypes')
+
     query = text("""SELECT pub_ptype format,
+                           pub_ctype type,
                            CAST(pub_year AS CHAR) dateish,
                            pub_isbn isbn,
                            pub_price price,
                            pc.title_id title_id
       FROM pub_content pc
       LEFT OUTER JOIN pubs p ON p.pub_id = pc.pub_id
-      WHERE pc.title_id IN :title_ids
-        ORDER BY p.pub_year""")
-    results = conn.execute(query, title_ids=title_ids)
+      WHERE %s
+        ORDER BY p.pub_year""" % (' AND '.join(fltrs)))
+    results = conn.execute(query, title_ids=title_ids,
+                           allowed_ctypes=allowed_ctypes)
     # pdb.set_trace()
     rows = list(results)
     ret = defaultdict(list)
@@ -53,9 +60,10 @@ def get_publications(conn, title_ids, verbose=False):
                                 row['price'])
             country = UNKNOWN_COUNTRY
         dt = convert_dateish_to_date(row['dateish'])
-        ret[country].append(PublicationDetails(row['format'],
-                             dt or None,
-                             row['isbn'] or None))
+        ret[country].append(PublicationDetails(row['type'].title(),
+                                               row['format'],
+                                               dt or None,
+                                               row['isbn'] or None))
     return ret
 
 def render_details(pubs, output_function=print):
@@ -65,7 +73,7 @@ def render_details(pubs, output_function=print):
             output_function()
         output_function('== %s (%d editions) ==\n' % (country, len(details)))
         for detail in details:
-            output_function('* %10s published %-12s (ISBN:%s)' % (detail))
+            output_function('* %-10s %10s published %-12s (ISBN:%s)' % (detail))
 
 
 if __name__ == '__main__':
