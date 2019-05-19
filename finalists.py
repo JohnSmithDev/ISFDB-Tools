@@ -41,8 +41,8 @@ class AwardFinalist(object):
         self.title_id = title_id
 
     def __repr__(self):
-        return '"%s" by %s was %s in the %d %s for %s' % \
-            (self.title, self.author,
+        return '"%s" by %s (title_id=%d), %s in the %d %s for %s' % \
+            (self.title, self.author, self.title_id,
              pretty_nth(self.rank), self.year, self.award, self.category)
 
 
