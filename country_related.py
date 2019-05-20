@@ -46,38 +46,80 @@ def derive_country_from_price(raw_price, ref=None):
     elif price.startswith('HUF') or \
          price.endswith('FT'): # Hungarian forint
         return 'HU'
-    elif price.startswith('Z&#322;'): # Polish zloty
-        return 'PL'
-    elif price.startswith('KN'): # Croatian kuna
+    elif (price.startswith('Z&#322;') or
+          price.endswith('Z&#322;')): # Used on Falling Free
+        return 'PL' # Polish zloty
+    elif (price.startswith('KN') or # Croatian kuna
+          price.endswith('KN')): # see Handmaid's Tale
         return 'HR'
+    elif (price.endswith('DIN.') or # Serbian Dinar - see To Your Scattered Bodies Go
+          price.endswith('DIN')): # See The Vor Game
+        return 'RS'
+    elif price.startswith('LEI'): # Romanian Leu- see To Your Scattered Bodies Go
+        return 'RO'
     elif price.startswith('K&#269;'): # Czech koruna
         return 'CZ'
     elif price.startswith('LEV'): # Bulgarian Lev
         return 'BG'
     elif price.startswith('NIS'): # Israeli new shekel
         return 'IL'
+    elif (price.startswith('TL') or # Turkish Lira - see Dune
+          price.endswith('TL')): # see This Immortal
+        return 'TR'
+    elif price.startswith('KR'): # Danish Krone - see The Long Tomorrow
+        return 'DK'
+    elif price.startswith('NOK'): # Norwegian Krone - see There Will Be Time
+        return 'NOK'
+    elif price.startswith('SEK'): # Swedish Krona - see The Goblin Reservation
+        return 'SE'
+    elif price.endswith('UAH'): # Ukrainian hryvnia- see Hyperion
+        return 'UA'
+
+    ### Following subsection is for currencies superseded by the Euro
+
     #elif price.startswith('DM'):
     #    return 'DE'
     elif price[0] == '\x83': # Pre-Euro - used on an edition of Ringworld
         return 'NL' # Guilder - apparently symbol is derived from Florin
-    elif price[0] == 'F': # Pre-Euro - used on an edition of Ringworld
-        return 'FR' # Franc
-    elif price.endswith('LIT'): # Pre-Euro - used on an edition of Ringworld
+    elif (price.startswith('LIT') or  # Used on an edition of Little Fuzzy
+          price.endswith('LIT') or  # Pre-Euro - used on an edition of Ringworld
+          price.startswith('&#8356;')): # Looks like a £ - see Parable of the Sower
         return 'IT' # Lira
+    elif (price.startswith('PTE') or # Used on Up the Line
+          price.endswith('ESC.')): # Used on an edition of Dorsai!
+        return 'PT' # Escudo
+    elif price.endswith('PTA'): # Used on Brittle Innings
+        return 'ES' # Peseta IIRC
+    elif price.startswith('LT'): # Lithuanian Litas - see HP & Goblet of Fire
+        return 'LT'
     elif price[0] == '\x80': # Euro symbol
         return 'EU' # Not a country, but will have to do
-    elif price[0] == '\xa5': # Japanese yen symbol
+
+
+    elif (price[0] == '\xa5' or
+          price[-1] == '\xa5'): # Japanese yen symbol
         return 'JP' # Q: Could this be Chinese Yuan (renminbi) also?
+    elif price.endswith('WON'):
+        return 'KR' # Used on The Vor Game
+    elif price.startswith('NT$'): # New Taiwan Dollars
+        return 'TW' # Used on Blue Mars
     elif price.startswith('&#20803;') or \
          price.endswith('&#20803;'): # Chinese renminbi/yuan
         return 'CN'
-    elif price[0] == 'R':
-        return 'ZA' # Rand?  See http://www.isfdb.org/cgi-bin/title.cgi?2422094
     elif price.startswith('&#8377;'): # HTML entity for rupee - http://www.isfdb.org/cgi-bin/pl.cgi?643560
         return 'IN'
+
+    # Single ASCII character prefixes - put these at the end to minimize the risk
+    # of incorrect matches
+    elif price[0] == 'F': # Pre-Euro - used on an edition of Ringworld
+        return 'FR' # Franc
+    elif price[0] == 'M':
+        return 'DE' # GDR Mark - see Left Hand of Darkness (does DDR have a different code?)
+    elif price[0] == 'R':
+        return 'ZA' # Rand?  See http://www.isfdb.org/cgi-bin/title.cgi?2422094
     else:
-        logging.error('Dunno know what country price "%s" refers to (ref=%s)' % \
-                      (price, ref))
+        logging.warning('Dunno know what country price "%s" refers to (ref=%s)' % \
+                        (price, ref))
         # pdb.set_trace()
         return None
 
