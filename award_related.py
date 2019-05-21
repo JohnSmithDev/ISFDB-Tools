@@ -7,14 +7,17 @@ direct connection to the database.
 import json
 import os
 
-BOGUS_AUTHOR_NAMES = ('', '********')
+# Usually "No Award" is in the title field, but sometimes (e.g. 1976 JWC
+# Memorial http://www.isfdb.org/cgi-bin/ay.cgi?10+1976 it's in the author field
+BOGUS_AUTHOR_NAMES = ('', '********', 'No Award')
 
+# Fake an author name based on the title
 DODGY_TITLES_AND_PSEUDO_AUTHORS = {
     'No Award': 'Noah Ward'
 }
 
 # TODO: make this configurable/overridable via command-line argument
-EXCLUDED_AUTHORS = set(['Noah Ward'])
+EXCLUDED_AUTHORS = set(['Noah Ward', 'No Award'])
 
 # This is a nasty hack for pseudonyms, TODO: think how to do it better
 DONT_USE_THESE_REAL_NAMES = (
