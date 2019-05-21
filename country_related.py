@@ -10,6 +10,8 @@ import pdb
 import os
 import re
 
+UNKNOWN_COUNTRY = 'XX'
+
 TWO_CHAR_PRICE_PREFIXES = {
     'C$': 'CA',
     'A$': 'AU',
@@ -83,6 +85,7 @@ def derive_country_from_price(raw_price, ref=None):
         return 'NL' # Guilder - apparently symbol is derived from Florin
     elif (price.startswith('LIT') or  # Used on an edition of Little Fuzzy
           price.endswith('LIT') or  # Pre-Euro - used on an edition of Ringworld
+          price.startswith('L.') or  # Pre-Euro - used on an edition of The City, Not Long After
           price.startswith('&#8356;')): # Looks like a £ - see Parable of the Sower
         return 'IT' # Lira
     elif (price.startswith('PTE') or # Used on Up the Line
@@ -108,7 +111,8 @@ def derive_country_from_price(raw_price, ref=None):
         return 'CN'
     elif price.startswith('&#8377;'): # HTML entity for rupee - http://www.isfdb.org/cgi-bin/pl.cgi?643560
         return 'IN'
-
+    elif price.startswith('&#3647;'): # Thai baht
+        return 'TH' # Used on an edition of Lock In
     # Single ASCII character prefixes - put these at the end to minimize the risk
     # of incorrect matches
     elif price[0] == 'F': # Pre-Euro - used on an edition of Ringworld
