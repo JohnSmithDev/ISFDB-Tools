@@ -14,18 +14,13 @@ from isfdb_utils import pretty_list, padded_plural
 from finalists import get_type_and_filter, get_finalists
 from author_country import get_author_country
 from award_related import (extract_real_authors_from_author_field,
-                           sanitise_authors_for_dodgy_titles)
-
-UNKNOWN_COUNTRY = '??'
-
+                           sanitise_authors_for_dodgy_titles,
+                           EXCLUDED_AUTHORS)
+from country_related import UNKNOWN_COUNTRY
 
 # TODO: Add argument to override MAX_AUTHORS
 MAX_AUTHORS = 3
 # MAX_AUTHORS = 10
-
-# TODO: make this configurable via command-line argument
-EXCLUDED_AUTHORS = set(['Noah Ward'])
-
 
 def get_award_countries(conn, args, level_filter):
     # pdb.set_trace()
