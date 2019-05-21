@@ -212,20 +212,29 @@ def get_title_id(conn, filter_args, extra_columns=None, title_types=None):
     return ret
 
 
-def get_all_related_title_ids(conn, title_id):
+def get_all_related_title_ids(conn, title_id, only_same_types=True):
     """
     Given a title_id, return all parents and children.
+    only_same_types avoids for example matching OMNIBUS to NOVELs, set to
+    False if you want anything to be OK.
 
     NB: A cursory check of the DB as of mid April 2019 indicates there are no
     grandparents or grandchildren
     """
+
+    if only_same_types:
+        type_check1 = ' AND t1.title_ttype = t2.title_ttype '
+        type_check2 = ' AND t1.title_ttype = t3.title_ttype '
+    else:
+        type_check1 = type_check2 = ''
+
     query = text("""SELECT t1.title_id, t1.title_parent,
                            t2.title_id, t2.title_parent,
                            t3.title_id, t3.title_parent
       FROM titles t1
-      LEFT OUTER JOIN titles t2 ON t1.title_id = t2.title_parent
-      LEFT OUTER JOIN titles t3 ON t1.title_parent = t2.title_id
-      WHERE t1.title_id = :title_id;;;""")
+      LEFT OUTER JOIN titles t2 ON t1.title_id = t2.title_parent %s
+      LEFT OUTER JOIN titles t3 ON t1.title_parent = t2.title_id %s
+      WHERE t1.title_id = :title_id;""" % (type_check1, type_check2))
     results = conn.execute(query, {'title_id': title_id}).fetchall()
     id_set = set()
     for row in results:
