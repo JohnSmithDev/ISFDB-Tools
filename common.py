@@ -22,7 +22,9 @@ def get_connection(connection_string=None):
     return conn
 
 
-def parse_args(cli_args, description, supported_args=None):
+def create_parser(description, supported_args):
+
+
     parser = ArgumentParser(description=description)
 
     if supported_args:
@@ -82,7 +84,11 @@ def parse_args(cli_args, description, supported_args=None):
 
     parser.add_argument('-v', action='store_true', dest='verbose',
                         help='Log verbosely')
+    return parser
 
+
+def parse_args(cli_args, description, supported_args=None):
+    parser = create_parser(description, supported_args)
     args = parser.parse_args(cli_args)
     return args
 
