@@ -23,8 +23,6 @@ def get_connection(connection_string=None):
 
 
 def create_parser(description, supported_args):
-
-
     parser = ArgumentParser(description=description)
 
     if supported_args:
@@ -38,19 +36,19 @@ def create_parser(description, supported_args):
     if not supported_args or 'a' in low_args:
         parser.add_argument('-a', nargs='?', dest='author',
                             help='Author to search on (pattern match, case insensitive)')
-        parser.add_argument('-A', nargs='?', dest='exact_author',
+        parser.add_argument('-A', action='append', dest='exact_author', default=[],
                             help='Author to search on (exact match, case sensitive)')
 
     if not supported_args or 't' in low_args:
         parser.add_argument('-t', nargs='?', dest='title',
                             help='Title to search on (pattern match, case insensitive)')
-        parser.add_argument('-T', nargs='?', dest='exact_title',
+        parser.add_argument('-T', action='append', dest='exact_title', default=[],
                             help='Title to search on (exact match, case sensitive)')
 
     if not supported_args or 'p' in low_args:
         parser.add_argument('-p', nargs='?', dest='publisher',
                             help='Publisher to search on (pattern match, case insensitive)')
-        parser.add_argument('-P', nargs='?', dest='exact_publisher',
+        parser.add_argument('-P', action='append', dest='exact_publisher', default=[],
                             help='Publisher to search on (exact match, case sensitive)')
 
     if not supported_args or 'n' in low_args:
@@ -61,7 +59,7 @@ def create_parser(description, supported_args):
     if not supported_args or 'w' in low_args:
         parser.add_argument('-w', nargs='?', dest='award',
                             help='Award to search on (pattern match, case insensitive)')
-        parser.add_argument('-W', nargs='?', dest='exact_award',
+        parser.add_argument('-W', action='append', dest='exact_award', default=[],
                             help='Award to search on (exact match, case sensitive)')
 
     # Q: Could we merge n and c args in some cases?  Locus' "Best SF Novel" etc
@@ -70,7 +68,7 @@ def create_parser(description, supported_args):
         # -c is a bit flakey, given that novel is a substring of novella and novellette
         parser.add_argument('-c', nargs='?', dest='award_category',
                             help='Award category to search on (pattern match, case insensitive)')
-        parser.add_argument('-C', nargs='?', dest='exact_award_category',
+        parser.add_argument('-C', action='append', dest='exact_award_category', default=[],
                             help='Award category to search on (exact match, case sensitive)')
 
     if not supported_args or 'y' in low_args:
@@ -87,8 +85,12 @@ def create_parser(description, supported_args):
     return parser
 
 
-def parse_args(cli_args, description, supported_args=None):
-    parser = create_parser(description, supported_args)
+def parse_args(cli_args, description='No description provided',
+               supported_args=None, parser=None):
+    # parser arg is basically if you want to re-use the same parser multiple
+    # times (but with different args) in the same program
+    if not parser:
+        parser = create_parser(description, supported_args)
     args = parser.parse_args(cli_args)
     return args
 
@@ -137,7 +139,23 @@ def get_filters_and_params_from_args(filter_args, column_name_prefixes=None):
                 # TODO: double check we didn't raise beforehand
                 exact_prm = 'exact_' + prm
                 exact_val = arg_dict[exact_prm]
-                if exact_val is not None:
+                # PRESUMPTION: "colname = value" is more efficient than
+                # "colname IN [value]", so use = over IN when there is a single
+                # value for an argument that can take take multiple values
+                # hasattr(foo,'extend') is to avoid doing the wrong thing
+                # on string values w.r.t. len(foo)  (Ideally this shouldn't ever
+                # happen if the arg parser is properly configured.)
+                if exact_val is None or \
+                   (hasattr(exact_val, 'extend') and len(exact_val) == 0):
+                    continue # ignore it
+                if hasattr(exact_val, 'extend'):
+                    if len(exact_val) > 1:
+                        params[exact_prm] = exact_val
+                        filters.append('%s IN :%s' % (col, exact_prm))
+                    else:
+                        params[exact_prm] = exact_val[0]
+                        filters.append('%s = :%s' % (col, exact_prm))
+                else:
                     params[exact_prm] = exact_val
                     filters.append('%s = :%s' % (col, exact_prm))
             except KeyError:
