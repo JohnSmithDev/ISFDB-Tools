@@ -13,7 +13,9 @@ BOGUS_AUTHOR_NAMES = ('', '********', 'No Award')
 
 # Fake an author name based on the title
 DODGY_TITLES_AND_PSEUDO_AUTHORS = {
-    'No Award': 'Noah Ward'
+    'No Award': 'Noah Ward',
+    'No Award Given This Year': 'Noah Ward', # Locus Best Anthology 1976
+    'No Winner (None of the Above)': 'Noah Ward' # Prometheus Award 1985
 }
 
 # TODO: make this configurable/overridable via command-line argument
