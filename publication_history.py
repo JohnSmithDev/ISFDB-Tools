@@ -19,7 +19,32 @@ from title_related import get_title_ids
 
 UNKNOWN_COUNTRY = 'XX'
 
-PublicationDetails = namedtuple('PublicationDetails', 'type, format, date, isbn')
+OLD_PublicationDetails = namedtuple('PublicationDetails', 'type, format, date, isbn')
+
+class PublicationDetails(object):
+    def __init__(self, type_, format, dt, isbn):
+        self.type = type_
+        self.format = format
+        self.date = convert_dateish_to_date(dt)
+        # IIRC the next could be an empty string, so use None if so
+        self.isbn = isbn or None
+
+    def pretty(self):
+        return '%-10s %10s published %-12s (ISBN:%s)' % (self.type.title(),
+                                                         self.format,
+                                                         self.date,
+                                                         self.isbn)
+    def __repr__(self):
+        return '%s %s published %s (ISBN: %s)' % (self.type.title(),
+                                                  self.format,
+                                                  self.date,
+                                                  self.isbn)
+
+def create_publication_details_from_row(row):
+    return PublicationDetails(row['type'], row['format'],
+                              row['dateish'], row['isbn'])
+
+
 
 def get_publications(conn, title_ids, verbose=False, allowed_ctypes=None):
     """
@@ -59,11 +84,9 @@ def get_publications(conn, title_ids, verbose=False, allowed_ctypes=None):
                 logging.warning('Unable to derive country fom price "%s"' %
                                 row['price'])
             country = UNKNOWN_COUNTRY
-        dt = convert_dateish_to_date(row['dateish'])
-        ret[country].append(PublicationDetails(row['type'].title(),
-                                               row['format'],
-                                               dt or None,
-                                               row['isbn'] or None))
+        ret[country].append(create_publication_details_from_row(row))
+
+
     return ret
 
 def render_details(pubs, output_function=print):
@@ -73,7 +96,7 @@ def render_details(pubs, output_function=print):
             output_function()
         output_function('== %s (%d editions) ==\n' % (country, len(details)))
         for detail in details:
-            output_function('* %-10s %10s published %-12s (ISBN:%s)' % (detail))
+            output_function('* %s' % (detail.pretty()))
 
 
 if __name__ == '__main__':
