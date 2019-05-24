@@ -68,6 +68,14 @@ def convert_dateish_to_date(txt, default=None):
         bits[2] = 1
     return date(*bits)
 
+def safe_year_from_date(dt, default=None):
+    # Set default to 0 or 9999 if you need to sort by date
+    # (I might have already implemented something like this somewhere?)
+    if not dt:
+        return default
+    else:
+        return dt.year
+
 def plural(qty, noun, plural_form=None, number_length=None, pad=False):
     if number_length is None:
         number_format = '%d'
