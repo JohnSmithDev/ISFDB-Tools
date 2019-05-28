@@ -41,7 +41,7 @@ class AwardFinalist(object):
         self.title_id = title_id
 
     def __repr__(self):
-        return '"%s" by %s (title_id=%d), %s in the %d %s for %s' % \
+        return '"%s" by %s (title_id=%s), %s in the %d %s for %s' % \
             (self.title, self.author, self.title_id,
              pretty_nth(self.rank), self.year, self.award, self.category)
 
@@ -109,6 +109,7 @@ def get_finalists(conn, args, level_filter, ignore_no_award=True):
     for row in results:
         # The title/DODGY... and author/EXCLUDED checks will likely always
         # have the same value, but better safe than sorry.
+        # print(row['award_author'])
         if ignore_no_award and \
            (row['award_title'] in DODGY_TITLES_AND_PSEUDO_AUTHORS or
             row['award_author'] in EXCLUDED_AUTHORS):
