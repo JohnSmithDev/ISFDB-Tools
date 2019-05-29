@@ -12,12 +12,38 @@ import re
 
 UNKNOWN_COUNTRY = 'XX'
 
+# Keep these next two dicts in alphabetical order to make life easier
 TWO_CHAR_PRICE_PREFIXES = {
-    'C$': 'CA',
     'A$': 'AU',
+    'C$': 'CA',
+    'DM': 'DE',
+    'KN': 'HR', # Croation kuna - see The Handmaid's Tale
     'R$': 'BR', # Brazilian real
-    'DM': 'DE'
 }
+TWO_CHAR_PRICE_SUFFIXES = {
+    'FT': 'HU', # Hungarian forint
+    'KN': 'HR', # Croation kuna - see The Handmaid's Tale
+}
+
+
+# As of 2019-05-29, I think these are pre-decimal UK (poss. incorrect formats)
+# and Canadianm $ (poss. non standard).  NB: not a complete list of everything
+STILL_TO_DO = """
+WARNING:root:Dunno know what country price "25-" refers to (ref=title_id=924,ISBN=0575002271)
+WARNING:root:Dunno know what country price "25-" refers to (ref=title_id=924,ISBN=0575002271)
+WARNING:root:Dunno know what country price "C22.95" refers to (ref=title_id=5748,ISBN=9780889954441)
+WARNING:root:Dunno know what country price "C22.95" refers to (ref=title_id=5748,ISBN=9780889954441)
+WARNING:root:Dunno know what country price "A6/-" refers to (ref=title_id=1034,ISBN=None)
+WARNING:root:Dunno know what country price "A6/-" refers to (ref=title_id=1034,ISBN=None)
+WARNING:root:Dunno know what country price "C22.95" refers to (ref=title_id=5748,ISBN=9780889954441)
+WARNING:root:Dunno know what country price "C22.95" refers to (ref=title_id=5748,ISBN=9780889954441)
+"""
+
+
+# Not 100% sure what NPP is, but it seems to be used on a US edition, so I don't
+# link it's a legit currency, certainly not if it doesn't have any digits
+# See http://www.isfdb.org/cgi-bin/title.cgi?154242
+UNKNOWN_PRICE_VALUES = {'UNKNOWN', 'NONE', 'NPP'}
 
 def derive_country_from_price(raw_price, ref=None):
     """
@@ -28,10 +54,15 @@ def derive_country_from_price(raw_price, ref=None):
     if not raw_price:
         return None
     price = raw_price.upper()
+    if price in UNKNOWN_PRICE_VALUES:
+        return None
     price2ch = price[:2]
-
     if price2ch in TWO_CHAR_PRICE_PREFIXES:
         return TWO_CHAR_PRICE_PREFIXES[price2ch]
+    price2ch_suffix = price[-2:]
+    if price2ch_suffix in TWO_CHAR_PRICE_SUFFIXES:
+        return TWO_CHAR_PRICE_SUFFIXES[price2ch_suffix]
+
     if price[0] == '$':
         return 'US' # Q: Is a naked $ ever used for CA, AU, etc?
     elif price.startswith('CX$'): # http://www.isfdb.org/cgi-bin/pl.cgi?617032 - poss error?
@@ -49,19 +80,20 @@ def derive_country_from_price(raw_price, ref=None):
          price.endswith('FT'): # Hungarian forint
         return 'HU'
     elif (price.startswith('Z&#322;') or
-          price.endswith('Z&#322;')): # Used on Falling Free
+          price.endswith('Z&#322;') or
+          price.endswith('ZLOTYCH')): # Used on Falling Free
         return 'PL' # Polish zloty
-    elif (price.startswith('KN') or # Croatian kuna
-          price.endswith('KN')): # see Handmaid's Tale
-        return 'HR'
+    #elif (price.startswith('KN') or # Croatian kuna
+    #      price.endswith('KN')): # see Handmaid's Tale
+    #    return 'HR'
     elif (price.endswith('DIN.') or # Serbian Dinar - see To Your Scattered Bodies Go
           price.endswith('DIN')): # See The Vor Game
         return 'RS'
     elif price.startswith('LEI'): # Romanian Leu- see To Your Scattered Bodies Go
         return 'RO'
-    elif price.startswith('K&#269;'): # Czech koruna
+    elif price.startswith('K&#269;') or price.endswith('K&#269;'): # Czech koruna
         return 'CZ'
-    elif price.startswith('LEV'): # Bulgarian Lev
+    elif price.startswith('LEV') or price.endswith('LV'): # Bulgarian Lev
         return 'BG'
     elif price.startswith('NIS'): # Israeli new shekel
         return 'IL'
@@ -72,10 +104,12 @@ def derive_country_from_price(raw_price, ref=None):
         return 'DK'
     elif price.startswith('NOK'): # Norwegian Krone - see There Will Be Time
         return 'NOK'
-    elif price.startswith('SEK'): # Swedish Krona - see The Goblin Reservation
-        return 'SE'
+    elif price.startswith('SEK') or price.endswith('SEK'): # see The Goblin Reservation
+        return 'SE' # Swedish Krona
     elif price.endswith('UAH'): # Ukrainian hryvnia- see Hyperion
         return 'UA'
+    elif price.startswith('CHF') or price.startswith('SFR'): # Swiss franc
+        return 'CH'
 
     ### Following subsection is for currencies superseded by the Euro
 
@@ -91,7 +125,8 @@ def derive_country_from_price(raw_price, ref=None):
     elif (price.startswith('PTE') or # Used on Up the Line
           price.endswith('ESC.')): # Used on an edition of Dorsai!
         return 'PT' # Escudo
-    elif price.endswith('PTA'): # Used on Brittle Innings
+    elif (price.startswith('PTA') or price.endswith('PTA') or
+          price.endswith('PESETAS')): # Used on Brittle Innings
         return 'ES' # Peseta IIRC
     elif price.startswith('LT'): # Lithuanian Litas - see HP & Goblet of Fire
         return 'LT'
@@ -117,6 +152,8 @@ def derive_country_from_price(raw_price, ref=None):
     # of incorrect matches
     elif price[0] == 'F': # Pre-Euro - used on an edition of Ringworld
         return 'FR' # Franc
+    elif price[0] == 'S': # Pre-Euro - used on an edition of Childhoods End
+        return 'AT' # Austrian Schilling
     elif price[0] == 'M':
         return 'DE' # GDR Mark - see Left Hand of Darkness (does DDR have a different code?)
     elif price[0] == 'R':
