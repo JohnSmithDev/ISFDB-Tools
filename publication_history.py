@@ -11,15 +11,13 @@ import sys
 
 from sqlalchemy.sql import text
 
-from country_related import (derive_country_from_price)
+from country_related import (derive_country_from_price, UNKNOWN_COUNTRY)
 from common import (get_connection, parse_args,
                     get_filters_and_params_from_args)
 from isfdb_utils import convert_dateish_to_date
 from title_related import get_title_ids
 
-UNKNOWN_COUNTRY = 'XX'
-
-OLD_PublicationDetails = namedtuple('PublicationDetails', 'type, format, date, isbn')
+XXX_UNKNOWN_COUNTRY = 'XX'
 
 class PublicationDetails(object):
     def __init__(self, type_, format, dt, isbn):
@@ -28,6 +26,20 @@ class PublicationDetails(object):
         self.date = convert_dateish_to_date(dt)
         # IIRC the next could be an empty string, so use None if so
         self.isbn = isbn or None
+
+    def has_inconsistencies_with(self, other):
+        # THIS HASN'T BEEN TESTED, BECAUSE I'VE YET TO FIND A REAL-WORLD EXAMPLE
+        # (and I'm too lazy to have set up proper tests yet)
+        # Date is woolly enough that I think it can be ignored here
+        PROPERTIES_TO_CHECK = ['type', 'format']
+        issues = []
+        for prop in PROPERTIES_TO_CHECK:
+            this = getattr(self, prop)
+            that = getattr(other, prop)
+            if this != that:
+                issues.add('%s: %s != %s' % (prop, this, that))
+        return issues
+
 
     def pretty(self):
         return '%-10s %10s published %-12s (ISBN:%s)' % (self.type.title(),
@@ -70,7 +82,6 @@ def _get_publications(conn, title_ids, verbose=False, allowed_ctypes=None):
 
 
 def get_publications_by_country(conn, title_ids, verbose=False, allowed_ctypes=None):
-
     """
     Return a dictionary mapping countries to a list of editions published
     there.  Countries are derived from price, so maybe be vague e.g. Eurozone
@@ -93,9 +104,49 @@ def get_publications_by_country(conn, title_ids, verbose=False, allowed_ctypes=N
                                 row['price'])
             country = UNKNOWN_COUNTRY
         ret[country].append(create_publication_details_from_row(row))
-
-
     return ret
+
+def get_publications_by_isbn(conn, title_ids, verbose=False, allowed_ctypes=None,
+                             log=logging):
+    """
+    Return a tuple of
+    * a dict mapping ISBNs to PublicationDetails
+    * a list of the PublicationDetails that don't have ISBNs (hopefully empty
+
+    Note that if there are multiple publications that share the same ISBN,
+    an arbitrary value will be returned.  However, there are some cursory
+    checks done to see if the "duplicates" have inconsistent properties
+    e.g. format, and these are logged.
+
+    NB: at time of writing, I've not yet found any current cases where duplicate
+    ISBNs have different type attributes.  I'm sure they exist though, as I
+    recently fixed one (ebook using ISBN of a physical omnibus).
+
+    The return value from this function is not particularly useful for output;
+    it is more aimed at external code that takes this data and does more
+    with it.
+    """
+    rows = _get_publications(conn, title_ids, verbose, allowed_ctypes)
+    ret = {}
+    isbnless = []
+    for row in rows:
+        pd = create_publication_details_from_row(row)
+        if not pd.isbn:
+            isbnless.append(pd)
+            continue
+
+        try:
+            other = ret[pd.isbn]
+            inconsistencies =  pd.has_inconsistencies_with(other)
+            print(inconsistencies)
+            if inconsistencies:
+                log.warning(inconsistencies)
+            # TODO (maybe): replace the value?
+        except KeyError:
+            ret[pd.isbn] = pd
+            continue
+    return ret, isbnless
+
 
 def render_details(pubs, output_function=print):
     # print(pubs)
