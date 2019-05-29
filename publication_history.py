@@ -45,17 +45,11 @@ def create_publication_details_from_row(row):
                               row['dateish'], row['isbn'])
 
 
-
-def get_publications(conn, title_ids, verbose=False, allowed_ctypes=None):
+def _get_publications(conn, title_ids, verbose=False, allowed_ctypes=None):
     """
-    Return a dictionary mapping countries to a list of editions published
-    there.  Countries are derived from price, so maybe be vague e.g. Eurozone
-    publications.  (Possibly we might be able to derive country from publisher?)
-
-    This takes a list of title_ids because it seems we have to use both the
-    child and the parent to be sure of finding matching pubs
+    Engine for the get_publications_by_* functions, which do postprocessing
+    on the raw rows this returns
     """
-
     fltrs = ['pc.title_id IN :title_ids']
     if allowed_ctypes is not None:
         fltrs.append('p.pub_ctype IN :allowed_ctypes')
@@ -72,8 +66,22 @@ def get_publications(conn, title_ids, verbose=False, allowed_ctypes=None):
         ORDER BY p.pub_year""" % (' AND '.join(fltrs)))
     results = conn.execute(query, title_ids=title_ids,
                            allowed_ctypes=allowed_ctypes)
-    # pdb.set_trace()
-    rows = list(results)
+    return results
+
+
+def get_publications_by_country(conn, title_ids, verbose=False, allowed_ctypes=None):
+
+    """
+    Return a dictionary mapping countries to a list of editions published
+    there.  Countries are derived from price, so maybe be vague e.g. Eurozone
+    publications.  (Possibly we might be able to derive country from publisher?)
+
+    This takes a list of title_ids because it seems we have to use both the
+    child and the parent to be sure of finding matching pubs
+    """
+
+    # Q: Do we need the casting to list?
+    rows = list(_get_publications(conn, title_ids, verbose, allowed_ctypes))
     ret = defaultdict(list)
     for row in rows:
         # print(row['pub_price'])
@@ -109,6 +117,6 @@ if __name__ == '__main__':
     if not title_ids:
         logging.error('No matching titles found')
         sys.exit(1)
-    pubs = get_publications(conn, title_ids, verbose=args.verbose)
+    pubs = get_publications_by_country(conn, title_ids, verbose=args.verbose)
     render_details(pubs)
 

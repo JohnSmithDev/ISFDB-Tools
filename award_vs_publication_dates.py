@@ -20,7 +20,7 @@ from common import get_connection, parse_args, get_filters_and_params_from_args
 
 from finalists import get_type_and_filter, get_finalists
 # from author_country import get_author_country
-from publication_history import get_publications
+from publication_history import get_publications_by_country
 from title_related import get_all_related_title_ids
 
 
@@ -33,7 +33,7 @@ def find_earliest_pub_date(pubs, preferred_countries=None):
     for country in preferred_countries:
         if country not in pubs:
             continue
-        pub_dates = [z[1] for z in pubs[country] if z[1]]
+        pub_dates = [z.date for z in pubs[country] if z.date]
         if pub_dates:
             return min(pub_dates)
     return None
@@ -71,27 +71,11 @@ if __name__ == '__main__':
             # "The Wheel of Time (series)/Robert Jordan+Brandon Sanderson"
             continue
 
-        FIRST_ATTEMPT = """
-        book_args = parse_args(['-A', finalist.author, '-T' , finalist.title],
-                               description='whatever', supported_args='at')
-        title_id = get_title_id(conn, book_args)
-        if not title_id:
-            warn('Could not find title_id for "%s/%s" - ignoring' %
-                 (finalist.title, finalist.author))
-            continue
-        if len(title_id) > 1:
-            warn('Multiple title_ids found for "%s/%s" (%s)- ignoring' %
-                 (finalist.title, finalist.author, title_id))
-            continue
-        # print('%s / %s / %s' % (finalist.author, finalist.title, title_id))
-
-        pubs = get_publications(conn, list(title_id.keys())[0])
-        """
         title_ids = get_all_related_title_ids(conn, title_id)
         if not title_ids:
             logging.error('No title_ids found for %s' % (title_id))
             pdb.set_trace()
-        pubs = get_publications(conn, title_ids)
+        pubs = get_publications_by_country(conn, title_ids)
 
 
         earliest_pub_date = find_earliest_pub_date(pubs)
