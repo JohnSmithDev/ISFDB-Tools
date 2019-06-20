@@ -4,6 +4,8 @@ Report on all reviews in a magzine (or some other venue that ISFDB has records
 on) over a period of time.
 """
 
+from collections import defaultdict
+from enum import Enum
 import logging
 import pdb
 import sys
@@ -13,6 +15,13 @@ from sqlalchemy.sql import text
 from common import (get_connection, create_parser, parse_args,
                     get_filters_and_params_from_args)
 from isfdb_utils import convert_dateish_to_date
+
+class RepeatReviewBehaviour(Enum):
+    ALLOW = 1,
+    DIFFERENT_ISSUES_ONLY = 2,
+    DISALLOW = 3
+
+
 
 REVIEW_TTYPES_OF_INTEREST = ('REVIEW',)
 WORK_TTYPES_OF_INTEREST = ('NOVEL',)
@@ -24,6 +33,7 @@ class ReviewedWork(object):
         self.title = row['work_title']
         self.author = row['work_author']
         self.title_id = row['work_id']
+        self.pub_id = row['pub_id']
         self.review_month = convert_dateish_to_date(row['review_month'])
         if self.review_month is None:
             # Maybe another review in this issue has the date?
@@ -45,7 +55,7 @@ class ReviewedWork(object):
 
 
 
-def get_reviews(conn, args):
+def get_reviews(conn, args, repeats=RepeatReviewBehaviour.DIFFERENT_ISSUES_ONLY):
     fltr, params = get_filters_and_params_from_args(
         args, column_name_prefixes={'year': 'pub'})
 
@@ -85,7 +95,29 @@ WHERE pub_id IN (
     params['work_ttypes'] = WORK_TTYPES_OF_INTEREST
     params['magazine'] = args.magazine
     results = conn.execute(query, **params).fetchall()
-    return sorted([ReviewedWork(z) for z in results], key=lambda z: z.review_month)
+    reviews = [ReviewedWork(z) for z in results]
+    if repeats != RepeatReviewBehaviour.ALLOW:
+        # As things stand, the newest review is the one that survives - probably
+        # not the best, but will be OK for now (esp. as we default to DIFFERENT_ISSUES_ONLY)
+        reviewed_in_pub = {}
+        deduped_reviews = []
+        for review in reviews:
+            try:
+                extant_reviews = reviewed_in_pub[review.title_id]
+                # logging.debug('%s is a repeat review' % (review.title))
+                if repeats == RepeatReviewBehaviour.DIFFERENT_ISSUES_ONLY and \
+                   review.pub_id not in extant_reviews:
+                    deduped_reviews.append(review)
+                reviewed_in_pub[review.title_id].add(review.pub_id)
+            except KeyError:
+                # logging.debug('%s is a new review' % (review.title))
+                deduped_reviews.append(review)
+                reviewed_in_pub[review.title_id] = set([review.pub_id])
+        reviews = deduped_reviews
+
+    return sorted(reviews, key=lambda z: z.review_month)
+
+
 
 
 
