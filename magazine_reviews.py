@@ -17,19 +17,31 @@ from isfdb_utils import convert_dateish_to_date
 REVIEW_TTYPES_OF_INTEREST = ('REVIEW',)
 WORK_TTYPES_OF_INTEREST = ('NOVEL',)
 
+pub_months = {} # This is an imperfect bodge for empty r_t.title_copyright
 
 class ReviewedWork(object):
     def __init__(self, row):
         self.title = row['work_title']
         self.author = row['work_author']
-        self.review_date = convert_dateish_to_date(row['review_month'])
         self.title_id = row['work_id']
+        self.review_month = convert_dateish_to_date(row['review_month'])
+        if self.review_month is None:
+            # Maybe another review in this issue has the date?
+            fallback = pub_months.get(row['pub_id'], None)
+            logging.warning('Undefined review month for %s (review.title_id=%d,'
+                            'work.title_id=%d), using fallback %s' %
+                            (self.title, row['title_id'], self.title_id,
+                             fallback))
+            self.review_month = fallback
+        else:
+            pub_months[row['pub_id']] = self.review_month
 
     def __repr__(self):
         return '"%s" (title_id=%d) by %s reviewed %s' % (self.title,
                                                          self.title_id,
                                                          self.author,
-                                                         self.review_date)
+                                                         self.review_month)
+
 
 
 
@@ -44,6 +56,8 @@ def get_reviews(conn, args):
     # 2300846, 'Pride and Prometheus', 'NOVEL'
     # w_t.title_title is likely to be better as it has higher visibility in
     # IMDB.
+    # The ordering by 'review_month DESC' is a hack to allow the pub_months
+    # bodge to have a better chance of working.
     query = text("""
 SELECT r_pc.pub_id, r_pc.pubc_page, r_t.title_id,
     r_t.title_title, r_t.title_ttype,
@@ -65,13 +79,13 @@ WHERE pub_id IN (
 )
   AND r_t.title_ttype in :review_ttypes
   AND w_t.title_ttype in :work_ttypes
-    ORDER BY review_month, pub_id, pubc_page;
+    ORDER BY review_month DESC, pub_id, pubc_page;
 """ % fltr)
     params['review_ttypes'] = REVIEW_TTYPES_OF_INTEREST
     params['work_ttypes'] = WORK_TTYPES_OF_INTEREST
     params['magazine'] = args.magazine
     results = conn.execute(query, **params).fetchall()
-    return [ReviewedWork(z) for z in results]
+    return sorted([ReviewedWork(z) for z in results], key=lambda z: z.review_month)
 
 
 
