@@ -2,9 +2,23 @@
 """
 Report on all reviews in a magzine (or some other venue that ISFDB has records
 on) over a period of time.
+
+For reference, and because a query to get this from the DB is hard, these are
+some review venues with a decent amnount of reviews:
+* Locus (at time of writing, stops mid 2018)
+* Interzone
+* Strange Horizons
+* The Magazine of Fantasy and Science Fiction (stops in 2015 though - or poss.
+  name change in database?)
+
+Magazines which are somewhat compromised:
+* Vector (at time of writing, stops 2016; also, they don't have months for the
+          review dates, this would have to be derived from the season in the
+          issue name, which isn't always populated)
 """
 
 from collections import defaultdict
+from datetime import date
 from enum import Enum
 import logging
 import pdb
@@ -28,13 +42,24 @@ WORK_TTYPES_OF_INTEREST = ('NOVEL',)
 
 pub_months = {} # This is an imperfect bodge for empty r_t.title_copyright
 
+def normalize_month(dt):
+    """
+    Convert yyyy-mm-dd to yyyy-mm-01
+    This is for sites like Strange Horizons that publish multiple reviews
+    per month on different days.
+    """
+    if dt:
+        return date(dt.year, dt.month, 1)
+    else:
+        return None
+
 class ReviewedWork(object):
     def __init__(self, row):
         self.title = row['work_title']
         self.author = row['work_author']
         self.title_id = row['work_id']
         self.pub_id = row['pub_id']
-        self.review_month = convert_dateish_to_date(row['review_month'])
+        self.review_month = normalize_month(convert_dateish_to_date(row['review_month']))
         if self.review_month is None:
             # Maybe another review in this issue has the date?
             fallback = pub_months.get(row['pub_id'], None)
@@ -104,6 +129,8 @@ WHERE pub_id IN (
         for review in reviews:
             try:
                 extant_reviews = reviewed_in_pub[review.title_id]
+
+
                 # logging.debug('%s is a repeat review' % (review.title))
                 if repeats == RepeatReviewBehaviour.DIFFERENT_ISSUES_ONLY and \
                    review.pub_id not in extant_reviews:
