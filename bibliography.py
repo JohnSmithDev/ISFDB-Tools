@@ -24,7 +24,8 @@ from sqlalchemy.sql import text
 from common import (get_connection, parse_args, AmbiguousArgumentsError)
 from isfdb_utils import (convert_dateish_to_date, merge_similar_titles)
 from author_aliases import get_author_alias_ids
-
+from deduplicate import (DuplicatedOrMergedRecordError,
+                         make_list_excluding_duplicates)
 
 # See language table, titles.title_language
 VALID_LANGUAGE_IDS = [17]
@@ -37,7 +38,7 @@ def safe_min(values):
         return min(valid_values)
 
 
-class DuplicateBookError(Exception):
+class DuplicateBookError(DuplicatedOrMergedRecordError):
     pass
 
 class BookByAuthor(object):
@@ -143,6 +144,7 @@ def get_bibliography(conn, author_ids):
                                 'title_languages': VALID_LANGUAGE_IDS})
     # return postprocess_bibliography(rows)
 
+    EARLIER = """
     def make_list_excluding_duplicates(accumulator, new_value):
         if not accumulator:
             accumulator = []
@@ -154,6 +156,11 @@ def get_bibliography(conn, author_ids):
         return accumulator
 
     books = reduce(make_list_excluding_duplicates, rows, None)
+    """
+    books = make_list_excluding_duplicates(
+        rows, BookByAuthor,
+        allow_duplicates=False, duplication_exception=DuplicateBookError)
+
     return sorted(books, key=lambda z: z.year)
 
 
