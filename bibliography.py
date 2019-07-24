@@ -43,10 +43,12 @@ class DuplicateBookError(DuplicatedOrMergedRecordError):
 
 class BookByAuthor(object):
     # Older code, don't think we need this now
-    _title_id_to_titles = defaultdict(set)
-    _publication_dict = defaultdict(set) # title_id => {dates}
+    # _title_id_to_titles = defaultdict(set)
+    # _publication_dict = defaultdict(set) # title_id => {dates}
     # _titles_to_first_pub = {}
 
+    # _tid_to_bba maps title_ids to BookByAuthor, and is used to merge duplicates
+    # (as determined by common title_id)
     _tid_to_bba = {}
 
 
@@ -62,17 +64,17 @@ class BookByAuthor(object):
         self.pub_title = row['pub_title']
         self.publication_date = convert_dateish_to_date(row['p_publication_date'])
         self._publication_dates = [self.publication_date]
+        self.isbns = [row['pub_isbn']]
 
         # Q: should this count twice if title and pub_title are the same?
         valid_titles = [z for z in [self.title_title, self.pub_title] if z]
         self._titles = Counter(valid_titles)
 
-
         self.author = author
 
         key = self.parent_id or self.title_id
-        self._title_id_to_titles[key].update([self.title, self.pub_title])
-        self._publication_dict[key].update([self.copyright_date, self.publication_date])
+        # self._title_id_to_titles[key].update([self.title, self.pub_title])
+        # self._publication_dict[key].update([self.copyright_date, self.publication_date])
 
         try:
             other = self._tid_to_bba[key]
@@ -89,6 +91,8 @@ class BookByAuthor(object):
         self._titles.update(other._titles)
         self._copyright_dates.extend(other._copyright_dates)
         self._publication_dates.extend(other._publication_dates)
+        self.isbns.extend(other.isbns)
+
 
     @property
     def earliest_copyright_date(self):
@@ -99,14 +103,17 @@ class BookByAuthor(object):
         return safe_min(self._publication_dates)
 
     @property
-    def all_titles(self):
-        return ' aka '.join([z[0] for z in self._titles.most_common()])
+    def prioritized_titles(self):
+        return [z[0] for z in self._titles.most_common()]
 
+    @property
+    def all_titles(self):
+        return ' aka '.join(self.prioritized_titles)
 
     @property
     @lru_cache()
     def title(self):
-        return self.all_titles[0]
+        return self.prioritized_titles[0]
 
     @property
     @lru_cache()
@@ -120,7 +127,7 @@ class BookByAuthor(object):
     def __repr__(self):
         return '%s [%d]' % (self.title, self.year)
 
-def get_bibliography(conn, author_ids):
+def get_bibliography(conn, author_ids, author_names):
     # title_copyright is not reliably populated, hence the joining to pubs
     # for their date as well.
     # Or is that just an artefact of 0 day-of-month causing them to be output as None?
@@ -129,7 +136,8 @@ def get_bibliography(conn, author_ids):
     query = text("""SELECT t.title_id, t.title_parent, t.title_title,
           CAST(t.title_copyright AS CHAR) t_copyright,
           t.series_id, t.title_seriesnum, t.title_seriesnum_2,
-          p.pub_id, p.pub_title, CAST(p.pub_year as CHAR) p_publication_date
+          p.pub_id, p.pub_title, CAST(p.pub_year as CHAR) p_publication_date,
+          p.pub_isbn
     FROM canonical_author ca
     LEFT OUTER JOIN titles t ON ca.title_id = t.title_id
     LEFT OUTER JOIN pub_content pc ON t.title_id = pc.title_id
@@ -157,8 +165,17 @@ def get_bibliography(conn, author_ids):
 
     books = reduce(make_list_excluding_duplicates, rows, None)
     """
+
+    def make_bba(stuff, allow_duplicates):
+        """
+        Curried wrapper to BookByAuthor class.
+        The use of author_names[0] is a bit of a hack - TODO: better
+        """
+        return BookByAuthor(stuff, author=author_names[0],
+                            allow_duplicates=allow_duplicates)
+
     books = make_list_excluding_duplicates(
-        rows, BookByAuthor,
+        rows, make_bba,
         allow_duplicates=False, duplication_exception=DuplicateBookError)
 
     return sorted(books, key=lambda z: z.year)
@@ -166,6 +183,7 @@ def get_bibliography(conn, author_ids):
 
 
 def postprocess_bibliography(raw_rows):
+    # THIS SEEMS TO BE NO LONGER USED???
     title_id_to_titles = defaultdict(set)
     publication_dict = defaultdict(set)
     # TODO: might be nice to order the titles by most popular first?
@@ -182,11 +200,11 @@ def postprocess_bibliography(raw_rows):
         titles_to_first_pub[tuple(titles)] = min(pubdates)
     return sorted(titles_to_first_pub.items(), key=lambda z: z[1])
 
-def get_author_bibliography(conn, author_name):
-    author_ids = get_author_alias_ids(conn, author_name)
+def get_author_bibliography(conn, author_names):
+    author_ids = get_author_alias_ids(conn, author_names)
     if not author_ids:
-        raise AmbiguousArgumentsError('Do not know author "%s"' % (author_name))
-    bibliography = get_bibliography(conn, author_ids)
+        raise AmbiguousArgumentsError('Do not know author "%s"' % (author_names))
+    bibliography = get_bibliography(conn, author_ids, author_names)
     return bibliography
 
 if __name__ == '__main__':
