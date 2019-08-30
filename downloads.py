@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
+"""
+Download and persist to filesystem content at URLs.  Includes functionality for:
+* Optionally not downloading if data already exists
+* Throttling of requests to the same domain
+* Sanitising URL paths for filesystem
+* etc
+"""
 
+from datetime import datetime
 from enum import Enum
 import logging
 import os
@@ -18,6 +26,10 @@ class OverwriteBehaviour(Enum):
     RENAME_OLD_WITH_TIMESTAMP_SUFFIX = 2
 
 DOWNLOAD_DIR = os.path.join(os.path.dirname(__file__), 'download_cache')
+
+THROTTLE_SECONDS = 5
+throttled_domains = {} # maps sanitised domain/hostname to time of last download
+
 
 class UnableToSaveError(Exception):
     pass
@@ -60,18 +72,46 @@ def rename_with_timestamp_suffix(full_path, dont_die_if_doesnt_exist=True):
     os.rename(full_path, full_path + '_' + ts)
 
 def download_file(url, overwrite=OverwriteBehaviour.RENAME_OLD_WITH_TIMESTAMP_SUFFIX):
+    subdir, filename = sanitised_filename_for_url(url)
+    full_dir = os.path.join(DOWNLOAD_DIR, subdir)
+    if not os.path.exists(full_dir):
+        os.mkdir(full_dir)
+    full_path = os.path.join(full_dir, filename)
+
+    # Check for existing files before doing downloads, if for no reason other
+    # than avoiding unnecessary throttling
+    if os.path.exists(full_path) and overwrite == OverwriteBehaviour.NEVER_OVERWRITE:
+        raise CannotOverwriteError('Cannot overwrite existing file %s' %
+                                   (full_path), extant_file=full_path)
+
+
+    if THROTTLE_SECONDS > 0: # Q: Will things work OK without this doing check?
+        now = datetime.now()
+        try:
+            previous = throttled_domains[subdir]
+            difference = (now - previous).total_seconds()
+            if difference < THROTTLE_SECONDS:
+                pause_for = THROTTLE_SECONDS - difference
+                logging.debug('Throttling request to %s for %.2f seconds' %
+                              (subdir, pause_for))
+                time.sleep(pause_for)
+
+        except KeyError:
+            # Domain hasn't been previously downloaded from, so no need to
+            # throttle or do anything
+            pass
+
     req = requests.get(url)
+    throttled_domains[subdir] = datetime.now()
     if req.ok:
         # logging.error("Status code = %s" % (req.status_code))
-        subdir, filename = sanitised_filename_for_url(url)
-        full_dir = os.path.join(DOWNLOAD_DIR, subdir)
-        if not os.path.exists(full_dir):
-            os.mkdir(full_dir)
-        full_path = os.path.join(full_dir, filename)
+
         if os.path.exists(full_path):
             if overwrite == OverwriteBehaviour.OVERWRITE:
                 pass
             elif overwrite == OverwriteBehaviour.NEVER_OVERWRITE:
+                # This check was done earlier, but I'll keep it here for
+                # belt-and-braces safety
                 raise CannotOverwriteError('Cannot overwrite existing file %s' %
                                            (full_path), extant_file=full_path)
             else:
