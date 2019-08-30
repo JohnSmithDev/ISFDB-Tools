@@ -29,8 +29,18 @@ def get_urls(conn, author_ids):
     return [z.url for z in rows]
 
 
-def get_wikipedia_url(urls):
+def get_wikipedia_urls(urls):
     wiki_urls = [z for z in urls if 'en.wikipedia.org' in z]
+    # Sort by length so that we prefer 'http://en.wikipedia.org/wiki/Andre_Norton'
+    # over'http://en.wikipedia.org/wiki/Andre_Norton_bibliography'.  This may
+    # need further tuning if/when we come across more entries with multiple
+    # Wikipedia URLs.  (This might also be good for supporting non en wikis too?)
+    return sorted(wiki_urls, key=len)
+
+
+
+def get_wikipedia_url(urls):
+    wiki_urls = get_wikipedia_urls(urls)
     if not wiki_urls:
         return None
     if len(wiki_urls) > 1:
@@ -60,6 +70,19 @@ def extract_categories_from_content(html_file):
         categories = [z.text.strip().lower() for z in category_els]
         return categories
 
+def remove_irrelevant_categories(categories):
+    """
+    Remove any categories which are (presumably) for Wikipedia internal/admin
+    use.  Removing them is not strictly necessary, but makes things more
+    readable when debugging.
+    """
+
+    def is_ignorable(cat):
+        return re.search('wikipedia.articles.with.*identifiers$', cat, re.IGNORECASE) or \
+            re.search('use.*from.*\d\d\d\d$', cat, re.IGNORECASE)
+
+    return [z for z in categories if not is_ignorable(z)]
+
 def determine_gender_from_categories(categories):
     """
     Return a tuple of (gender-character, wiki-category-used)
@@ -69,11 +92,13 @@ def determine_gender_from_categories(categories):
     think of a reason it would be useful in normal circumstances
     """
     for cat in categories:
-        if re.search(' male (novelist|writer|essayist|screenwriter)s?$', cat, re.IGNORECASE):
+        if re.search(' male (novelist|writer|essayist|screenwriter|journalist|composer)s?$',
+                     cat, re.IGNORECASE):
             return 'M', cat
-        if re.search('^male (\w+ |)(novelist|writer|essayist|blogger)s?', cat, re.IGNORECASE):
+        if re.search('^male (\w+ )?(feminist|novelist|writer|essayist|blogger)s?',
+                     cat, re.IGNORECASE):
             return 'M', cat
-        elif re.search(' (female|women) (novelist|writer)s?$', cat, re.IGNORECASE):
+        elif re.search(' (female|women) (short story )?(novelist|writer)s?$', cat, re.IGNORECASE):
             return 'F', cat
         elif re.search(' (lesbian) (novelist|writer)s?$', cat, re.IGNORECASE):
             return 'F', cat
@@ -94,19 +119,22 @@ def get_author_gender_from_ids(conn, author_ids, author_names=None):
     ID numbers if no gender found.
     """
     urls = get_urls(conn, author_ids)
-    wiki_url = get_wikipedia_url(urls)
-    if wiki_url:
+    wiki_urls = get_wikipedia_urls(urls)
+    all_cats = set()
+    for wiki_url in wiki_urls:
         wiki_file = get_wikipedia_content(wiki_url)
-        categories = extract_categories_from_content(wiki_file)
+        raw_categories = extract_categories_from_content(wiki_file)
+        categories = remove_irrelevant_categories(raw_categories)
+        all_cats.update(categories)
         gender, category = determine_gender_from_categories(categories)
         if gender:
             return gender, category
-        else:
-            logging.warning('No gender information found in %s' % (wiki_url))
-            return None, category
     else:
-        logging.warning('No Wikipedia link for %s/%s' % (author_names, author_ids))
-        return None, []
+        if wiki_urls:
+            logging.warning('No gender information found in %s' % (wiki_urls))
+        else:
+            logging.warning('No Wikipedia link for %s/%s' % (author_names, author_ids))
+    return None, all_cats
 
 
 def get_author_gender(conn, author_names):
@@ -128,5 +156,5 @@ if __name__ == '__main__':
                       supported_args='av')
 
     conn = get_connection()
-    data = get_author_gender(conn, args.exact_author)
-    print(data)
+    gender, category = get_author_gender(conn, args.exact_author)
+    print('%s (category: %s)' % (gender, category))
