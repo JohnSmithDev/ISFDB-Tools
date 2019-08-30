@@ -61,21 +61,52 @@ def extract_categories_from_content(html_file):
         return categories
 
 def determine_gender_from_categories(categories):
+    """
+    Return a tuple of (gender-character, wiki-category-used)
+    gender-character can be None, if which case wiki-category-used will be a list
+    of all the categories.
+     wiki-category-used is mainly returned for debugging purposes, I can't
+    think of a reason it would be useful in normal circumstances
+    """
     for cat in categories:
-        if re.search(' male (novelist|writer)s?$', cat, re.IGNORECASE):
-            return 'M'
+        if re.search(' male (novelist|writer|essayist|screenwriter)s?$', cat, re.IGNORECASE):
+            return 'M', cat
+        if re.search('^male (\w+ |)(novelist|writer|essayist|blogger)s?', cat, re.IGNORECASE):
+            return 'M', cat
         elif re.search(' (female|women) (novelist|writer)s?$', cat, re.IGNORECASE):
-            return 'F'
+            return 'F', cat
         elif re.search(' (lesbian) (novelist|writer)s?$', cat, re.IGNORECASE):
-            return 'F'
+            return 'F', cat
         elif re.search('transgender and transsexual men$', cat, re.IGNORECASE):
-            return 'M'
+            return 'M', cat
         elif re.search('transgender and transsexual women$', cat, re.IGNORECASE):
-            return 'F'
+            return 'F', cat
+        # TODO: nonbinary - need to find an example who has a wiki page though
 
     logging.warning('Unable to determine gender based on these categories: %s' %
                     (categories))
-    return None
+    return None, categories
+
+def get_author_gender_from_ids(conn, author_ids, author_names=None):
+    """
+    Returns 'M', 'F', 'X' (for other/nonbinary) or None (if unknown).
+    author_names here is used solely for logging something more meaningful than
+    ID numbers if no gender found.
+    """
+    urls = get_urls(conn, author_ids)
+    wiki_url = get_wikipedia_url(urls)
+    if wiki_url:
+        wiki_file = get_wikipedia_content(wiki_url)
+        categories = extract_categories_from_content(wiki_file)
+        gender, category = determine_gender_from_categories(categories)
+        if gender:
+            return gender, category
+        else:
+            logging.warning('No gender information found in %s' % (wiki_url))
+            return None, category
+    else:
+        logging.warning('No Wikipedia link for %s/%s' % (author_names, author_ids))
+        return None, []
 
 
 def get_author_gender(conn, author_names):
@@ -85,20 +116,8 @@ def get_author_gender(conn, author_names):
     author_ids = get_author_alias_ids(conn, author_names)
     if not author_ids:
         raise AmbiguousArgumentsError('Do not know author "%s"' % (author_names))
-    urls = get_urls(conn, author_ids)
-    wiki_url = get_wikipedia_url(urls)
-    if wiki_url:
-        wiki_file = get_wikipedia_content(wiki_url)
-        categories = extract_categories_from_content(wiki_file)
-        gender = determine_gender_from_categories(categories)
-        if gender:
-            return gender
-        else:
-            logging.warning('No gender information found in %s' % (wiki_url))
-            return None
-    else:
-        logging.warning('No Wikipedia link for %s/%s' % (author_names, author_ids))
-        return None
+    return get_author_gender_from_ids(conn, author_ids)
+
 
 
 
