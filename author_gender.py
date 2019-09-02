@@ -4,6 +4,7 @@ Use Wikipedia categories if possible to determine an author's gender.
 """
 
 
+from collections import Counter
 import logging
 import pdb
 import re
@@ -15,7 +16,7 @@ from bs4 import BeautifulSoup
 from common import (get_connection, parse_args, AmbiguousArgumentsError)
 from author_aliases import get_author_alias_ids
 from downloads import download_file_only_if_necessary
-
+from award_related import extract_authors_from_author_field
 
 
 def get_urls(conn, author_ids):
@@ -98,10 +99,11 @@ def determine_gender_from_categories(categories):
         elif re.search(' male (short story )(writer)s?$',
                      cat, re.IGNORECASE):
             return 'M', cat
-        elif re.search('^male (\w+ )?(feminist|novelist|writer|essayist|blogger)s?',
+        elif re.search('^male (\w+ )?(feminist|novelist|writer|essayist|blogger|painter)s?',
                      cat, re.IGNORECASE):
             return 'M', cat
-        elif re.search('(female|women) (short story )?(novelist|writer)s?$', cat, re.IGNORECASE):
+        elif re.search('(female|women) (short story )?(novelist|writer|editor)s?$',
+                       cat, re.IGNORECASE):
             return 'F', cat
         elif re.search('(female|women) (science fiction and fantasy )(novelist|writer)s?$',
                        cat, re.IGNORECASE):
@@ -112,7 +114,8 @@ def determine_gender_from_categories(categories):
             return 'M', cat
         elif re.search('transgender and transsexual women$', cat, re.IGNORECASE):
             return 'F', cat
-        # TODO: nonbinary - need to find an example who has a wiki page though
+        elif re.search('non.binary (writer|novelist)s?s', cat, re.IGNORECASE):
+            return 'X', cat
 
     logging.warning('Unable to determine gender based on these categories: %s' %
                     (categories))
@@ -150,8 +153,42 @@ def get_author_gender(conn, author_names):
     author_ids = get_author_alias_ids(conn, author_names)
     if not author_ids:
         raise AmbiguousArgumentsError('Do not know author "%s"' % (author_names))
-    return get_author_gender_from_ids(conn, author_ids)
+    return get_author_gender_from_ids(conn, author_ids, author_names=author_names)
 
+
+def analyse_authors(conn, books, output_function=print, prefix_property='year'):
+    """
+    Given a list of objects that have an author property, output some stats
+    about author genders.
+    """
+
+    gender_appearance_counts = Counter()
+    author_gender = {}
+    for book in books:
+        for author in extract_authors_from_author_field(book.author):
+            try:
+                gender, category = get_author_gender(conn, [author])
+                if not gender:
+                    gender = 'unknown'
+                output_function('%s : %s : %s : %s' % (getattr(book, prefix_property),
+                                                       gender, author, category))
+                gender_appearance_counts[gender] += 1
+                author_gender[author] = gender
+            except AmbiguousArgumentsError as err:
+                # "Mischa" in Clark Award 1991ish
+                logging.warning('Skipping unknown author: %s' % (err))
+                gender_appearance_counts['unknown'] += 1
+                author_gender[author] = 'unknown'
+
+    output_function('= Total (by number of finalists/works) =')
+    for k, v in gender_appearance_counts.most_common():
+        output_function('%-10s : %3d (%d%%)' % (k, v, 100 * v / len(books)))
+
+
+    author_gender_counts = Counter(author_gender.values())
+    output_function('\n= Total (by number of authors) =')
+    for k, v in author_gender_counts.most_common():
+        output_function('%-10s : %3d (%d%%)' % (k, v, 100 * v / len(author_gender)))
 
 
 
