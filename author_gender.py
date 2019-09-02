@@ -95,10 +95,16 @@ def determine_gender_from_categories(categories):
         if re.search(' male (novelist|writer|essayist|screenwriter|journalist|composer)s?$',
                      cat, re.IGNORECASE):
             return 'M', cat
-        if re.search('^male (\w+ )?(feminist|novelist|writer|essayist|blogger)s?',
+        elif re.search(' male (short story )(writer)s?$',
                      cat, re.IGNORECASE):
             return 'M', cat
-        elif re.search(' (female|women) (short story )?(novelist|writer)s?$', cat, re.IGNORECASE):
+        elif re.search('^male (\w+ )?(feminist|novelist|writer|essayist|blogger)s?',
+                     cat, re.IGNORECASE):
+            return 'M', cat
+        elif re.search('(female|women) (short story )?(novelist|writer)s?$', cat, re.IGNORECASE):
+            return 'F', cat
+        elif re.search('(female|women) (science fiction and fantasy )(novelist|writer)s?$',
+                       cat, re.IGNORECASE):
             return 'F', cat
         elif re.search(' (lesbian) (novelist|writer)s?$', cat, re.IGNORECASE):
             return 'F', cat
