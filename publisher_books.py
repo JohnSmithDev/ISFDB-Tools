@@ -16,7 +16,7 @@ from sqlalchemy.sql import text
 from common import get_connection, parse_args, get_filters_and_params_from_args
 from country_related import derive_country_from_price
 from isfdb_utils import convert_dateish_to_date, pretty_list
-
+from magazine_reviews import normalize_month
 
 OLD_BOOK_INTERVAL = timedelta(days=365*2)
 
@@ -38,6 +38,7 @@ class Publication(object):
         self.publication_date = convert_dateish_to_date(value_dict['pub_dateish'])
         self.format = value_dict['pub_ptype']
         self.price = value_dict['pub_price']
+        self.isbn = value_dict['pub_isbn']
         if valid_countries:
             if self.country and self.country not in valid_countries:
                 raise InvalidCountryError('Price %s is not valid for country %s' %
@@ -89,6 +90,24 @@ class CountrySpecificBook(object):
         if value_dict['pub_id'] not in self.publication_ids:
             self.add_publication(value_dict)
 
+
+    @property
+    def first_publication(self):
+        return min([z.publication_date for z in self.publications
+                         if z.publication_date is not None])
+
+    # These next few are to make life easy for my SVG charting code, you
+    # probably shouldn't use them in most other circumstances
+    @property
+    def author(self):
+        return '+'.join(self.authors)
+    @property
+    def year(self):
+        return self.first_publication.year
+    @property
+    def month(self):
+        return normalize_month(self.first_publication)
+
     def __repr__(self):
         newest_pub_date = max([z.publication_date for z in self.publications],
                               key=none_tolerant_date_sort_key)
@@ -123,7 +142,7 @@ def get_publisher_books(conn, args, countries=None):
                            title_title, t.title_id,
                            CAST(pub_year AS CHAR) pub_dateish,
                            CAST(title_copyright AS CHAR) copyright_dateish,
-                           pub_ptype, pub_price,
+                           pub_ptype, pub_price, pub_isbn,
                            title_ttype
       FROM publishers p
         LEFT OUTER JOIN pubs ON pubs.publisher_id = p.publisher_id
