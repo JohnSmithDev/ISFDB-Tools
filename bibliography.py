@@ -178,6 +178,10 @@ def get_bibliography(conn, author_ids, author_names):
         rows, make_bba,
         allow_duplicates=False, duplication_exception=DuplicateBookError)
 
+    if not books:
+        # Hack for 1975 Campbell New Writer winner P. J. Plauger, who seems to only
+        # have 2 novels, both of which only ever printed as magazine serializations?
+        return []
     return sorted(books, key=lambda z: z.year)
 
 
