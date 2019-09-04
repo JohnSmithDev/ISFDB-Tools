@@ -5,6 +5,7 @@ Show all the different formats and countries a book was published in.
 
 from argparse import ArgumentParser
 from collections import namedtuple, defaultdict
+from datetime import date
 import logging
 import pdb
 import sys
@@ -19,25 +20,31 @@ from title_related import get_title_ids
 
 XXX_UNKNOWN_COUNTRY = 'XX'
 
+
+# Example of inconsistency: 0575070706, listed as both hc and tp
+# (As such, I'm deliberately leaving it unfixed in ISFDB for now)
+# Date is woolly enough that I think it can be ignored here.
+DEFAULT_CONSISTENCY_CHECK_PROPERTIES = ['type', 'format']
+
 class PublicationDetails(object):
     def __init__(self, type_, format, dt, isbn):
-        self.type = type_
+        self.type = type_.upper() # Type in this context is novel, chapbook, anthology etc
         self.format = format
-        self.date = convert_dateish_to_date(dt)
+        if isinstance(dt, date):
+            self.date = dt
+        else:
+            self.date = convert_dateish_to_date(dt)
         # IIRC the next could be an empty string, so use None if so
         self.isbn = isbn or None
 
-    def has_inconsistencies_with(self, other):
-        # THIS HASN'T BEEN TESTED, BECAUSE I'VE YET TO FIND A REAL-WORLD EXAMPLE
-        # (and I'm too lazy to have set up proper tests yet)
-        # Date is woolly enough that I think it can be ignored here
-        PROPERTIES_TO_CHECK = ['type', 'format']
+    def has_inconsistencies_with(self, other, props_to_check=DEFAULT_CONSISTENCY_CHECK_PROPERTIES):
         issues = []
-        for prop in PROPERTIES_TO_CHECK:
+        for prop in props_to_check:
             this = getattr(self, prop)
             that = getattr(other, prop)
             if this != that:
-                issues.add('%s: %s != %s' % (prop, this, that))
+                issues.append('%s vs %s - %s: %s != %s' % (self.isbn, other.isbn,
+                                                           prop, this, that))
         return issues
 
 
@@ -51,6 +58,14 @@ class PublicationDetails(object):
                                                   self.format,
                                                   self.date,
                                                   self.isbn)
+
+    def __eq__(self, other):
+        # This is mainly for the benefit of tests
+        return self.type == other.type and \
+            self.format == other.format and \
+            self.date == other.date and \
+            self.isbn == other.isbn
+
 
 def create_publication_details_from_row(row):
     return PublicationDetails(row['type'], row['format'],
@@ -107,7 +122,8 @@ def get_publications_by_country(conn, title_ids, verbose=False, allowed_ctypes=N
     return ret
 
 def get_publications_by_isbn(conn, title_ids, verbose=False, allowed_ctypes=None,
-                             log=logging):
+                             log=logging,
+                             props_to_check=DEFAULT_CONSISTENCY_CHECK_PROPERTIES):
     """
     Return a tuple of
     * a dict mapping ISBNs to PublicationDetails
@@ -137,10 +153,10 @@ def get_publications_by_isbn(conn, title_ids, verbose=False, allowed_ctypes=None
 
         try:
             other = ret[pd.isbn]
-            inconsistencies =  pd.has_inconsistencies_with(other)
-            print(inconsistencies)
+            inconsistencies =  pd.has_inconsistencies_with(other, props_to_check)
             if inconsistencies:
-                log.warning(inconsistencies)
+                log.warning('%d inconsistencies: %s' % (len(inconsistencies),
+                                                        inconsistencies))
             # TODO (maybe): replace the value?
         except KeyError:
             ret[pd.isbn] = pd
@@ -168,6 +184,14 @@ if __name__ == '__main__':
     if not title_ids:
         logging.error('No matching titles found')
         sys.exit(1)
+
+    ISBN_EXAMPLE = """
+    yay, nay = get_publications_by_isbn(conn, title_ids, verbose=args.verbose)
+    for isbn, stuff in sorted(yay.items()):
+        print(isbn, stuff)
+    sys.exit(1)
+    """
+
     pubs = get_publications_by_country(conn, title_ids, verbose=args.verbose)
     render_details(pubs)
 

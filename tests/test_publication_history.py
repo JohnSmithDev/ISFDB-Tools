@@ -10,7 +10,8 @@ import unittest
 from sqlalchemy.exc import OperationalError
 
 from ..common import (get_connection, parse_args)
-from ..publication_history import get_publications
+from ..publication_history import (get_publications_by_country,
+                                   PublicationDetails)
 
 
 REVENGER_DETAILS = (2034339, 'Alastair Reynolds', 'Revenger', 0)
@@ -24,14 +25,19 @@ class TestGetPublications(unittest.TestCase):
 
     def test_wdd(self):
         wdd_ids = [WAYDOWNDARK_CHILD_DETAILS[0], WAYDOWNDARK_PARENT_DETAILS[0]]
-        ret = get_publications(self.conn, wdd_ids)
+        ret = get_publications_by_country(self.conn, wdd_ids)
         # print(ret)
         # See http://www.isfdb.org/cgi-bin/title.cgi?1866037
         # and http://www.isfdb.org/cgi-bin/title.cgi?1866038
-        self.assertEqual({'GB': [('tp', date(2015, 7, 2), '9781444796322'),
-                                 ('tp', date(2016, 4, 7), '9781444796339')],
-                          'US': [('hc', date(2016, 10, 4), '9781681443850'),
-                                 ('ebook', date(2016, 10, 4), '9781681443836'),
-                                 ('tp', date(2017, 10, 3), '9781681443843')]},
+        self.assertEqual({'GB': [PublicationDetails('novel', 'tp', '2015-07-02',
+                                                   '9781444796322'),
+                                 PublicationDetails('novel', 'tp', date(2016, 4, 7),
+                                                    '9781444796339')],
+                          'US': [PublicationDetails('novel', 'hc', date(2016, 10, 4),
+                                                    '9781681443850'),
+                                 PublicationDetails('novel', 'ebook', date(2016, 10, 4),
+                                                    '9781681443836'),
+                                 PublicationDetails('novel', 'tp', date(2017, 10, 3),
+                                                    '9781681443843')]},
                          ret)
 
