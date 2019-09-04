@@ -15,9 +15,9 @@ from bs4 import BeautifulSoup
 
 from common import (get_connection, parse_args, AmbiguousArgumentsError)
 from author_aliases import get_author_alias_ids
-from downloads import download_file_only_if_necessary
+from downloads import (download_file_only_if_necessary, UnableToSaveError)
 from award_related import extract_authors_from_author_field
-
+from twitter_bio import get_gender_from_twitter_bio
 
 def get_urls(conn, author_ids):
     # I'm not sure where ISFDB gets the "display label" for links from, I'm
@@ -38,6 +38,8 @@ def get_wikipedia_urls(urls):
     # Wikipedia URLs.  (This might also be good for supporting non en wikis too?)
     return sorted(wiki_urls, key=len)
 
+def get_twitter_urls(urls):
+    return [z for z in urls if 'twitter.com' in z]
 
 
 def get_wikipedia_url(urls):
@@ -93,22 +95,24 @@ def determine_gender_from_categories(categories):
     think of a reason it would be useful in normal circumstances
     """
     for cat in categories:
-        if re.search(' male (novelist|writer|essayist|screenwriter|journalist|composer)s?$',
+        if re.search(' male (novelist|writer|essayist|screenwriter|journalist|composer|singer)s?$',
                      cat, re.IGNORECASE):
             return 'M', cat
-        elif re.search(' male (short story )(writer)s?$',
+        elif re.search(' male (short story |non.fiction )(writer)s?$',
                      cat, re.IGNORECASE):
             return 'M', cat
         elif re.search('^male (\w+ )?(feminist|novelist|writer|essayist|blogger|painter)s?',
                      cat, re.IGNORECASE):
             return 'M', cat
-        elif re.search('(female|women) (short story )?(novelist|writer|editor)s?$',
+        elif re.search('(female|women) (short story |comics )?(novelist|writer|editor|artist)s?$',
                        cat, re.IGNORECASE):
             return 'F', cat
         elif re.search('(female|women) (science fiction and fantasy )(novelist|writer)s?$',
                        cat, re.IGNORECASE):
             return 'F', cat
         elif re.search(' (lesbian) (novelist|writer)s?$', cat, re.IGNORECASE):
+            return 'F', cat
+        elif re.search('(actresses)$', cat, re.IGNORECASE):
             return 'F', cat
         elif re.search('transgender and transsexual men$', cat, re.IGNORECASE):
             return 'M', cat
@@ -121,17 +125,20 @@ def determine_gender_from_categories(categories):
                     (categories))
     return None, categories
 
-def get_author_gender_from_ids(conn, author_ids, author_names=None):
+def get_author_gender_from_wikipedia_pages(urls, reference=None):
     """
-    Returns 'M', 'F', 'X' (for other/nonbinary) or None (if unknown).
-    author_names here is used solely for logging something more meaningful than
-    ID numbers if no gender found.
+    reference is only used for logging purposes - it could be any useful
+    reference for debugging
     """
-    urls = get_urls(conn, author_ids)
     wiki_urls = get_wikipedia_urls(urls)
+
     all_cats = set()
     for wiki_url in wiki_urls:
-        wiki_file = get_wikipedia_content(wiki_url)
+        try:
+            wiki_file = get_wikipedia_content(wiki_url)
+        except UnableToSaveError as err:
+            logging.warning('Unable to get Wikipedia page %s' % (err))
+            continue
         raw_categories = extract_categories_from_content(wiki_file)
         categories = remove_irrelevant_categories(raw_categories)
         all_cats.update(categories)
@@ -142,8 +149,32 @@ def get_author_gender_from_ids(conn, author_ids, author_names=None):
         if wiki_urls:
             logging.warning('No gender information found in %s' % (wiki_urls))
         else:
-            logging.warning('No Wikipedia link for %s/%s' % (author_names, author_ids))
-    return None, all_cats
+            logging.debug('No Wikipedia link for %s' % (reference))
+        return None, all_cats
+
+
+def get_author_gender_from_ids(conn, author_ids, author_names=None):
+    """
+    Returns 'M', 'F', 'X' (for other/nonbinary) or None (if unknown).
+    author_names here is used solely for logging something more meaningful than
+    ID numbers if no gender found.
+    """
+    urls = get_urls(conn, author_ids)
+    gender, category = get_author_gender_from_wikipedia_pages(urls,
+                                                              reference=author_names)
+    if gender:
+        return gender, category
+
+    twitter_urls = get_twitter_urls(urls)
+    if not twitter_urls:
+        logging.warning('No Twitter link(s) for %s' % (author_names))
+    for twitter_url in twitter_urls:
+        gender = get_gender_from_twitter_bio(twitter_url)
+        if gender:
+            return gender, 'Bio at %s' % (twitter_url)
+
+
+    return None, category
 
 
 def get_author_gender(conn, author_names):
@@ -164,8 +195,12 @@ def analyse_authors(conn, books, output_function=print, prefix_property='year'):
 
     gender_appearance_counts = Counter()
     author_gender = {}
+    ignored = []
     for book in books:
         for author in extract_authors_from_author_field(book.author):
+            if author == 'uncredited':
+                ignored.append(author)
+                continue
             try:
                 gender, category = get_author_gender(conn, [author])
                 if not gender:
@@ -180,9 +215,11 @@ def analyse_authors(conn, books, output_function=print, prefix_property='year'):
                 gender_appearance_counts['unknown'] += 1
                 author_gender[author] = 'unknown'
 
-    output_function('= Total (by number of finalists/works) =')
+    num_processed_books = len(books) - len(ignored)
+
+    output_function('\n= Total (by number of works) =')
     for k, v in gender_appearance_counts.most_common():
-        output_function('%-10s : %3d (%d%%)' % (k, v, 100 * v / len(books)))
+        output_function('%-10s : %3d (%d%%)' % (k, v, 100 * v / num_processed_books))
 
 
     author_gender_counts = Counter(author_gender.values())
