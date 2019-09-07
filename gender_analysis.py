@@ -4,8 +4,10 @@ Produce reports/aggregated data based on a list of book-like objects
 """
 
 from collections import Counter
+import logging
 import pdb
 
+from common import AmbiguousArgumentsError
 from award_related import extract_authors_from_author_field
 from author_gender import get_author_gender
 
