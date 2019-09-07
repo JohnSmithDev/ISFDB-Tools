@@ -12,7 +12,8 @@ from common import (get_connection, parse_args, get_filters_and_params_from_args
                     AmbiguousArgumentsError)
 
 from publisher_books import get_publisher_books
-from gender_analysis import analyse_authors
+from gender_analysis import (analyse_authors_by_gender, report_gender_analysis,
+                             year_data_as_cells)
 
 
 if __name__ == '__main__':
@@ -26,4 +27,9 @@ if __name__ == '__main__':
     results = get_publisher_books(conn, args,
                                   countries=[z.upper() for z in args.countries])
 
-    analyse_authors(conn, results)
+    stats = analyse_authors_by_gender(conn, results)
+    report_gender_analysis(*stats)
+
+    year_data = year_data_as_cells(stats[2], output_function=print)
+    # for row in year_data:
+    #    print(','.join([str(z) for z in row]))

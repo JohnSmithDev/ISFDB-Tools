@@ -22,7 +22,8 @@ from finalists import get_type_and_filter, get_finalists
 from publication_history import get_publications_by_country
 from title_related import get_all_related_title_ids
 from award_related import extract_authors_from_author_field
-from gender_analysis import analyse_authors
+from gender_analysis import (analyse_authors_by_gender, report_gender_analysis,
+                             year_data_as_cells)
 
 
 
@@ -43,4 +44,9 @@ if __name__ == '__main__':
     conn = get_connection()
     award_results = get_finalists(conn, args, level_filter)
 
-    analyse_authors(conn, award_results)
+    stats = analyse_authors_by_gender(conn, award_results)
+    report_gender_analysis(*stats)
+
+    year_data = year_data_as_cells(stats[2], output_function=print)
+    # for row in year_data:
+    #    print(','.join([str(z) for z in row]))
