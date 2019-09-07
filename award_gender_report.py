@@ -10,19 +10,20 @@ categories we can use.
 
 from __future__ import division
 
-from collections import defaultdict
+from collections import defaultdict, Counter
 import logging
 import pdb
 import sys
 
-from common import get_connection, parse_args, get_filters_and_params_from_args
+from common import (get_connection, parse_args, get_filters_and_params_from_args,
+                    AmbiguousArgumentsError)
 
 from finalists import get_type_and_filter, get_finalists
-# from author_country import get_author_country
 from publication_history import get_publications_by_country
 from title_related import get_all_related_title_ids
 from award_related import extract_authors_from_author_field
-from author_gender import get_author_gender
+from gender_analysis import analyse_authors
+
 
 
 if __name__ == '__main__':
@@ -42,9 +43,4 @@ if __name__ == '__main__':
     conn = get_connection()
     award_results = get_finalists(conn, args, level_filter)
 
-
-    for finalist in award_results:
-        # print(finalist)
-        for author in extract_authors_from_author_field(finalist.author):
-            gender, category = get_author_gender(conn, [author])
-            print('%d : %s : %s : %s' % (finalist.year, gender, author, category))
+    analyse_authors(conn, award_results)

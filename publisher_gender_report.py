@@ -12,7 +12,7 @@ from common import (get_connection, parse_args, get_filters_and_params_from_args
                     AmbiguousArgumentsError)
 
 from publisher_books import get_publisher_books
-from author_gender import analyse_authors
+from gender_analysis import analyse_authors
 
 
 if __name__ == '__main__':
