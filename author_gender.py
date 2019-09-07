@@ -18,6 +18,7 @@ from author_aliases import get_author_alias_ids
 from downloads import (download_file_only_if_necessary, UnableToSaveError)
 from award_related import extract_authors_from_author_field
 from twitter_bio import get_gender_from_twitter_bio
+from human_names import derive_gender_from_name
 
 def get_urls(conn, author_ids):
     # I'm not sure where ISFDB gets the "display label" for links from, I'm
@@ -104,7 +105,7 @@ def determine_gender_from_categories(categories):
         elif re.search('^male (\w+ )?(feminist|novelist|writer|essayist|blogger|painter)s?',
                      cat, re.IGNORECASE):
             return 'M', cat
-        elif re.search('(female|women) (short story |comics )?(novelist|writer|editor|artist)s?$',
+        elif re.search('(female|women) (short story |comics |mystery )?(novelist|writer|editor|artist)s?$',
                        cat, re.IGNORECASE):
             return 'F', cat
         elif re.search('(female|women) (science fiction and fantasy )(novelist|writer)s?$',
@@ -163,7 +164,7 @@ def get_author_gender_from_ids(conn, author_ids, author_names=None):
     gender, category = get_author_gender_from_wikipedia_pages(urls,
                                                               reference=author_names)
     if gender:
-        return gender, category
+        return gender, 'wikipedia:%s' % (category)
 
     twitter_urls = get_twitter_urls(urls)
     if not twitter_urls:
@@ -171,15 +172,30 @@ def get_author_gender_from_ids(conn, author_ids, author_names=None):
     for twitter_url in twitter_urls:
         gender = get_gender_from_twitter_bio(twitter_url)
         if gender:
-            return gender, 'Bio at %s' % (twitter_url)
+            return gender, 'twitter:Bio at %s' % (twitter_url)
 
+    # TODO: lots to make this less sucky:
+    # * Pull out the alternate names in ISFDB (this may be being done already,
+    #   I'm not sure) - in particular I suspect lots of initialized names have
+    #   the full name in ISFDB
+    # * Use the proper columns in ISFDB for given/first name (I think there is
+    #   one?)
+    # * Try to use non-first names e.g. "A. Bertram Chandler"
+    for name in author_names:
+        gender = derive_gender_from_name(name.split(' ')[0])
+        if gender:
+            return gender, 'human-names'
 
     return None, category
 
 
 def get_author_gender(conn, author_names):
     """
-    Returns 'M', 'F', 'X' (for other/nonbinary) or None (if unknown)
+    Returns a tuple of (gender-char, source)
+    gender-char is one of 'M', 'F', 'X' (for other/nonbinary) or None (if unknown).
+    source is a string of format 'source' or 'source:detail', e.g.
+    'human-names', 'wikipedia:English male novelists', 'twitter:bio'.
+
     """
     author_ids = get_author_alias_ids(conn, author_names)
     if not author_ids:
@@ -187,27 +203,41 @@ def get_author_gender(conn, author_names):
     return get_author_gender_from_ids(conn, author_ids, author_names=author_names)
 
 
-def analyse_authors(conn, books, output_function=print, prefix_property='year'):
+def analyse_authors(conn, books, output_function=print, prefix_property='year',
+                    csv_output=None):
     """
     Given a list of objects that have an author property, output some stats
     about author genders.
     """
 
     gender_appearance_counts = Counter()
+    gender_source_appearance_counts = Counter()
+    year_gender_source_appearance_counts = Counter()
     author_gender = {}
     ignored = []
+    years = set()
     for book in books:
         for author in extract_authors_from_author_field(book.author):
+            years.add(getattr(book, prefix_property))
             if author == 'uncredited':
                 ignored.append(author)
                 continue
             try:
-                gender, category = get_author_gender(conn, [author])
+                gender, source = get_author_gender(conn, [author])
                 if not gender:
                     gender = 'unknown'
                 output_function('%s : %s : %s : %s' % (getattr(book, prefix_property),
-                                                       gender, author, category))
+                                                       gender, author, source))
                 gender_appearance_counts[gender] += 1
+                if gender and gender != 'unknown':
+                    source_base = source.split(':')[0]
+                    gender_source_appearance_counts[gender, source_base] += 1
+                    year_gender_source_appearance_counts[(getattr(book, prefix_property),
+                                                          gender, source_base)] += 1
+
+                else:
+                    year_gender_source_appearance_counts[(getattr(book, prefix_property),
+                                                          gender)] += 1
                 author_gender[author] = gender
             except AmbiguousArgumentsError as err:
                 # "Mischa" in Clark Award 1991ish
@@ -222,12 +252,31 @@ def analyse_authors(conn, books, output_function=print, prefix_property='year'):
         output_function('%-10s : %3d (%d%%)' % (k, v, 100 * v / num_processed_books))
 
 
+    output_function('\n= Total gender by source (by number of works, excludes unknowns) =')
+    for k, v in gender_source_appearance_counts.most_common():
+        output_function('%-10s : %3d (%d%%)' % (k, v, 100 * v / num_processed_books))
+
+
     author_gender_counts = Counter(author_gender.values())
     output_function('\n= Total (by number of authors) =')
     for k, v in author_gender_counts.most_common():
         output_function('%-10s : %3d (%d%%)' % (k, v, 100 * v / len(author_gender)))
 
-
+    # pdb.set_trace()
+    # print(year_gender_source_appearance_counts)
+    print(',M (via Wikipedia),M (via Twitter bio),M (via human-names),'
+          'unknown,'
+          'F (via Wikipedia),F (via Twitter bio),F (via human-names),')
+    for y in sorted(years):
+        vals = [y]
+        for g in [('M', 'wikipedia'), ('M', 'twitter'), ('M', 'human-names'),
+                  ('unknown',),
+                  ('F', 'wikipedia'), ('F', 'twitter'), ('F', 'human-names')]:
+            klist = [y]
+            klist.extend(g)
+            #print(y, g, year_gender_source_appearance_counts[tuple(klist)])
+            vals.append(year_gender_source_appearance_counts[tuple(klist)])
+        print(','.join([str(z) for z in vals]))
 
 if __name__ == '__main__':
     # logging.getLogger().setLevel(logging.DEBUG)
@@ -236,5 +285,5 @@ if __name__ == '__main__':
                       supported_args='av')
 
     conn = get_connection()
-    gender, category = get_author_gender(conn, args.exact_author)
-    print('%s (category: %s)' % (gender, category))
+    gender, source = get_author_gender(conn, args.exact_author)
+    print('%s (source: %s)' % (gender, category))
