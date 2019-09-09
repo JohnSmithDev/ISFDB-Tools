@@ -147,7 +147,7 @@ def get_author_alias_ids(conn, author):
                 name)
     id_to_name = {} # Use a dict so that any duplicate IDs overwrite each other
     for row in results:
-        print(row)
+        # print(row)
         for i, author_id in enumerate(row[::2]):
             if author_id: # Skip 0/None/null values
                 id_to_name[author_id] = word_difference(row[(i*2)+1])
