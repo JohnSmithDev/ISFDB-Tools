@@ -25,6 +25,8 @@ def get_urls(conn, author_ids, include_priority_values=False):
     Return a list of URLs relevant to the supplied author IDs.  The returned
     list is sorted so that the earlier the relevant ID was in author_ids,
     the earlier (i.e. more prioritized) it'll be in the returned list.
+    Secondarily we also prioritize shorter URLs over longer ones - this is to
+    favour Wikipedia pages like John_Doe over Bibliography_of_John_Doe
     """
     # I'm not sure where ISFDB gets the "display label" for links from, I'm
     # guessing it's maybe hardcoded as some links don't have it e.g. a couple
@@ -40,7 +42,8 @@ def get_urls(conn, author_ids, include_priority_values=False):
         aid_priority[aid] = i
     priority_and_urls = []
     for r in rows:
-        priority_and_urls.append((aid_priority[r.author_id], r.url))
+        priority_and_urls.append(((aid_priority[r.author_id], len(r.url)),
+                                  r.url))
     sorted_by_author_priority = sorted(priority_and_urls)
     # print(sorted_by_author_priority)
     if include_priority_values:
@@ -196,8 +199,8 @@ def get_author_gender_from_ids(conn, author_ids, author_names=None):
     author_names here is used solely for logging something more meaningful than
     ID numbers if no gender found.
     """
-    prioritized_urls = get_urls(conn, author_ids, include_priority_values=True)
-    wikipedia_urls = [z[1] for z in prioritized_urls if is_wikipedia_url(z[1])]
+    prioritized_urls = get_urls(conn, author_ids)
+    wikipedia_urls = [z for z in prioritized_urls if is_wikipedia_url(z)]
 
     gender, category = get_author_gender_from_wikipedia_pages(wikipedia_urls,
                                                               reference=author_names)
