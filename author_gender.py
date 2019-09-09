@@ -14,7 +14,7 @@ from sqlalchemy.sql import text
 from bs4 import BeautifulSoup
 
 from common import (get_connection, parse_args, AmbiguousArgumentsError)
-from author_aliases import get_author_alias_ids
+from author_aliases import get_author_alias_ids, get_author_aliases
 from downloads import (download_file_only_if_necessary, UnableToSaveError)
 from award_related import extract_authors_from_author_field
 from twitter_bio import get_gender_from_twitter_bio
@@ -135,10 +135,10 @@ def determine_gender_from_categories(categories, reference=None):
         elif re.search('^male (speculative fiction )?(editor|novelist|writer)s?',
                      cat, re.IGNORECASE):
             return 'M', cat
-        elif re.search('(female|women) (short story |comics |mystery )?(novelist|writer|editor|artist)s?$',
+        elif re.search('(female|women|lesbian) (short story |comics |mystery )?(novelist|writer|editor|artist)s?$',
                        cat, re.IGNORECASE):
             return 'F', cat
-        elif re.search('(female|women) (science fiction and fantasy |speculative fiction.)(editor|novelist|writer)s?$',
+        elif re.search('(female|women|lesbian) (science fiction and fantasy |speculative fiction.)(editor|novelist|writer)s?$',
                        cat, re.IGNORECASE):
             return 'F', cat
         elif re.search(' (lesbian) (novelist|writer)s?$', cat, re.IGNORECASE):
@@ -209,8 +209,6 @@ def get_author_gender_from_ids(conn, author_ids, author_names=None):
         return gender, 'wikipedia:%s' % (category)
 
     raw_urls = [z[1] for z in prioritized_urls]
-
-
     twitter_urls = get_twitter_urls(raw_urls)
     if not twitter_urls:
         logging.warning('No Twitter link(s) for %s' % (author_names))
@@ -220,16 +218,20 @@ def get_author_gender_from_ids(conn, author_ids, author_names=None):
             return gender, 'twitter:Bio at %s' % (twitter_url)
 
     # TODO: lots to make this less sucky:
-    # * Pull out the alternate names in ISFDB (this may be being done already,
-    #   I'm not sure) - in particular I suspect lots of initialized names have
-    #   the full name in ISFDB
     # * Use the proper columns in ISFDB for given/first name (I think there is
     #   one?)
-    # * Try to use non-first names e.g. "A. Bertram Chandler"
-    for name in author_names:
-        gender = derive_gender_from_name(name.split(' ')[0])
-        if gender:
-            return gender, 'human-names'
+    # * Try to use non-first names e.g. "A. Bertram Chandler" (hopefully less
+    #   of an issue now that we are also checking the variant names)
+    for initial_name in author_names:
+        all_names = get_author_aliases(conn, initial_name)
+        for name in all_names:
+            # print('Trying %s' % (name))
+            gender = derive_gender_from_name(name.split(' ')[0])
+            if gender:
+                if name != author_names[0]:
+                    return gender, 'human-names:%s' % (name)
+                else:
+                    return gender, 'human-names'
 
     return None, category
 
