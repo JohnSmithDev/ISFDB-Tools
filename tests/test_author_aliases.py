@@ -72,23 +72,29 @@ class TestGetAuthorAliases(unittest.TestCase):
     # I'm not doing that, instead using examples that are well known and thus
     # easy to see what the expected result should be.)
     def test_get_aliases_for_real_name(self):
-        self.assertEqual(set(['Mira Grant', 'Seanan McGuire']),
+        self.assertEqual(['Seanan McGuire', 'Mira Grant'],
                          get_author_aliases(self.conn, 'Seanan McGuire'))
 
     def test_get_aliases_for_pseudonym(self):
-        self.assertEqual(set(['Mira Grant', 'Seanan McGuire']),
+        self.assertEqual(['Mira Grant', 'Seanan McGuire'],
                          get_author_aliases(self.conn, 'Mira Grant'))
 
     # These next two tests show an inconsistency - if we put in a pseudonym,
     # we don't get any other pseudonyms back.  TODO: fix this if it becomes
     # an issue
     def test_get_aliases_for_joint_pseudonym(self):
-        self.assertEqual(set(['Daniel Abraham', 'James S. A. Corey',
-                              'Ty Franck', 'Tyler Corey Franck']),
+        self.assertEqual(['James S. A. Corey',
+                          'Tyler Corey Franck',
+                          'Daniel Abraham',
+                          'Ty Franck'],
                          get_author_aliases(self.conn, 'James S. A. Corey'))
     def test_get_aliases_for_real_name_usingjoint_pseudonym(self):
-        self.assertEqual(set(['Daniel Abraham', 'James S. A. Corey',
-                              'James Corey', 'M. L. N. Hanover', 'Daniel Hanover']),
+        self.assertEqual(['Daniel Abraham',
+                          'Daniel Hanover',
+                          'James Corey',
+                          'James S. A. Corey',
+                          'M. L. N. Hanover'],
+
                          get_author_aliases(self.conn, 'Daniel Abraham'))
 
 

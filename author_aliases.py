@@ -5,6 +5,7 @@ a perfunctory standalone functionality that may be of use.
 """
 
 import pdb
+import re
 import sys
 
 from sqlalchemy.sql import text
@@ -35,7 +36,9 @@ def unlegalize(txt):
 
 def get_author_aliases(conn, author):
     """
-    Return all [*] aliases, pseudonyms, alternate spellings, etc for an author
+    Return all [*] aliases, pseudonyms, alternate spellings, etc for an author.
+    This originally returned a set of names, it now returns a list, ordered
+    (roughly) by how much the names resemble the supplied name.
 
     [*] See commented example in the tests for a flaw in this - if given a
         pseudonym, this doesn't currently return other pseudonyms - e.g. results
@@ -78,7 +81,24 @@ def get_author_aliases(conn, author):
 
     #if ret:
     #    print('%s => %s' % (author, ret))
-    return ret
+
+    # The following functions and sorting are an attempt to return the most
+    # relevant names first - this is to minimize the risk of having authors
+    # who used house pseudonyms having the latter being prioritized (e.g.
+    # Bruce Holland Rogers => Victor Appleton).  It could be much improved in
+    # terms of efficiency (e.g. use caching) or effectiveness (have some logic
+    # for initials matching names), but this may be good enough for now.
+    def name_words(name):
+        return set([z.lower() for z in re.split('\W', name) if z])
+    author_name_words = name_words(author)
+    def word_difference(name):
+        # The second value in the returned tuple is just to ensure consistency
+        # (mainly for tests) when 2 names have the same score
+        this_words = name_words(name)
+        return (len(this_words.symmetric_difference(author_name_words)),
+                name)
+
+    return sorted(ret, key=word_difference)
 
 
 def get_author_alias_ids(conn, author):
