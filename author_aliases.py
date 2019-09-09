@@ -81,6 +81,9 @@ def get_author_aliases(conn, author):
 
     #if ret:
     #    print('%s => %s' % (author, ret))
+    return order_aliases_by_name_resemblance(author, ret)
+
+def order_aliases_by_name_resemblance(author, aliases):
 
     # The following functions and sorting are an attempt to return the most
     # relevant names first - this is to minimize the risk of having authors
@@ -98,7 +101,7 @@ def get_author_aliases(conn, author):
         return (len(this_words.symmetric_difference(author_name_words)),
                 name)
 
-    return sorted(ret, key=word_difference)
+    return sorted(aliases, key=word_difference)
 
 
 def get_author_alias_ids(conn, author):
@@ -120,7 +123,9 @@ def get_author_alias_ids(conn, author):
     # This would be much nicer if I had a newer MySQL/Maria with CTEs...
     # The two lots of joins are because we don't know if we have been given
     # a real name or an alias, so we try going "in both directions".
-    query = text("""SELECT a1.author_id id1, a2.author_id id2, a3.author_id id3
+    query = text("""SELECT a1.author_id id1, a1.author_canonical author1,
+          a2.author_id id2, a2.author_canonical author2,
+          a3.author_id id3, a3.author_canonical author3
   FROM authors a1
   left outer join pseudonyms p1 on p1.author_id = a1.author_id
   left outer join authors a2 on p1.pseudonym = a2.author_id
@@ -129,6 +134,28 @@ def get_author_alias_ids(conn, author):
   where a1.author_canonical = :author
      or a1.author_legalname = :author;""")
     results = conn.execute(query, author=author).fetchall()
+
+    # Uggh, horrible copypasting from above
+    def name_words(name):
+        return set([z.lower() for z in re.split('\W', name) if z])
+    author_name_words = name_words(author)
+    def word_difference(name):
+        # The second value in the returned tuple is just to ensure consistency
+        # (mainly for tests) when 2 names have the same score
+        this_words = name_words(name)
+        return (len(this_words.symmetric_difference(author_name_words)),
+                name)
+    id_to_name = {} # Use a dict so that any duplicate IDs overwrite each other
+    for row in results:
+        print(row)
+        for i, author_id in enumerate(row[::2]):
+            if author_id: # Skip 0/None/null values
+                id_to_name[author_id] = word_difference(row[(i*2)+1])
+    sortable_id_tuples = id_to_name.items()
+    sorted_id_tuples = sorted(sortable_id_tuples, key=lambda z: z[1])
+    return [z[0] for z in sorted_id_tuples]
+
+    ORIG = """
     ret = set()
     for row in results:
         ret.update(row)
@@ -138,6 +165,7 @@ def get_author_alias_ids(conn, author):
         except KeyError:
             pass
     return sorted(ret)
+    """
 
 
 

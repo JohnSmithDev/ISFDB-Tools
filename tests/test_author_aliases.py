@@ -109,5 +109,6 @@ class TestGetAuthorAliasIds(unittest.TestCase):
                          get_author_alias_ids(self.conn, 'Seanan McGuire'))
 
     def test_get_alias_ids_for_real_name(self):
-        self.assertEqual([129348, 133814],
+        self.assertEqual([133814, # Mira Grant ID should precede Seanan McGuire ID
+                          129348],
                          get_author_alias_ids(self.conn, 'Mira Grant'))
