@@ -16,7 +16,7 @@ def analyse_authors_by_gender(conn, books, output_function=print,
     """
     Given a list of objects that have an author property, return some aggregated
     stats about them, namely a tuple comprising four Counter objects:
-    * By gender - key values are M, F, X or unknown
+    * By gender - key values are M, F, X, H or unknown
     * By gender and source -  key values are (gender-char, source-string) tuples.
       Note that unknowns are excluded from this (as they don't have a source)
     * By prefix_property (typically year), gender and source - key values
@@ -114,6 +114,7 @@ def year_data_as_cells(year_gender_source_appearance_counts,
         ('X (via Wikipedia)', ('X', 'wikipedia')),
         ('X (via Twitter bio)', ('X', 'twitter')),
 
+#        ('H (via Wikipedia)', ('H', 'wikipedia')), # House pseudonym - on hold for now
         ('Unknown', ('unknown',)),
 
         ('F (via human-names)', ('F', 'human-names')),
@@ -129,7 +130,8 @@ def year_data_as_cells(year_gender_source_appearance_counts,
     ret.append(headings)
 
     years = set([z[0] for z in year_gender_source_appearance_counts.keys()])
-    for y in sorted(years):
+    sortable_years = [y for y in years if (y and y != 8888)] # 8888 is a rogue value in ISFDB
+    for y in sorted(sortable_years):
         vals = [y]
         for g in [z[1] for z in GENDER_HEADINGS_AND_KEYS]:
             klist = [y]
