@@ -20,7 +20,12 @@ from award_related import extract_authors_from_author_field
 from twitter_bio import get_gender_from_twitter_bio
 from human_names import derive_gender_from_name
 
-def get_urls(conn, author_ids):
+def get_urls(conn, author_ids, include_priority_values=False):
+    """
+    Return a list of URLs relevant to the supplied author IDs.  The returned
+    list is sorted so that the earlier the relevant ID was in author_ids,
+    the earlier (i.e. more prioritized) it'll be in the returned list.
+    """
     # I'm not sure where ISFDB gets the "display label" for links from, I'm
     # guessing it's maybe hardcoded as some links don't have it e.g. a couple
     # for http://www.isfdb.org/cgi-bin/ea.cgi?20
@@ -28,11 +33,30 @@ def get_urls(conn, author_ids):
     FROM webpages wp
     WHERE wp.author_id IN :author_ids;""")
     rows = conn.execute(query, {'author_ids':author_ids})
-    return [z.url for z in rows]
 
+    # print(author_ids)
+    aid_priority = {}
+    for i, aid in enumerate(author_ids):
+        aid_priority[aid] = i
+    priority_and_urls = []
+    for r in rows:
+        priority_and_urls.append((aid_priority[r.author_id], r.url))
+    sorted_by_author_priority = sorted(priority_and_urls)
+    # print(sorted_by_author_priority)
+    if include_priority_values:
+        return sorted_by_author_priority
+    else:
+        return [z[1] for z in sorted_by_author_priority]
+
+def is_wikipedia_url(url, lang='en'):
+    if lang:
+        domain = '%s.wikipedia.org' % (lang)
+    else:
+        domain = 'wikipedia.org'
+    return domain in url
 
 def get_wikipedia_urls(urls):
-    wiki_urls = [z for z in urls if 'en.wikipedia.org' in z]
+    wiki_urls = [z for z in urls if is_wikipedia_url(z)]
     # Sort by length so that we prefer 'http://en.wikipedia.org/wiki/Andre_Norton'
     # over'http://en.wikipedia.org/wiki/Andre_Norton_bibliography'.  This may
     # need further tuning if/when we come across more entries with multiple
@@ -43,7 +67,7 @@ def get_twitter_urls(urls):
     return [z for z in urls if 'twitter.com' in z]
 
 
-def get_wikipedia_url(urls):
+def DEPRECATED_get_wikipedia_url(urls): # Not sure that this was ever used?
     wiki_urls = get_wikipedia_urls(urls)
     if not wiki_urls:
         return None
@@ -87,7 +111,7 @@ def remove_irrelevant_categories(categories):
 
     return [z for z in categories if not is_ignorable(z)]
 
-def determine_gender_from_categories(categories):
+def determine_gender_from_categories(categories, reference=None):
     """
     Return a tuple of (gender-character, wiki-category-used)
     gender-character can be None, if which case wiki-category-used will be a list
@@ -96,19 +120,22 @@ def determine_gender_from_categories(categories):
     think of a reason it would be useful in normal circumstances
     """
     for cat in categories:
-        if re.search(' male (novelist|writer|essayist|screenwriter|journalist|composer|singer)s?$',
+        if re.search(' male (novelist|writer|essayist|screenwriter|journalist|composer|singer|painter)s?$',
                      cat, re.IGNORECASE):
             return 'M', cat
-        elif re.search(' male (short story |non.fiction )(writer)s?$',
+        elif re.search(' male (short story |non.fiction |speculative.fiction )(writer|editor)s?$',
                      cat, re.IGNORECASE):
             return 'M', cat
         elif re.search('^male (\w+ )?(feminist|novelist|writer|essayist|blogger|painter)s?',
                      cat, re.IGNORECASE):
             return 'M', cat
+        elif re.search('^male (speculative fiction )?(editor|novelist|writer)s?',
+                     cat, re.IGNORECASE):
+            return 'M', cat
         elif re.search('(female|women) (short story |comics |mystery )?(novelist|writer|editor|artist)s?$',
                        cat, re.IGNORECASE):
             return 'F', cat
-        elif re.search('(female|women) (science fiction and fantasy )(novelist|writer)s?$',
+        elif re.search('(female|women) (science fiction and fantasy |speculative fiction.)(editor|novelist|writer)s?$',
                        cat, re.IGNORECASE):
             return 'F', cat
         elif re.search(' (lesbian) (novelist|writer)s?$', cat, re.IGNORECASE):
@@ -121,9 +148,13 @@ def determine_gender_from_categories(categories):
             return 'F', cat
         elif re.search('non.binary (writer|novelist)s?s', cat, re.IGNORECASE):
             return 'X', cat
+        # Uncomment the next bit when we avoid false positive matches on it
+        # e.g. Bruce Holland Rogers
+        #elif cat in ('stratemeyer syndicate pseudonyms',):
+        #    return 'H', cat
 
-    logging.warning('Unable to determine gender based on these categories: %s' %
-                    (categories))
+    logging.warning('Unable to determine gender for %s based on these categories: %s' %
+                    (reference, categories))
     return None, categories
 
 def get_author_gender_from_wikipedia_pages(urls, reference=None):
@@ -131,10 +162,14 @@ def get_author_gender_from_wikipedia_pages(urls, reference=None):
     reference is only used for logging purposes - it could be any useful
     reference for debugging
     """
-    wiki_urls = get_wikipedia_urls(urls)
+    # wiki_urls = get_wikipedia_urls(urls) # No - retain the supplied ordering
+    wiki_urls = urls
 
     all_cats = set()
     for wiki_url in wiki_urls:
+        if not is_wikipedia_url(wiki_url):
+            logging.warning('Ignoring non-Wikipedia URL %s' % (wiki_url))
+            continue
         try:
             wiki_file = get_wikipedia_content(wiki_url)
         except UnableToSaveError as err:
@@ -143,7 +178,7 @@ def get_author_gender_from_wikipedia_pages(urls, reference=None):
         raw_categories = extract_categories_from_content(wiki_file)
         categories = remove_irrelevant_categories(raw_categories)
         all_cats.update(categories)
-        gender, category = determine_gender_from_categories(categories)
+        gender, category = determine_gender_from_categories(categories, wiki_url)
         if gender:
             return gender, category
     else:
@@ -156,17 +191,24 @@ def get_author_gender_from_wikipedia_pages(urls, reference=None):
 
 def get_author_gender_from_ids(conn, author_ids, author_names=None):
     """
-    Returns 'M', 'F', 'X' (for other/nonbinary) or None (if unknown).
+    Returns 'M', 'F', 'X' (for other/nonbinary), 'H' (house pseudonym) or None
+    (if unknown).
     author_names here is used solely for logging something more meaningful than
     ID numbers if no gender found.
     """
-    urls = get_urls(conn, author_ids)
-    gender, category = get_author_gender_from_wikipedia_pages(urls,
+    prioritized_urls = get_urls(conn, author_ids, include_priority_values=True)
+    wikipedia_urls = [z[1] for z in prioritized_urls if is_wikipedia_url(z[1])]
+
+    gender, category = get_author_gender_from_wikipedia_pages(wikipedia_urls,
                                                               reference=author_names)
+
     if gender:
         return gender, 'wikipedia:%s' % (category)
 
-    twitter_urls = get_twitter_urls(urls)
+    raw_urls = [z[1] for z in prioritized_urls]
+
+
+    twitter_urls = get_twitter_urls(raw_urls)
     if not twitter_urls:
         logging.warning('No Twitter link(s) for %s' % (author_names))
     for twitter_url in twitter_urls:
@@ -197,7 +239,11 @@ def get_author_gender(conn, author_names):
     'human-names', 'wikipedia:English male novelists', 'twitter:bio'.
 
     """
-    author_ids = get_author_alias_ids(conn, author_names)
+    author_ids = []
+    for name in author_names:
+        # Q: Would having multiple names muck up any logic dependent on the
+        #    ordering of the IDs that get_author_aliases_ids() returns?
+        author_ids.extend(get_author_alias_ids(conn, name))
     if not author_ids:
         raise AmbiguousArgumentsError('Do not know author "%s"' % (author_names))
     return get_author_gender_from_ids(conn, author_ids, author_names=author_names)
@@ -211,4 +257,4 @@ if __name__ == '__main__':
 
     conn = get_connection()
     gender, source = get_author_gender(conn, args.exact_author)
-    print('%s (source: %s)' % (gender, category))
+    print('%s (source: %s)' % (gender, source))
