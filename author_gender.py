@@ -208,8 +208,7 @@ def get_author_gender_from_ids(conn, author_ids, author_names=None):
     if gender:
         return gender, 'wikipedia:%s' % (category)
 
-    raw_urls = [z[1] for z in prioritized_urls]
-    twitter_urls = get_twitter_urls(raw_urls)
+    twitter_urls = get_twitter_urls(prioritized_urls)
     if not twitter_urls:
         logging.warning('No Twitter link(s) for %s' % (author_names))
     for twitter_url in twitter_urls:
