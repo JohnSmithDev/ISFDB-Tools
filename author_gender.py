@@ -20,6 +20,10 @@ from award_related import extract_authors_from_author_field
 from twitter_bio import get_gender_from_twitter_bio
 from human_names import derive_gender_from_name
 
+class UnableToDeriveGenderError(Exception):
+    pass
+
+
 def get_urls(conn, author_ids, include_priority_values=False):
     """
     Return a list of URLs relevant to the supplied author IDs.  The returned
@@ -122,10 +126,26 @@ def determine_gender_from_categories(categories, reference=None):
      wiki-category-used is mainly returned for debugging purposes, I can't
     think of a reason it would be useful in normal circumstances
     """
+    # Keep these in alphabetic order to retain sanity
+    JOBS = ['artist',
+            'composer',
+            'essayist',
+            'journalist',
+            'novelist',
+            'painter', 'poet',
+            'screenwriter', 'singer',
+            'writer']
+
+    JOB_REGEX_BIT = '(%s)s?' % ('|'.join(JOBS))
+    GENDER_REGEXES = [
+
+        ['X', ['non.binary %s' % (JOB_REGEX_BIT)]]
+    ]
+
     for cat in categories:
-        if re.search('non.binary (writer|novelist)s?s', cat, re.IGNORECASE):
+        if re.search('non.binary (writer|novelist)s?', cat, re.IGNORECASE):
             return 'X', cat
-        elif re.search(' male (novelist|writer|essayist|screenwriter|journalist|composer|singer|painter|artist)s?$',
+        elif re.search(' male (novelist|writer|essayist|screenwriter|journalist|composer|singer|painter|artist|poet)s?$',
                      cat, re.IGNORECASE):
             return 'M', cat
         elif re.search(' male (short story |non.fiction |speculative.fiction )(writer|editor)s?$',
@@ -216,24 +236,43 @@ def get_author_gender_from_ids(conn, author_ids, author_names=None):
         if gender:
             return gender, 'twitter:Bio at %s' % (twitter_url)
 
+
+    try:
+        return get_gender_from_names(conn, author_names)
+    except UnableToDeriveGenderError:
+        return None, category or None
+
+
+def gender_response_from_name(name, original_name):
+    gender = derive_gender_from_name(name.split(' ')[0])
+    if gender:
+        if original_name and name != original_name:
+            return gender, 'human-names:%s' % (name)
+        else:
+            return gender, 'human-names'
+    else:
+        return None, None
+
+def get_gender_from_names(conn, author_names, look_up_all_names=True):
     # TODO: lots to make this less sucky:
     # * Use the proper columns in ISFDB for given/first name (I think there is
     #   one?)
     # * Try to use non-first names e.g. "A. Bertram Chandler" (hopefully less
     #   of an issue now that we are also checking the variant names)
+    # * conn would be better as an optional arg, but we have a well established
+    #   pattern of it being the first arg, so...
     for initial_name in author_names:
-        all_names = get_author_aliases(conn, initial_name)
+        if conn and look_up_all_names:
+            all_names = get_author_aliases(conn, initial_name)
+        else:
+            all_names = author_names
         for name in all_names:
-            # print('Trying %s' % (name))
-            gender = derive_gender_from_name(name.split(' ')[0])
+            gender, detail = gender_response_from_name(name, author_names[0])
             if gender:
-                if name != author_names[0]:
-                    return gender, 'human-names:%s' % (name)
-                else:
-                    return gender, 'human-names'
-
-    return None, category
-
+                return gender, detail
+        else:
+            raise UnableToDeriveGenderError('Unable to derive gender for "%s" (inc variants)' %
+                                            (author_names))
 
 def get_author_gender(conn, author_names):
     """
@@ -248,9 +287,17 @@ def get_author_gender(conn, author_names):
         # Q: Would having multiple names muck up any logic dependent on the
         #    ordering of the IDs that get_author_aliases_ids() returns?
         author_ids.extend(get_author_alias_ids(conn, name))
-    if not author_ids:
-        raise AmbiguousArgumentsError('Do not know author "%s"' % (author_names))
-    return get_author_gender_from_ids(conn, author_ids, author_names=author_names)
+    if author_ids:
+        return get_author_gender_from_ids(conn, author_ids, author_names=author_names)
+    else:
+        # raise AmbiguousArgumentsError('Do not know author "%s"' % (author_names))
+        logging.warning('Author "%s" does not have a proper ISFDB entry' % (author_names))
+
+        try:
+            return get_gender_from_names(None, author_names, look_up_all_names=False)
+        except UnableToDeriveGenderError:
+            return None, 'No author entry in ISFDB, and could not derive gender from name'
+
 
 
 if __name__ == '__main__':
