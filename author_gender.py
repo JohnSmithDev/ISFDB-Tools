@@ -123,7 +123,9 @@ def determine_gender_from_categories(categories, reference=None):
     think of a reason it would be useful in normal circumstances
     """
     for cat in categories:
-        if re.search(' male (novelist|writer|essayist|screenwriter|journalist|composer|singer|painter)s?$',
+        if re.search('non.binary (writer|novelist)s?s', cat, re.IGNORECASE):
+            return 'X', cat
+        elif re.search(' male (novelist|writer|essayist|screenwriter|journalist|composer|singer|painter|artist)s?$',
                      cat, re.IGNORECASE):
             return 'M', cat
         elif re.search(' male (short story |non.fiction |speculative.fiction )(writer|editor)s?$',
@@ -149,8 +151,6 @@ def determine_gender_from_categories(categories, reference=None):
             return 'M', cat
         elif re.search('transgender and transsexual women$', cat, re.IGNORECASE):
             return 'F', cat
-        elif re.search('non.binary (writer|novelist)s?s', cat, re.IGNORECASE):
-            return 'X', cat
         # Uncomment the next bit when we avoid false positive matches on it
         # e.g. Bruce Holland Rogers
         #elif cat in ('stratemeyer syndicate pseudonyms',):
