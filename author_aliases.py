@@ -167,6 +167,22 @@ def get_author_alias_ids(conn, author):
     return sorted(ret)
     """
 
+def get_real_author_id(conn, pseudonym_id):
+    """
+    Given a numeric pseudonym_id - which is a author_id in any other context/table -
+    return a list of the "real" author_ids, or None if this is the "real" ID.
+    """
+    query = text("""SELECT author_id
+    FROM pseudonyms
+    WHERE pseudonym = :pseudonym_id
+    ORDER BY author_id;""") # The ORDER BY is just for consistency/ease of testing
+    results = conn.execute(query, pseudonym_id=pseudonym_id).fetchall()
+    if results:
+        return [z.author_id for z in results]
+    else:
+        return None
+
+
 
 
 if __name__ == '__main__':

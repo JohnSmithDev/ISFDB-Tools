@@ -8,7 +8,7 @@ import unittest
 
 from ..common import get_connection
 from ..author_aliases import (unlegalize, get_author_aliases,
-                              get_author_alias_ids)
+                              get_author_alias_ids, get_real_author_id)
 
 class TestUnlegalize(unittest.TestCase):
     def test_none(self):
@@ -98,9 +98,6 @@ class TestGetAuthorAliases(unittest.TestCase):
                          get_author_aliases(self.conn, 'Daniel Abraham'))
 
 
-
-
-
 class TestGetAuthorAliasIds(unittest.TestCase):
     conn = get_connection()
 
@@ -112,3 +109,20 @@ class TestGetAuthorAliasIds(unittest.TestCase):
         self.assertEqual([133814, # Mira Grant ID should precede Seanan McGuire ID
                           129348],
                          get_author_alias_ids(self.conn, 'Mira Grant'))
+
+
+class TestGetRealAuthorId(unittest.TestCase):
+
+    conn = get_connection()
+
+    def test_simple_real_name(self):
+        self.assertEqual([129348], # SMcG
+                         get_real_author_id(self.conn, 133814)) #MG
+
+    def test_already_real_name(self):
+        self.assertEqual(None,
+                         get_real_author_id(self.conn, 129348)) # SMcG
+
+    def test_multiple_real_name(self):
+        self.assertEqual([10297, 123977], # DA, TF
+                         get_real_author_id(self.conn, 155601)) # JSAC
