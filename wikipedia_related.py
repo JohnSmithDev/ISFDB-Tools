@@ -14,19 +14,9 @@ import pdb
 import re
 import sys
 
-# from sqlalchemy.sql import text
 from bs4 import BeautifulSoup
 
-# from common import (get_connection, parse_args, AmbiguousArgumentsError)
-# from author_aliases import get_author_alias_ids, get_author_aliases
 from downloads import (download_file_only_if_necessary, UnableToSaveError)
-# from award_related import extract_authors_from_author_field
-# from twitter_bio import get_gender_from_twitter_bio
-# from human_names import derive_gender_from_name
-
-class UnableToDeriveGenderError(Exception):
-    pass
-
 
 def is_wikipedia_url(url, lang='en'):
     if lang:

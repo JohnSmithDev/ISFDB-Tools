@@ -11,11 +11,9 @@ import re
 import sys
 
 from sqlalchemy.sql import text
-from bs4 import BeautifulSoup
 
 from common import (get_connection, parse_args, AmbiguousArgumentsError)
 from author_aliases import get_author_alias_ids, get_author_aliases
-from downloads import (download_file_only_if_necessary, UnableToSaveError)
 from award_related import extract_authors_from_author_field
 
 from twitter_bio import get_gender_from_twitter_bio
@@ -58,197 +56,43 @@ def get_urls(conn, author_ids, include_priority_values=False):
     else:
         return [z[1] for z in sorted_by_author_priority]
 
-def XXX_is_wikipedia_url(url, lang='en'):
-    if lang:
-        domain = '%s.wikipedia.org' % (lang)
-    else:
-        domain = 'wikipedia.org'
-    return domain in url
 
-def XXX_get_wikipedia_urls(urls):
-    wiki_urls = [z for z in urls if is_wikipedia_url(z)]
-    # Sort by length so that we prefer 'http://en.wikipedia.org/wiki/Andre_Norton'
-    # over'http://en.wikipedia.org/wiki/Andre_Norton_bibliography'.  This may
-    # need further tuning if/when we come across more entries with multiple
-    # Wikipedia URLs.  (This might also be good for supporting non en wikis too?)
-    return sorted(wiki_urls, key=len)
-
+# TODO: this should probably be in twitter_bio,py
 def get_twitter_urls(urls):
     return [z for z in urls if 'twitter.com' in z]
 
 
-def DEPRECATED_get_wikipedia_url(urls): # Not sure that this was ever used?
-    wiki_urls = get_wikipedia_urls(urls)
-    if not wiki_urls:
-        return None
-    if len(wiki_urls) > 1:
-        logging.warning('Multiple Wikipedia URLs, using first one: %s' % (wiki_urls))
-    return wiki_urls[0]
-
-def XXX_get_wikipedia_content(url):
-    # TODO: this assumes the URL doesn't have parameters already - use urllib
-    # to construct it more robustly.
-    # Q: is the source Markdown better than downloading the HTML and using
-    # Beautiful soup anyway?
-    # md_url = url + '?action=raw'
-    fn = download_file_only_if_necessary(url)
-    return fn
-
-def XXX_extract_categories_from_content(html_file):
-    with open(html_file) as inputstream:
-        soup = BeautifulSoup(inputstream, 'lxml')
-
-        # There is some inline JavaScript that defines an object containing
-        # a "wgCategories" property, but I don't think that'd be particularly
-        # easy to extract compared to pulling out the links in #catlinks
-        catlinks = soup.select_one('#catlinks')
-        link_els = catlinks.findAll('a')
-        # Ignore <a href="/wiki/Help:Category" title="Help:Category"> and anything similar
-        category_els = [z for z in link_els if z['href'].startswith('/wiki/Category:')]
-        categories = [z.text.strip().lower() for z in category_els]
-        return categories
-
-def XXX_remove_irrelevant_categories(categories):
-    """
-    Remove any categories which are (presumably) for Wikipedia internal/admin
-    use.  Removing them is not strictly necessary, but makes things more
-    readable when debugging.
-    """
-
-    def is_ignorable(cat):
-        return re.search('wikipedia.articles.with.*identifiers$', cat, re.IGNORECASE) or \
-            re.search('use.*from.*\d\d\d\d$', cat, re.IGNORECASE)
-
-    return [z for z in categories if not is_ignorable(z)]
-
-def XXX_determine_gender_from_categories(categories, reference=None):
-    """
-    Return a tuple of (gender-character, wiki-category-used)
-    gender-character can be None, if which case wiki-category-used will be a list
-    of all the categories.
-     wiki-category-used is mainly returned for debugging purposes, I can't
-    think of a reason it would be useful in normal circumstances
-    """
-    # Keep these in alphabetic order to retain sanity
-    JOBS = ['artist',
-            'blogger',
-            'composer',
-            'essayist',
-            'journalist',
-            'novelist',
-            'painter', 'poet',
-            'screenwriter', 'singer',
-            'writer']
-
-    JOB_REGEX_BIT = '(%s)s?' % ('|'.join(JOBS))
-    GENDER_REGEXES = [
-        ['X', ['non.binary %s' % (JOB_REGEX_BIT)]],
-        ['F', ['(female|women|lesbian) (short story |comics |mystery )?%ss?$' % JOB_REGEX_BIT]]
-    ]
-
-    for gender, regexes in GENDER_REGEXES:
-        for regex in regexes:
-            for cat in categories:
-                if re.search(regex, cat, re.IGNORECASE):
-                    return gender, cat
-
-    for cat in categories:
-        if re.search('non.binary (writer|novelist)s?', cat, re.IGNORECASE):
-            return 'X', cat
-        elif re.search(' male (novelist|writer|essayist|screenwriter|journalist|composer|singer|painter|artist|poet)s?$',
-                     cat, re.IGNORECASE):
-            return 'M', cat
-        elif re.search(' male (short story |non.fiction |speculative.fiction )(writer|editor)s?$',
-                     cat, re.IGNORECASE):
-            return 'M', cat
-        elif re.search('^male (\w+ )?(feminist|novelist|writer|essayist|blogger|painter)s?',
-                     cat, re.IGNORECASE):
-            return 'M', cat
-        elif re.search('^male (speculative fiction )?(editor|novelist|writer)s?',
-                     cat, re.IGNORECASE):
-            return 'M', cat
-        elif re.search('(female|women|lesbian) (short story |comics |mystery )?(novelist|writer|editor|artist)s?$',
-                       cat, re.IGNORECASE):
-            return 'F', cat
-        elif re.search('(female|women|lesbian) (science fiction and fantasy |speculative fiction.)(editor|novelist|writer)s?$',
-                       cat, re.IGNORECASE):
-            return 'F', cat
-        elif re.search(' (lesbian) (novelist|writer)s?$', cat, re.IGNORECASE):
-            return 'F', cat
-        elif re.search('(actresses)$', cat, re.IGNORECASE):
-            return 'F', cat
-        elif re.search('transgender and transsexual men$', cat, re.IGNORECASE):
-            return 'M', cat
-        elif re.search('transgender and transsexual women$', cat, re.IGNORECASE):
-            return 'F', cat
-        # Uncomment the next bit when we avoid false positive matches on it
-        # e.g. Bruce Holland Rogers
-        #elif cat in ('stratemeyer syndicate pseudonyms',):
-        #    return 'H', cat
-
-    logging.warning('Unable to determine gender for %s based on these categories: %s' %
-                    (reference, categories))
-    return None, categories
-
-def XXX_get_author_gender_from_wikipedia_pages(urls, reference=None):
-    """
-    reference is only used for logging purposes - it could be any useful
-    reference for debugging
-    """
-    # wiki_urls = get_wikipedia_urls(urls) # No - retain the supplied ordering
-    wiki_urls = urls
-
-    all_cats = set()
-    for wiki_url in wiki_urls:
-        if not is_wikipedia_url(wiki_url):
-            logging.warning('Ignoring non-Wikipedia URL %s' % (wiki_url))
-            continue
-        try:
-            wiki_file = get_wikipedia_content(wiki_url)
-        except UnableToSaveError as err:
-            logging.warning('Unable to get Wikipedia page %s' % (err))
-            continue
-        raw_categories = extract_categories_from_content(wiki_file)
-        categories = remove_irrelevant_categories(raw_categories)
-        all_cats.update(categories)
-        gender, category = determine_gender_from_categories(categories, wiki_url)
-        if gender:
-            return gender, category
-    else:
-        if wiki_urls:
-            logging.warning('No gender information found in %s' % (wiki_urls))
-        else:
-            logging.debug('No Wikipedia link for %s' % (reference))
-        return None, all_cats
 
 
-def get_author_gender_from_ids(conn, author_ids, author_names=None):
+def get_author_gender_from_ids(conn, author_ids, reference=None):
     """
     Returns 'M', 'F', 'X' (for other/nonbinary), 'H' (house pseudonym) or None
     (if unknown).
-    author_names here is used solely for logging something more meaningful than
-    ID numbers if no gender found.
+    reference is used solely for logging something more meaningful than
+    ID numbers if no gender found.  (TODO: This isn't strictly true, as the
+    human-names stuff will use this, but that should be refactored I think)
     """
     prioritized_urls = get_urls(conn, author_ids)
     wikipedia_urls = [z for z in prioritized_urls if is_wikipedia_url(z)]
 
     gender, category = get_author_gender_from_wikipedia_pages(wikipedia_urls,
-                                                              reference=author_names)
+                                                              reference=reference)
 
     if gender:
         return gender, 'wikipedia:%s' % (category)
 
     twitter_urls = get_twitter_urls(prioritized_urls)
     if not twitter_urls:
-        logging.warning('No Twitter link(s) for %s' % (author_names))
+        logging.warning('No Twitter link(s) for %s' % (reference))
     for twitter_url in twitter_urls:
         gender = get_gender_from_twitter_bio(twitter_url)
         if gender:
             return gender, 'twitter:Bio at %s' % (twitter_url)
 
-
+    # TODO: factor this next bit out and/or look up the names if they weren't
+    # passed through
     try:
-        return get_gender_from_names(conn, author_names)
+        return get_gender_from_names(conn, reference)
     except UnableToDeriveGenderError:
         return None, category or None
 
@@ -298,7 +142,7 @@ def get_author_gender(conn, author_names):
         #    ordering of the IDs that get_author_aliases_ids() returns?
         author_ids.extend(get_author_alias_ids(conn, name))
     if author_ids:
-        return get_author_gender_from_ids(conn, author_ids, author_names=author_names)
+        return get_author_gender_from_ids(conn, author_ids, reference=author_names)
     else:
         # raise AmbiguousArgumentsError('Do not know author "%s"' % (author_names))
         logging.warning('Author "%s" does not have a proper ISFDB entry' % (author_names))
