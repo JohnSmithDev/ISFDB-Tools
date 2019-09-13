@@ -25,6 +25,7 @@ from isfdb_utils import convert_dateish_to_date
 from author_aliases import get_author_aliases
 
 AuthorBook = namedtuple('AuthorBook', 'author, book')
+AuthorIdAndName = namedtuple('AuthorIdAndName', 'id, name')
 
 class AmbiguousResultsError(Exception):
     pass
@@ -127,6 +128,21 @@ def fetch_title_details(conn, fltr, params, extra_col_str):
 
     return conn.execute(query, **params).fetchall()
 
+
+
+def get_authors_for_title(conn, title_id):
+    """
+    Return an iterable of AuthorIdAndName tuples for a title.
+    """
+
+    query = text("""SELECT a.author_id, author_canonical author
+      FROM titles t
+      LEFT OUTER JOIN canonical_author ca ON ca.title_id = t.title_id
+      LEFT OUTER JOIN authors a ON a.author_id = ca.author_id
+      WHERE t.title_id = :title_id;""")
+
+    results = conn.execute(query, {'title_id': title_id}).fetchall()
+    return [AuthorIdAndName(z.author_id, z.author) for z in results]
 
 
 def get_title_details_from_id(conn, title_id, extra_columns=None,
