@@ -17,8 +17,11 @@ from common import (get_connection, parse_args, AmbiguousArgumentsError)
 from author_aliases import get_author_alias_ids, get_author_aliases
 from downloads import (download_file_only_if_necessary, UnableToSaveError)
 from award_related import extract_authors_from_author_field
+
 from twitter_bio import get_gender_from_twitter_bio
 from human_names import derive_gender_from_name
+from wikipedia_related import (get_author_gender_from_wikipedia_pages,
+                               is_wikipedia_url)
 
 class UnableToDeriveGenderError(Exception):
     pass
@@ -55,14 +58,14 @@ def get_urls(conn, author_ids, include_priority_values=False):
     else:
         return [z[1] for z in sorted_by_author_priority]
 
-def is_wikipedia_url(url, lang='en'):
+def XXX_is_wikipedia_url(url, lang='en'):
     if lang:
         domain = '%s.wikipedia.org' % (lang)
     else:
         domain = 'wikipedia.org'
     return domain in url
 
-def get_wikipedia_urls(urls):
+def XXX_get_wikipedia_urls(urls):
     wiki_urls = [z for z in urls if is_wikipedia_url(z)]
     # Sort by length so that we prefer 'http://en.wikipedia.org/wiki/Andre_Norton'
     # over'http://en.wikipedia.org/wiki/Andre_Norton_bibliography'.  This may
@@ -82,7 +85,7 @@ def DEPRECATED_get_wikipedia_url(urls): # Not sure that this was ever used?
         logging.warning('Multiple Wikipedia URLs, using first one: %s' % (wiki_urls))
     return wiki_urls[0]
 
-def get_wikipedia_content(url):
+def XXX_get_wikipedia_content(url):
     # TODO: this assumes the URL doesn't have parameters already - use urllib
     # to construct it more robustly.
     # Q: is the source Markdown better than downloading the HTML and using
@@ -91,7 +94,7 @@ def get_wikipedia_content(url):
     fn = download_file_only_if_necessary(url)
     return fn
 
-def extract_categories_from_content(html_file):
+def XXX_extract_categories_from_content(html_file):
     with open(html_file) as inputstream:
         soup = BeautifulSoup(inputstream, 'lxml')
 
@@ -105,7 +108,7 @@ def extract_categories_from_content(html_file):
         categories = [z.text.strip().lower() for z in category_els]
         return categories
 
-def remove_irrelevant_categories(categories):
+def XXX_remove_irrelevant_categories(categories):
     """
     Remove any categories which are (presumably) for Wikipedia internal/admin
     use.  Removing them is not strictly necessary, but makes things more
@@ -118,7 +121,7 @@ def remove_irrelevant_categories(categories):
 
     return [z for z in categories if not is_ignorable(z)]
 
-def determine_gender_from_categories(categories, reference=None):
+def XXX_determine_gender_from_categories(categories, reference=None):
     """
     Return a tuple of (gender-character, wiki-category-used)
     gender-character can be None, if which case wiki-category-used will be a list
@@ -128,6 +131,7 @@ def determine_gender_from_categories(categories, reference=None):
     """
     # Keep these in alphabetic order to retain sanity
     JOBS = ['artist',
+            'blogger',
             'composer',
             'essayist',
             'journalist',
@@ -138,9 +142,15 @@ def determine_gender_from_categories(categories, reference=None):
 
     JOB_REGEX_BIT = '(%s)s?' % ('|'.join(JOBS))
     GENDER_REGEXES = [
-
-        ['X', ['non.binary %s' % (JOB_REGEX_BIT)]]
+        ['X', ['non.binary %s' % (JOB_REGEX_BIT)]],
+        ['F', ['(female|women|lesbian) (short story |comics |mystery )?%ss?$' % JOB_REGEX_BIT]]
     ]
+
+    for gender, regexes in GENDER_REGEXES:
+        for regex in regexes:
+            for cat in categories:
+                if re.search(regex, cat, re.IGNORECASE):
+                    return gender, cat
 
     for cat in categories:
         if re.search('non.binary (writer|novelist)s?', cat, re.IGNORECASE):
@@ -180,7 +190,7 @@ def determine_gender_from_categories(categories, reference=None):
                     (reference, categories))
     return None, categories
 
-def get_author_gender_from_wikipedia_pages(urls, reference=None):
+def XXX_get_author_gender_from_wikipedia_pages(urls, reference=None):
     """
     reference is only used for logging purposes - it could be any useful
     reference for debugging
