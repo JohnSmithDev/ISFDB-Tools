@@ -4,6 +4,7 @@ This is primarily intended as a library module for other scripts, but there's
 a perfunctory standalone functionality that may be of use.
 """
 
+from collections import namedtuple
 import pdb
 import re
 import sys
@@ -11,6 +12,8 @@ import sys
 from sqlalchemy.sql import text
 
 from common import get_connection
+
+AuthorIdAndName = namedtuple('AuthorIdAndName', 'id, name')
 
 def unlegalize(txt):
     """
@@ -171,14 +174,31 @@ def get_real_author_id(conn, pseudonym_id):
     """
     Given a numeric pseudonym_id - which is a author_id in any other context/table -
     return a list of the "real" author_ids, or None if this is the "real" ID.
+
+    This was the original function, before I realized I needed the name as well
+    in the context of the overall problem I was trying to solve.  As such this
+    function is maybe pointless - worth noting that it'll be doing an extra JOIN
+    that's not needed if all you care about is the ID.
     """
-    query = text("""SELECT author_id
-    FROM pseudonyms
+    results = get_real_author_id_and_name(conn, pseudonym_id)
+    if not results:
+        return None
+    return [z.id for z in results]
+
+
+def get_real_author_id_and_name(conn, pseudonym_id):
+    """
+    Given a numeric pseudonym_id - which is a author_id in any other context/table -
+    return a list of the "real" author_ids, or None if this is the "real" ID.
+    """
+    query = text("""SELECT p.author_id, a.author_canonical name
+    FROM pseudonyms p
+    LEFT OUTER JOIN authors a ON (a.author_id = p.author_id)
     WHERE pseudonym = :pseudonym_id
     ORDER BY author_id;""") # The ORDER BY is just for consistency/ease of testing
     results = conn.execute(query, pseudonym_id=pseudonym_id).fetchall()
     if results:
-        return [z.author_id for z in results]
+        return [AuthorIdAndName(z.author_id, z.name) for z in results]
     else:
         return None
 

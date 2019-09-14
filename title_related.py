@@ -22,10 +22,9 @@ from common import (get_connection, parse_args,
                     get_filters_and_params_from_args,
                     AmbiguousArgumentsError)
 from isfdb_utils import convert_dateish_to_date
-from author_aliases import get_author_aliases
+from author_aliases import get_author_aliases, AuthorIdAndName
 
 AuthorBook = namedtuple('AuthorBook', 'author, book')
-AuthorIdAndName = namedtuple('AuthorIdAndName', 'id, name')
 
 class AmbiguousResultsError(Exception):
     pass
