@@ -55,7 +55,7 @@ def derive_gender_from_pronouns(text, reference=None):
          re.search('[^s]he[,/]\s*his\W', lc_text) or \
          re.search('\(him\)', lc_text):
         return 'M'
-    elif re.search('non\W?binary', lc_text):
+    elif re.search('(non\W?binary|they\Wthem|\Wenby)', lc_text):
         # TODO: neopronouns...
         return 'X'
     else:
