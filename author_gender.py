@@ -4,7 +4,7 @@ Use Wikipedia categories if possible to determine an author's gender.
 """
 
 
-from collections import Counter
+from collections import Counter, namedtuple
 import logging
 import pdb
 import re
@@ -13,7 +13,8 @@ import sys
 from sqlalchemy.sql import text
 
 from common import (get_connection, parse_args, AmbiguousArgumentsError)
-from author_aliases import get_author_alias_ids, get_author_aliases
+from author_aliases import (get_author_alias_ids, get_author_aliases,
+                            get_real_author_id)
 from award_related import extract_authors_from_author_field
 
 from twitter_bio import get_gender_from_twitter_bio
@@ -24,6 +25,7 @@ from wikipedia_related import (get_author_gender_from_wikipedia_pages,
 class UnableToDeriveGenderError(Exception):
     pass
 
+GenderAndSource = namedtuple('GenderAndSource', 'gender, source')
 
 def get_urls(conn, author_ids, include_priority_values=False):
     """
@@ -66,12 +68,28 @@ def get_twitter_urls(urls):
 
 def get_author_gender_from_ids(conn, author_ids, reference=None):
     """
-    Returns 'M', 'F', 'X' (for other/nonbinary), 'H' (house pseudonym) or None
-    (if unknown).
-    reference is used solely for logging something more meaningful than
-    ID numbers if no gender found.  (TODO: This isn't strictly true, as the
-    human-names stuff will use this, but that should be refactored I think)
+    Returns a GenderAndSource namedtuple for the provided author_ids.
+
+    * author_ids is a list of one or more author_ids - however it is presumed
+      that these are all aliases/pseudonyms to a single person - e.g. if we
+      did 'select distinct author_id from pseudonyms where pseudonym in author_ids;'
+      we would expect to get a single value back.  (Perhaps that might not be
+      the case for joint-pseudonyms?)
+
+      ** It should not be used for cases of multiple individuals collaborating
+      on a novel, for example. **
+
+      As a convenience, if there's just a single ID, you can pass it directly
+      as an int, rather than having to wrap it in parentheses to turn it into a list.
+
+    * reference is used solely for logging something more meaningful than
+      ID numbers if no gender found.  Use get_author_gender_from_ids_and_then_name()
+      if you need the name as a fallback.
     """
+
+    if isinstance(author_ids, int):
+        author_ids = [author_ids]
+
     prioritized_urls = get_urls(conn, author_ids)
     wikipedia_urls = [z for z in prioritized_urls if is_wikipedia_url(z)]
 
@@ -79,7 +97,7 @@ def get_author_gender_from_ids(conn, author_ids, reference=None):
                                                               reference=reference)
 
     if gender:
-        return gender, 'wikipedia:%s' % (category)
+        return GenderAndSource(gender, 'wikipedia:%s' % (category))
 
     twitter_urls = get_twitter_urls(prioritized_urls)
     if not twitter_urls:
@@ -87,25 +105,28 @@ def get_author_gender_from_ids(conn, author_ids, reference=None):
     for twitter_url in twitter_urls:
         gender = get_gender_from_twitter_bio(twitter_url)
         if gender:
-            return gender, 'twitter:Bio at %s' % (twitter_url)
+            return GenderAndSource(gender, 'twitter:Bio at %s' % (twitter_url))
 
-    # TODO: factor this next bit out and/or look up the names if they weren't
-    # passed through
+    raise UnableToDeriveGenderError('Not able to get gender using author_ids %s (ref=%s)' %
+                                    (author_ids, reference))
+
+
+def get_author_gender_from_ids_and_then_name(conn, author_ids, name):
     try:
-        return get_gender_from_names(conn, reference)
+        return get_author_gender_from_ids(conn, author_ids, reference=name)
     except UnableToDeriveGenderError:
-        return None, category or None
+        return gender_response_from_name(name, name)
 
 
 def gender_response_from_name(name, original_name):
     gender = derive_gender_from_name(name.split(' ')[0])
     if gender:
         if original_name and name != original_name:
-            return gender, 'human-names:%s' % (name)
+            return GenderAndSource(gender, 'human-names:%s' % (name))
         else:
-            return gender, 'human-names'
+            return GenderAndSource(gender, 'human-names')
     else:
-        return None, None
+        return GenderAndSource(None, None)
 
 def get_gender_from_names(conn, author_names, look_up_all_names=True):
     # TODO: lots to make this less sucky:
@@ -121,9 +142,9 @@ def get_gender_from_names(conn, author_names, look_up_all_names=True):
         else:
             all_names = author_names
         for name in all_names:
-            gender, detail = gender_response_from_name(name, author_names[0])
-            if gender:
-                return gender, detail
+            g_s = gender_response_from_name(name, author_names[0])
+            if g_s.gender:
+                return g_s
         else:
             raise UnableToDeriveGenderError('Unable to derive gender for "%s" (inc variants)' %
                                             (author_names))
@@ -136,21 +157,30 @@ def get_author_gender(conn, author_names):
     'human-names', 'wikipedia:English male novelists', 'twitter:bio'.
 
     """
+    # Not sure if this is happening - I would prefer to explicitly make it
+    # only use 1 name if possible
+    if len(author_names) != 1:
+        logging.warning('get_author_gender: Multiple names passed: %s' % (author_names))
+
+
     author_ids = []
     for name in author_names:
         # Q: Would having multiple names muck up any logic dependent on the
         #    ordering of the IDs that get_author_aliases_ids() returns?
         author_ids.extend(get_author_alias_ids(conn, name))
-    if author_ids:
+    try:
+        if not author_ids:
+            raise UnableToDeriveGenderError('Author "%s" does not have a proper ISFDB entry' %
+                                            (author_names))
         return get_author_gender_from_ids(conn, author_ids, reference=author_names)
-    else:
+    except UnableToDeriveGenderError as err:
         # raise AmbiguousArgumentsError('Do not know author "%s"' % (author_names))
-        logging.warning('Author "%s" does not have a proper ISFDB entry' % (author_names))
-
+        logging.warning('%s - will try to get gender from name instead' % (err))
         try:
             return get_gender_from_names(None, author_names, look_up_all_names=False)
         except UnableToDeriveGenderError:
-            return None, 'No author entry in ISFDB, and could not derive gender from name'
+            return GenderAndSource(None,
+                                   'No ISFDB author entry, and could not derive gender from name')
 
 
 
