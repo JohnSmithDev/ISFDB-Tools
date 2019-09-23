@@ -47,20 +47,36 @@ def derive_gender_from_pronouns(text, reference=None):
     # This is super hacky and basic, I need to find more examples in the wild.
     # Plus maybe things are more complicated than pronoun => gender???
     lc_text = text.lower()
+
+    matched = {'M': False, 'F': False, 'X': False}
+
+    # TODO: pronoun.is links
+
     if re.search('\Wshe[/]her\W', lc_text) or \
        re.search('\Wshe[/]her$', lc_text):
-        return 'F'
-    elif re.search('\Whe/him\W',  lc_text) or \
+        matched['F'] = True
+    if re.search('\Whe/him\W',  lc_text) or \
          re.search('\Whe/him$',  lc_text) or \
          re.search('[^s]he[,/]\s*his\W', lc_text) or \
          re.search('\(him\)', lc_text):
-        return 'M'
-    elif re.search('(non\W?binary|they\Wthem|\Wenby)', lc_text):
-        # TODO: neopronouns...
-        return 'X'
-    else:
+        matched['M'] = True
+    if re.search('(non\W?binary|they\Wthem|\Wenby|genderqueer)', lc_text):
+        # TODO: neopronouns ...
+        matched['X'] = True
+
+    match_count = len([z for z in matched.values() if z])
+    if match_count == 0:
         logging.warning('No pronouns found in %s (ref=%s)' % (text, reference))
         return None
+    if match_count > 1:
+        logging.warning('Multiple contradictory pronouns found in %s (ref=%s)' % (text, reference))
+        # TODO: this should raise a specific exception, so as to inhibit checking
+        # of other data sources that are also likely to be wrong/ambiguous
+        return None
+
+    return [z for z in matched.items() if z[1]][0][0]
+
+
 
 def get_gender_from_twitter_bio(url):
     # TODO (maybe): have a 2-element tuple response similar to the Wikipedia
