@@ -71,12 +71,14 @@ def rename_with_timestamp_suffix(full_path, dont_die_if_doesnt_exist=True):
     ts = time.strftime('%Y%m%d%H%M%S', extant_ctime)
     os.rename(full_path, full_path + '_' + ts)
 
-def download_file(url, overwrite=OverwriteBehaviour.RENAME_OLD_WITH_TIMESTAMP_SUFFIX):
-    subdir, filename = sanitised_filename_for_url(url)
-    full_dir = os.path.join(DOWNLOAD_DIR, subdir)
-    if not os.path.exists(full_dir):
-        os.mkdir(full_dir)
-    full_path = os.path.join(full_dir, filename)
+def download_file_as(url, full_path, overwrite):
+    """
+    Download file to a specific location - this is primarily intended for
+    "internal use" by download_file(), but might be useful for downloads outside
+    of the usual context, but where you still want to use the throttling and/or
+    overwrite logic.
+    """
+    domain, _= sanitised_filename_for_url(url)
 
     # Check for existing files before doing downloads, if for no reason other
     # than avoiding unnecessary throttling
@@ -84,16 +86,15 @@ def download_file(url, overwrite=OverwriteBehaviour.RENAME_OLD_WITH_TIMESTAMP_SU
         raise CannotOverwriteError('Cannot overwrite existing file %s' %
                                    (full_path), extant_file=full_path)
 
-
     if THROTTLE_SECONDS > 0: # Q: Will things work OK without this doing check?
         now = datetime.now()
         try:
-            previous = throttled_domains[subdir]
+            previous = throttled_domains[domain]
             difference = (now - previous).total_seconds()
             if difference < THROTTLE_SECONDS:
                 pause_for = THROTTLE_SECONDS - difference
                 logging.debug('Throttling request to %s for %.2f seconds' %
-                              (subdir, pause_for))
+                              (domain, pause_for))
                 time.sleep(pause_for)
 
         except KeyError:
@@ -102,7 +103,7 @@ def download_file(url, overwrite=OverwriteBehaviour.RENAME_OLD_WITH_TIMESTAMP_SU
             pass
 
     req = requests.get(url)
-    throttled_domains[subdir] = datetime.now()
+    throttled_domains[domain] = datetime.now()
     if req.ok:
         # logging.error("Status code = %s" % (req.status_code))
 
@@ -126,6 +127,16 @@ def download_file(url, overwrite=OverwriteBehaviour.RENAME_OLD_WITH_TIMESTAMP_SU
     else:
         raise UnableToSaveError('Got HTTP %s when getting %s' % (req.status_code,
                                                                  url))
+
+
+def download_file(url, overwrite=OverwriteBehaviour.RENAME_OLD_WITH_TIMESTAMP_SUFFIX):
+    subdir, filename = sanitised_filename_for_url(url)
+    full_dir = os.path.join(DOWNLOAD_DIR, subdir)
+    if not os.path.exists(full_dir):
+        os.mkdir(full_dir)
+    full_path = os.path.join(full_dir, filename)
+
+    return download_file_as(url, full_path, overwrite)
 
 def download_file_only_if_necessary(url):
     # TODO: optionally redownload and overwrite files over a user-specified age?
