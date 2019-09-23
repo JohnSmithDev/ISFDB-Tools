@@ -87,13 +87,14 @@ def determine_gender_from_categories(categories, reference=None):
             'essayist',
             'journalist',
             'novelist',
-            'painter', 'poet',
+            'painter', 'people', 'poet',
             'screenwriter', 'singer',
             'writer']
 
     JOB_REGEX_BIT = '(%s)s?' % ('|'.join(JOBS))
     GENDER_REGEXES = [
         ['X', ['non.binary %s' % (JOB_REGEX_BIT)]],
+        ['X', ['genderqueer %s' % (JOB_REGEX_BIT)]],
         ['F', ['(female|women|lesbian) (short story |comics |mystery )?%ss?$' % JOB_REGEX_BIT]]
     ]
 
