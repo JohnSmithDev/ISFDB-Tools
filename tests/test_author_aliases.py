@@ -98,6 +98,10 @@ class TestGetAuthorAliases(unittest.TestCase):
 
                          get_author_aliases(self.conn, 'Daniel Abraham'))
 
+    def test_numeric_author_id_argument(self):
+        self.assertEqual(['A. A. Anderson', 'Andrew A. Anderson'],
+                         get_author_aliases(self.conn, 162343))
+
 
 class TestGetAuthorAliasIds(unittest.TestCase):
     conn = get_connection()

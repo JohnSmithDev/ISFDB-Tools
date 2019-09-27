@@ -39,6 +39,8 @@ def unlegalize(txt):
 
 def get_author_aliases(conn, author):
     """
+    Author can be a text string or an integer, the latter indicating an author_id.
+
     Return all [*] aliases, pseudonyms, alternate spellings, etc for an author.
     This originally returned a set of names, it now returns a list, ordered
     (roughly) by how much the names resemble the supplied name.
@@ -51,6 +53,11 @@ def get_author_aliases(conn, author):
         one to get all of its aliases?  (Or perhaps, a single query that
         effectively does that?)
     """
+
+    if isinstance(author, int):
+        filter = 'a1.author_id = :author'
+    else:
+        filter = 'a1.author_canonical = :author OR a1.author_legalname = :author'
 
     # This would be much nicer if I had a newer MySQL/Maria with CTEs...
     # The two lots of joins are because we don't know if we have been given
@@ -66,11 +73,8 @@ def get_author_aliases(conn, author):
   left outer join authors a2 on p1.pseudonym = a2.author_id
   left outer join pseudonyms p2 on p2.pseudonym = a1.author_id
   left outer join authors a3 on p2.author_id = a3.author_id
-  where a1.author_canonical = :author
-     or a1.author_legalname = :author;""")
+    where %s;""" % (filter))
     results = conn.execute(query, author=author).fetchall()
-    # print(results)
-    # pdb.set_trace()
     ret = set()
     for row in results:
         for col in ('name1', 'name2', 'name3'):
@@ -82,9 +86,11 @@ def get_author_aliases(conn, author):
                 if legal:
                     ret.add(legal)
 
-    #if ret:
-    #    print('%s => %s' % (author, ret))
-    return order_aliases_by_name_resemblance(author, ret)
+    if isinstance(author, int):
+        # Pass dummy value for resemblance sorting
+        return order_aliases_by_name_resemblance('', ret)
+    else:
+        return order_aliases_by_name_resemblance(author, ret)
 
 def order_aliases_by_name_resemblance(author, aliases):
 
@@ -208,6 +214,10 @@ def get_real_author_id_and_name(conn, pseudonym_id):
 if __name__ == '__main__':
     conn = get_connection()
     for i, name in enumerate(sys.argv[1:]):
+        try: # Convert to int if it is numeric
+            name = int(name)
+        except ValueError: # otherwise leave as-is
+            pass
         aliases = get_author_aliases(conn, name)
         if len(sys.argv) > 2:
             print('= %s =' % (name))
