@@ -9,8 +9,8 @@ import pdb
 
 from common import AmbiguousArgumentsError
 from author_aliases import get_real_author_id_and_name
-from author_gender import (get_author_gender, get_author_gender_from_ids,
-                           get_author_gender_from_ids_and_then_name)
+from author_gender import (get_author_gender_cached,
+                           get_author_gender_from_ids_and_then_name_cached)
 from award_related import extract_authors_from_author_field
 from title_related import get_authors_for_title
 
@@ -88,8 +88,10 @@ def analyse_authors_by_gender(conn, books, output_function=print,
                 name = author.name
                 # Try the author_id...
                 try:
-                    g_s = get_author_gender_from_ids_and_then_name(conn, author.id,
-                                                                   author.name)
+                    #g_s = get_author_gender_from_ids_and_then_name(conn, author.id,
+                    #                                               author.name)
+                    g_s = get_author_gender_from_ids_and_then_name_cached(conn, author.id,
+                                                                          author.name)
                 except UnableToDeriveGenderError as err:
                     # ...and if that fails, fall back to the name
                     pass # rely on "not g_s" to trigger the code a bit further down
@@ -117,7 +119,9 @@ def analyse_authors_by_gender(conn, books, output_function=print,
                         name = author.name
                     else:
                         name = author
-                    g_s = get_author_gender(conn, [name])
+                    # g_s = get_author_gender(conn, [name])
+                    g_s = get_author_gender_cached(conn, [name])
+
                 gender = g_s.gender or 'unknown'
                 output_function('%s : %s : %s : %s' % (getattr(book, prefix_property),
                                                        gender, name, g_s.source))

@@ -111,11 +111,28 @@ def get_author_gender_from_ids(conn, author_ids, reference=None):
                                     (author_ids, reference))
 
 
+
 def get_author_gender_from_ids_and_then_name(conn, author_ids, name):
     try:
         return get_author_gender_from_ids(conn, author_ids, reference=name)
     except UnableToDeriveGenderError:
         return gender_response_from_name(name, name)
+
+gagfiatn_cache = {}
+def get_author_gender_from_ids_and_then_name_cached(conn, author_ids, name):
+    raw_key_bits = []
+    for thing in (author_ids, name):
+        if isinstance(thing, (list, tuple, set)):
+            raw_key_bits.extend(thing)
+        else:
+            raw_key_bits.append(thing)
+    cache_key = tuple(raw_key_bits)
+    try:
+        return gagfiatn_cache[cache_key]
+    except KeyError:
+        x = get_author_gender_from_ids_and_then_name(conn, author_ids, name)
+        gagfiatn_cache[cache_key] = x
+        return x
 
 
 def gender_response_from_name(name, original_name):
@@ -182,6 +199,17 @@ def get_author_gender(conn, author_names):
             return GenderAndSource(None,
                                    'No ISFDB author entry, and could not derive gender from name')
 
+
+gag_cache = {}
+
+def get_author_gender_cached(conn, author_names):
+    cache_key = tuple(author_names)
+    try:
+        return gag_cache[cache_key]
+    except KeyError:
+        x = get_author_gender(conn, author_names)
+        gag_cache[cache_key] = x
+        return x
 
 
 if __name__ == '__main__':
