@@ -85,6 +85,7 @@ def determine_gender_from_categories(categories, reference=None):
             'blogger',
             'composer',
             'essayist',
+            'feminist',
             'journalist',
             'novelist',
             'painter', 'people', 'poet',
@@ -92,10 +93,24 @@ def determine_gender_from_categories(categories, reference=None):
             'writer']
 
     JOB_REGEX_BIT = '(%s)s?' % ('|'.join(JOBS))
+    # GENDER_REGEXES is a list rather than a dict so that we can preserve
+    # ordering, in case this is useful.  (Possibly easier than trying to get
+    # regexes matching 100% perfectly in some cases?)
+    # TODO (maybe): generic/group pseudonyms e.g. 'stratemeyer syndicate pseudonyms'
     GENDER_REGEXES = [
-        ['X', ['non.binary %s' % (JOB_REGEX_BIT)]],
-        ['X', ['genderqueer %s' % (JOB_REGEX_BIT)]],
-        ['F', ['(female|women|lesbian) (short story |comics |mystery )?%ss?$' % JOB_REGEX_BIT]]
+        ['X', ['non.binary %s' % (JOB_REGEX_BIT),
+               'genderqueer %s' % (JOB_REGEX_BIT)]],
+        ['F', ['(female|women|lesbian) (short story |comics |mystery )?%ss?$' % JOB_REGEX_BIT,
+               '(actresses)$',
+               '(female|women|lesbian) (science fiction and fantasy |speculative fiction )%ss?$' % JOB_REGEX_BIT,
+               'transgender and transsexual women$'
+               ]],
+        ['M', ['transgender and transsexual men$',
+               '^male (\w+ )?%ss?' % JOB_REGEX_BIT,
+               '^male (speculative fiction )?%ss?' % JOB_REGEX_BIT,
+               ' male (short story |non.fiction |speculative.fiction )%ss?$' % JOB_REGEX_BIT,
+               ' male %ss?$' % JOB_REGEX_BIT
+            ]]
     ]
 
     for gender, regexes in GENDER_REGEXES:
@@ -104,40 +119,6 @@ def determine_gender_from_categories(categories, reference=None):
                 if re.search(regex, cat, re.IGNORECASE):
                     return gender, cat
 
-    # TODO: move the regexes below into GENDER_REGEXES, and get rid of this section
-    for cat in categories:
-        if re.search('non.binary (writer|novelist)s?', cat, re.IGNORECASE):
-            return 'X', cat
-        elif re.search(' male (novelist|writer|essayist|screenwriter|journalist|composer|singer|painter|artist|poet)s?$',
-                     cat, re.IGNORECASE):
-            return 'M', cat
-        elif re.search(' male (short story |non.fiction |speculative.fiction )(writer|editor)s?$',
-                     cat, re.IGNORECASE):
-            return 'M', cat
-        elif re.search('^male (\w+ )?(feminist|novelist|writer|essayist|blogger|painter)s?',
-                     cat, re.IGNORECASE):
-            return 'M', cat
-        elif re.search('^male (speculative fiction )?(editor|novelist|writer)s?',
-                     cat, re.IGNORECASE):
-            return 'M', cat
-        elif re.search('(female|women|lesbian) (short story |comics |mystery )?(novelist|writer|editor|artist)s?$',
-                       cat, re.IGNORECASE):
-            return 'F', cat
-        elif re.search('(female|women|lesbian) (science fiction and fantasy |speculative fiction.)(editor|novelist|writer)s?$',
-                       cat, re.IGNORECASE):
-            return 'F', cat
-        elif re.search(' (lesbian) (novelist|writer)s?$', cat, re.IGNORECASE):
-            return 'F', cat
-        elif re.search('(actresses)$', cat, re.IGNORECASE):
-            return 'F', cat
-        elif re.search('transgender and transsexual men$', cat, re.IGNORECASE):
-            return 'M', cat
-        elif re.search('transgender and transsexual women$', cat, re.IGNORECASE):
-            return 'F', cat
-        # Uncomment the next bit when we avoid false positive matches on it
-        # e.g. Bruce Holland Rogers
-        #elif cat in ('stratemeyer syndicate pseudonyms',):
-        #    return 'H', cat
 
     logging.warning('Unable to determine gender for %s based on these categories: %s' %
                     (reference, categories))
