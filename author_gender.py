@@ -24,6 +24,9 @@ from wikipedia_related import (get_author_gender_from_wikipedia_pages,
 
 class UnableToDeriveGenderError(Exception):
     pass
+class UnexpectedArgumentTypeError(Exception):
+    pass
+
 
 GenderAndSource = namedtuple('GenderAndSource', 'gender, source')
 
@@ -85,6 +88,10 @@ def get_author_gender_from_ids(conn, author_ids, reference=None):
     * reference is used solely for logging something more meaningful than
       ID numbers if no gender found.  Use get_author_gender_from_ids_and_then_name()
       if you need the name as a fallback.
+
+    To be clear: this will not do anything with the name(s) associated with
+    this author_id (or author_ids) e.g. in conjunction with human-names.
+
     """
 
     if isinstance(author_ids, int):
@@ -111,12 +118,23 @@ def get_author_gender_from_ids(conn, author_ids, reference=None):
                                     (author_ids, reference))
 
 
+def get_author_gender_from_id_and_then_name(conn, author_id, name):
+    # I think it's an outdated idea that this might receive multiple IDs, catch
+    # any such code that does this.
+    if not isinstance(author_id, int):
+        raise UnexpectedArgumentTypeError('author_id should be an int, received %s' %
+                                          (type(author_id)))
 
-def get_author_gender_from_ids_and_then_name(conn, author_ids, name):
     try:
-        return get_author_gender_from_ids(conn, author_ids, reference=name)
+        return get_author_gender_from_ids(conn, author_id, reference=name)
     except UnableToDeriveGenderError:
-        return gender_response_from_name(name, name)
+        author_aliases = get_author_aliases(conn, author_id)
+        for alias in author_aliases:
+            ret = gender_response_from_name(alias, name)
+            if ret.gender:
+                return ret
+        # If we get here, then human-names has failed as well
+        return GenderAndSource(None, None)
 
 gagfiatn_cache = {}
 def get_author_gender_from_ids_and_then_name_cached(conn, author_ids, name):
@@ -130,7 +148,7 @@ def get_author_gender_from_ids_and_then_name_cached(conn, author_ids, name):
     try:
         return gagfiatn_cache[cache_key]
     except KeyError:
-        x = get_author_gender_from_ids_and_then_name(conn, author_ids, name)
+        x = get_author_gender_from_id_and_then_name(conn, author_ids, name)
         gagfiatn_cache[cache_key] = x
         return x
 

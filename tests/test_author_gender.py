@@ -8,7 +8,8 @@ TODO: mocking of that functionality
 import unittest
 
 from ..common import (get_connection, parse_args)
-from ..author_gender import get_author_gender
+from ..author_gender import (get_author_gender,
+                             get_author_gender_from_id_and_then_name)
 
 # Note on terminology:
 # "in_isfdb" means there is a record in the authors table.
@@ -62,3 +63,23 @@ class TestDeriveGenderFromPronouns(unittest.TestCase):
         self.assertEqual('human-names:Andrew A. Anderson', detail)
 
 
+class TestGetAuthorGenderFromIdAndThenName(unittest.TestCase):
+
+    conn = get_connection()
+
+    def test_male_in_isfdb_and_wikipedia(self):
+        gender, detail = get_author_gender_from_id_and_then_name(self.conn, 503,
+                                                                 'Alastair Reynolds')
+        self.assertEqual('M', gender)
+        self.assertEqual('wikipedia', detail.split(':')[0])
+
+    def test_no_links_and_initialized_name_but_gendered_legalname(self):
+        gender, detail = get_author_gender_from_id_and_then_name(self.conn, 162343,
+                                                                 'A. A. Anderson')
+        self.assertEqual('M', gender)
+        # It's possible this second check might fail, if/when they get a Wikipedia
+        # page or gendered Twitter bio.  In such a case, you'll have to find
+        # another example in the database :-(
+        # IIRC, the name is included after human-names: to indicate that it
+        # was a derived name
+        self.assertEqual('human-names:Andrew A. Anderson', detail)
