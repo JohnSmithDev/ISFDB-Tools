@@ -10,7 +10,8 @@ import pdb
 from common import AmbiguousArgumentsError
 from author_aliases import get_real_author_id_and_name
 from author_gender import (get_author_gender_cached,
-                           get_author_gender_from_ids_and_then_name_cached)
+                           get_author_gender_from_ids_and_then_name_cached,
+                           UnableToDeriveGenderError)
 from award_related import extract_authors_from_author_field
 from title_related import get_authors_for_title
 
@@ -77,10 +78,10 @@ def analyse_authors_by_gender(conn, books, output_function=print,
             # wrong - we should count one or the other, not both
             author_bits = extract_authors_from_author_field(book.author)
 
-        # Use those
+        # Use those <<<<<<<<<<<<<<<<<<<< THIS COMMENT MAKES NO SENSE IN THIS CONTEXT?!?!?
         # else do it via the name
         # TODO (nice to have): do both when possible, and report discrepancies
-        # Example: "PJ Something" for PKD award isn't recognized due to "P. J. " in
+        # Example: "PJ Manney" for PKD award isn't recognized due to "P. J. " in
         # their author record
         for author in author_bits:
             g_s = None
