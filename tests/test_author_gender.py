@@ -48,3 +48,17 @@ class TestDeriveGenderFromPronouns(unittest.TestCase):
         gender, detail = get_author_gender(self.conn, ['Urglefrod Smith'])
         self.assertIsNone(gender)
 
+    def test_initialized_author_no_links_but_gendered_legalname(self):
+        #  "A. A. Anderson" (author_id=162343) is not in Wikipedia or Twitter
+        # However their legalname is defined, so we should be able to use
+        # that in conjunction with human-names
+        gender, detail = get_author_gender(self.conn, ['A. A. Anderson'])
+        self.assertEqual('M', gender)
+        # It's possible this second check might fail, if/when they get a Wikipedia
+        # page or gendered Twitter bio.  In such a case, you'll have to find
+        # another example in the database :-(
+        # IIRC, the name is included after human-names: to indicate that it
+        # was a derived name
+        self.assertEqual('human-names:Andrew A. Anderson', detail)
+
+

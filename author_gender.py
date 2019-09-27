@@ -193,8 +193,12 @@ def get_author_gender(conn, author_names):
     except UnableToDeriveGenderError as err:
         # raise AmbiguousArgumentsError('Do not know author "%s"' % (author_names))
         logging.warning('%s - will try to get gender from name instead' % (err))
+        all_author_names = author_names[:] # copy
+        for author_id in author_ids:
+            all_author_names.extend(get_author_aliases(conn, author_id))
+
         try:
-            return get_gender_from_names(None, author_names, look_up_all_names=False)
+            return get_gender_from_names(None, all_author_names, look_up_all_names=False)
         except UnableToDeriveGenderError:
             return GenderAndSource(None,
                                    'No ISFDB author entry, and could not derive gender from name')
