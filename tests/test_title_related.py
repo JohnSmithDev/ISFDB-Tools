@@ -13,7 +13,10 @@ from ..common import (get_connection, parse_args)
 from ..title_related import (get_title_details_from_id,
                              get_title_ids,
                              get_all_related_title_ids,
-                             fetch_title_details)
+                             fetch_title_details,
+                             get_authors_for_title,
+                             get_definitive_authors)
+from ..author_aliases import AuthorIdAndName
 
 
 REVENGER_DETAILS = (2034339, 'Alastair Reynolds', 'Revenger', 0)
@@ -119,7 +122,7 @@ class TestGetTitleIds(unittest.TestCase):
 
 
 
-class TestGetAllrelatedTitleIds(unittest.TestCase):
+class TestGetAllRelatedTitleIds(unittest.TestCase):
     conn = get_connection()
 
     def test_wdd_child(self):
@@ -129,3 +132,49 @@ class TestGetAllrelatedTitleIds(unittest.TestCase):
     def test_wdd_child(self):
         wdd_ids = [WAYDOWNDARK_CHILD_DETAILS[0], WAYDOWNDARK_PARENT_DETAILS[0]]
         self.assertEqual(wdd_ids, get_all_related_title_ids(self.conn, wdd_ids[1]))
+
+
+
+class MockBook(object):
+    def __init__(self, title_id, author):
+        self.title_id = title_id
+        self.author = author
+
+class TestGetDefinitiveAuthors(unittest.TestCase):
+    conn = get_connection()
+
+    def test_true_author_found_when_pseudonym_credited(self):
+        # Compare to TestGetAuthorsForTitle.test_credited_pseudonumous_author_found
+        book = MockBook(2515634, 'Mira Grant') # Alien Echo as credited to Mira Grant
+        self.assertEqual([AuthorIdAndName(129348, 'Seanan McGuire')],
+                          get_definitive_authors(self.conn, book))
+
+    def test_true_authors_found_when_joint_pseudonym_credited(self):
+        # Compare to TestGetAuthorsForTitle.test_credited_joint_pseudonymous_author_found
+        book = MockBook(21043, 'Gabriel King') # The Knot Garden
+        self.assertEqual([AuthorIdAndName(1277, 'M. John Harrison'),
+                          AuthorIdAndName(3665, 'Jane Johnson')],
+                          sorted(get_definitive_authors(self.conn, book)))
+
+
+class TestGetAuthorsForTitle(unittest.TestCase):
+    conn = get_connection()
+
+    # FYI "Alien Echo" is credited to different authors depending on edition/variant
+    # http://www.isfdb.org/cgi-bin/title.cgi?2515634 - Mira Grant
+    # http://www.isfdb.org/cgi-bin/title.cgi?2515635 - Seanan McGuire
+
+    def test_credited_pseudonymous_author_found(self):
+        self.assertEqual([AuthorIdAndName(133814, 'Mira Grant')],
+                          get_authors_for_title(self.conn, 2515634))
+
+    def test_credited_real_author_found(self):
+        self.assertEqual([AuthorIdAndName(129348, 'Seanan McGuire')],
+                          get_authors_for_title(self.conn, 2515635))
+
+
+    # Gabriel King is really M. John Harrison & Jane Johnson - see earlier tests
+    def test_credited_joint_pseudonymous_author_found(self):
+        self.assertEqual([AuthorIdAndName(3664, 'Gabriel King')],
+                          get_authors_for_title(self.conn, 21043))
+

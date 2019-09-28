@@ -22,7 +22,9 @@ from common import (get_connection, parse_args,
                     get_filters_and_params_from_args,
                     AmbiguousArgumentsError)
 from isfdb_utils import convert_dateish_to_date
-from author_aliases import get_author_aliases, AuthorIdAndName
+from author_aliases import (get_author_aliases, AuthorIdAndName,
+                            get_real_author_id_and_name)
+from award_related import extract_authors_from_author_field
 
 AuthorBook = namedtuple('AuthorBook', 'author, book')
 
@@ -132,6 +134,9 @@ def fetch_title_details(conn, fltr, params, extra_col_str):
 def get_authors_for_title(conn, title_id):
     """
     Return an iterable of AuthorIdAndName tuples for a title.
+
+    See get_definitive_authors() further down, which is conceptually similar,
+    but more thorough, in terms of depseudonymization.
     """
 
     query = text("""SELECT a.author_id, author_canonical author
@@ -273,3 +278,69 @@ def get_title_ids(conn, filter_args, extra_columns=None, title_types=None):
     for row in raw_data:
         id_set.update(get_all_related_title_ids(conn, row[0]))
     return sorted(id_set)
+
+
+
+
+def get_definitive_authors(conn, book):
+    """
+    Given a book object - basically, anything with
+    * ideally a "title_id" attribute
+    * failing that, an "author" (name) attribute
+    return a list of tuples containing (author_id, author_name) for each
+    author.
+
+    For the returned tuples:
+    * author_id may be None, for "authors" who don't have proper ISFDB records
+      (this should only affect "books" derived from the awards table, usually
+       for "multimedia" awards like the Tiptree).
+    * author_name should be the real name of the author (where known), which
+      may not be the same as the credited author e.g. "Mira Grant"=>"Seanan McGuire"
+
+    See get_authors_for_title() for a simpler function that doesn't do
+    any depseudonymization.
+    """
+    try:
+        if not book.title_id:
+            raise AttributeError('title_id==0 is essentially no title_id')
+        credited_author_stuff = get_authors_for_title(conn, book.title_id)
+        real_author_stuff = []
+        for credited_author in credited_author_stuff:
+            author_stuff = get_real_author_id_and_name(conn, credited_author.id)
+            if author_stuff:
+                # Replace this apparent pseudonym with these real author(s)
+                real_author_stuff.extend(author_stuff)
+            else:
+                # Credited author was real, so keep it
+                real_author_stuff.append(credited_author)
+
+        # Report discrepancies between the newer title_id->author_ids method
+        # versus the original author_names method
+        if not credited_author_stuff and not book.author:
+            pass # Don't worry about set() != set('') e.g. AO3 on Best Related
+        else:
+            # author_names_1 = set([z.name for z in credited_author_stuff])
+            author_names_1 = set([z.name for z in real_author_stuff])
+            author_names_2 = set(extract_authors_from_author_field(book.author))
+            author_diffs = author_names_1.symmetric_difference(author_names_2)
+            if author_diffs:
+                logging.warning('title_id (%d) authors != author_names (%s != %s)' %
+                            (book.title_id, author_names_1, author_names_2))
+        # Regardless of any differences, use the author_id way if possible -
+        # as these are a tuple with author names, we can still fall back to those
+        author_bits = real_author_stuff
+    except AttributeError:
+        # No title_id attribute
+
+        # Thought: perhaps it might be more elegant to fake the id/name tuple
+        # with id=0 or None here - that would make the code below cleaner?
+        # TODO: I think this counts both real names and aliases, which is
+        # wrong - we should count one or the other, not both
+
+        # Get a list of author names
+        author_names = extract_authors_from_author_field(book.author)
+        # Turn it into fake AuthorIdAndName namedtuple
+        author_bits = [AuthorIdAndName(None, z) for z in author_names]
+
+    return author_bits
+

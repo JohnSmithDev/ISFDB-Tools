@@ -8,18 +8,19 @@ import logging
 import pdb
 
 from common import AmbiguousArgumentsError
-from author_aliases import get_real_author_id_and_name
+# from author_aliases import get_definitive_authors
 from author_gender import (get_author_gender_cached,
                            get_author_gender_from_ids_and_then_name_cached,
                            UnableToDeriveGenderError)
 from award_related import extract_authors_from_author_field
-from title_related import get_authors_for_title
+from title_related import get_authors_for_title, get_definitive_authors
 
 GenderStats = namedtuple('GenderStats',
                          'by_gender, by_gender_and_source, '
                          'by_property_gender_and_source, by_books_authors')
 
 GenderType = namedtuple('GenderType', 'heading, key')
+
 
 def analyse_authors_by_gender(conn, books, output_function=print,
                               prefix_property='year'):
@@ -42,41 +43,8 @@ def analyse_authors_by_gender(conn, books, output_function=print,
     author_gender = {}
     ignored = [] # TODO: Remove as we don't use it that I can see now?
     for book in books:
-        try:
-            if not book.title_id:
-                raise AttributeError('title_id==0 is essentially no title_id')
-            credited_author_stuff = get_authors_for_title(conn, book.title_id)
-            real_author_stuff = []
-            for credited_author in credited_author_stuff:
-                author_stuff = get_real_author_id_and_name(conn, credited_author.id)
-                if author_stuff:
-                    # Replace this apparent pseudonym with these real author(s)
-                    real_author_stuff.extend(author_stuff)
-                else:
-                    # Credited author was real, so keep it
-                    real_author_stuff.append(credited_author)
-
-            # Report discrepancies between the newer title_id->author_ids method
-            # versus the original author_names method
-            if not credited_author_stuff and not book.author:
-                pass # Don't worry about set() != set('') e.g. AO3 on Best Related
-            else:
-                # author_names_1 = set([z.name for z in credited_author_stuff])
-                author_names_1 = set([z.name for z in real_author_stuff])
-                author_names_2 = set(extract_authors_from_author_field(book.author))
-                author_diffs = author_names_1.symmetric_difference(author_names_2)
-                if author_diffs:
-                    logging.warning('title_id (%d) authors != author_names (%s != %s)' %
-                                (book.title_id, author_names_1, author_names_2))
-            # Regardless of any differences, use the author_id way if possible -
-            # as these are a tuple with author names, we can still fall back to those
-            author_bits = real_author_stuff
-        except AttributeError:
-            # Thought: perhaps it might be more elegant to fake the id/name tuple
-            # with id=0 or None here - that would make the code below cleaner?
-            # TODO: I think this counts both real names and aliases, which is
-            # wrong - we should count one or the other, not both
-            author_bits = extract_authors_from_author_field(book.author)
+        author_bits = get_definitive_authors(conn, book)
+        # print(author_bits)
 
         # Use those <<<<<<<<<<<<<<<<<<<< THIS COMMENT MAKES NO SENSE IN THIS CONTEXT?!?!?
         # else do it via the name
@@ -85,12 +53,10 @@ def analyse_authors_by_gender(conn, books, output_function=print,
         # their author record
         for author in author_bits:
             g_s = None
-            if isinstance(author, tuple):
+            if author.id:
                 name = author.name
                 # Try the author_id...
                 try:
-                    #g_s = get_author_gender_from_ids_and_then_name(conn, author.id,
-                    #                                               author.name)
                     g_s = get_author_gender_from_ids_and_then_name_cached(conn, author.id,
                                                                           author.name)
                 except UnableToDeriveGenderError as err:
