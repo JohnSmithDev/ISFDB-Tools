@@ -64,7 +64,7 @@ def get_urls(conn, author_ids, include_priority_values=False):
 
 # TODO: this should probably be in twitter_bio,py
 def get_twitter_urls(urls):
-    return [z for z in urls if 'twitter.com' in z]
+    return [z for z in urls if 'twitter.com/' in z]
 
 
 
