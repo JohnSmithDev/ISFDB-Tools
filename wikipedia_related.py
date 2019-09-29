@@ -83,13 +83,16 @@ def determine_gender_from_categories(categories, reference=None):
     # Keep these in alphabetic order to retain sanity
     JOBS = ['artist',
             'blogger',
-            'composer',
+            'comedian', 'composer',
+            'dramatist',
             'essayist',
-            'feminist',
+            'feminist', 'film actor',
+            'illustrator',
             'journalist',
             'novelist',
-            'painter', 'people', 'poet',
-            'screenwriter', 'singer',
+            'painter', 'people', 'playwright', 'poet',
+            'radio actor',
+            'screenwriter', 'singer', 'suicide',
             'writer']
 
     JOB_REGEX_BIT = '(%s)s?' % ('|'.join(JOBS))
