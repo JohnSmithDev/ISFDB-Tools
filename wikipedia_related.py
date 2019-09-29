@@ -82,13 +82,14 @@ def determine_gender_from_categories(categories, reference=None):
     """
     # Keep these in alphabetic order to retain sanity
     JOBS = ['artist',
-            'blogger',
+            'biographers', 'blogger',
             'comedian', 'composer',
             'dramatist',
             'essayist',
             'feminist', 'film actor',
             'illustrator',
             'journalist',
+            'lawyer',
             'novelist',
             'painter', 'people', 'playwright', 'poet',
             'radio actor',
