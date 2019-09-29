@@ -59,6 +59,10 @@ def get_birthplaces_for_pseudonym(conn, author_id):
 
 def get_author_country(conn, filter_args, check_pseudonyms=True,
                        overrides=None):
+
+    if filter_args.exact_author and len(filter_args.exact_author) != 1:
+        raise ArgumentError('get_author_country() only supports a single exact_author argument')
+
     fltr, params = get_filters_and_params_from_args(filter_args)
 
     if overrides is True:
@@ -70,7 +74,7 @@ def get_author_country(conn, filter_args, check_pseudonyms=True,
         # Try to use the override ASAP - if we don't have an exact name, we'll
         # try again later after we get a name from the database
         try:
-            return overrides[filter_args.exact_author]
+            return overrides[filter_args.exact_author[0]]
         except KeyError:
             pass
 
