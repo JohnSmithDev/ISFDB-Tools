@@ -103,15 +103,43 @@ def parse_args(cli_args, description='No description provided',
     args = parser.parse_args(cli_args)
     return args
 
+# TODO: The callers that rely on this should be updated to pass a dict with
+# this in, and then we can make this generic.
+# If the value ends in underscore, then it is a prefix rather than a renaming
+DEFAULT_COLUMN_MAPPINGS = {
+    'year': 'award_'
+}
 
-def get_filters_and_params_from_args(filter_args, column_name_prefixes=None):
+def _generate_prefixed_column_name(column_name, name_mapping):
+    # TODO: this should support alternate column names e.g.
+    # year => copyright_date
+    default_name = DEFAULT_COLUMN_MAPPINGS.get(column_name, '')
+
+    try:
+        actual_name = name_mapping[column_name]
+        if actual_name.endswith('_'):
+            full_name = '%s%s' % (actual_name, column_name)
+        else:
+            full_name = actual_name
+    except KeyError:
+        if default_name:
+            if default_name.endswith('_'):
+                full_name = '%s%s' % (default_name, column_name)
+            else:
+                full_name = default_name
+        else:
+            full_name = column_name
+    return full_name
+
+
+def get_filters_and_params_from_args(filter_args, column_name_mappings=None):
     # This theoretically is generic, but the tablename_foo column names
     # make it less so.  (TODO (maybe): have extra prefix arg?)
     # TODO: this should support a bog-standard Python dict, as well as the
     #            output from parse_args()
 
-    if not column_name_prefixes:
-        column_name_prefixes = {}
+    if not column_name_mappings:
+        column_name_mappings = {}
 
     filters = []
     params = {}
@@ -134,7 +162,9 @@ def get_filters_and_params_from_args(filter_args, column_name_prefixes=None):
 
         'publisher': ('publisher_name', 'pe'),
         'tag': ('tag_name', 'pe'),
-        'year': ('%s_year' % (column_name_prefixes.get('year', 'award')), 'y'),
+
+        # 'year': ('%s_year' % (column_name_prefixes.get('year', 'award')), 'y'),
+        'year': (_generate_prefixed_column_name('year', column_name_mappings), 'y'),
     }
     # pdb.set_trace()
     for prm, (col, variants) in param2column_names.items():
@@ -185,8 +215,8 @@ def get_filters_and_params_from_args(filter_args, column_name_prefixes=None):
                 continue
             if '-' in val:
                 from_year, to_year = val.split('-')
-                params['from_year'] = int(from_year)
-                params['to_year'] = int(to_year)
+                params['from_year'] = (int(from_year)  if from_year else -1000)
+                params['to_year'] = (int(to_year) if to_year else 2999)
                 filters.append('YEAR(%s) BETWEEN :from_year AND :to_year' % (col))
             else:
                 params[prm] = int(val)

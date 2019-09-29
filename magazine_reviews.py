@@ -116,7 +116,7 @@ class ReviewedWork(object):
 
 def get_reviews(conn, args, repeats=RepeatReviewBehaviour.DIFFERENT_MONTHS_ONLY):
     fltr, params = get_filters_and_params_from_args(
-        args, column_name_prefixes={'year': 'pub'})
+        args, column_name_mappings={'year': 'pub_year'})
 
 
     # r_t.title_title and w_t.title_title are probably the same, however
@@ -167,9 +167,6 @@ WHERE pub_id IN (
 
     reviews = reduce(make_list_excluding_duplicates, results, None)
     return sorted(reviews, key=lambda z: z.review_month)
-
-
-
 
 
 if __name__ == '__main__':

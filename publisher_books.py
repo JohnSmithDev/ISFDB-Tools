@@ -93,8 +93,13 @@ class CountrySpecificBook(object):
 
     @property
     def first_publication(self):
-        return min([z.publication_date for z in self.publications
-                         if z.publication_date is not None])
+        pub_dates = [z.publication_date for z in self.publications
+                         if z.publication_date is not None]
+        if pub_dates:
+            return min(pub_dates)
+        else:
+            # e.g. http://www.isfdb.org/cgi-bin/pl.cgi?286626
+            return None
 
     # These next few are to make life easy for my SVG charting code, you
     # probably shouldn't use them in most other circumstances
@@ -103,9 +108,13 @@ class CountrySpecificBook(object):
         return '+'.join(self.authors)
     @property
     def year(self):
-        return self.first_publication.year
+        try:
+            return self.first_publication.year
+        except AttributeError: # if first_publication == None
+            return None
     @property
     def month(self):
+        # Q: does this need protecting against first_publication == None?
         return normalize_month(self.first_publication)
 
     def __repr__(self):
@@ -129,7 +138,7 @@ class CountrySpecificBook(object):
 
 def get_publisher_books(conn, args, countries=None):
     fltr, params = get_filters_and_params_from_args(
-        args, column_name_prefixes={'year': 'pub'})
+        args, column_name_mappings={'year': 'pub_year'})
 
     # Q: maybe this should also join tot titles via pc.title_id?
     # A: Yes, but not for that reason - we need it to exclude INTERIORART,
