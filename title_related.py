@@ -323,7 +323,9 @@ def get_definitive_authors(conn, book):
             author_names_1 = set([z.name for z in real_author_stuff])
             author_names_2 = set(extract_authors_from_author_field(book.author))
             author_diffs = author_names_1.symmetric_difference(author_names_2)
-            if author_diffs:
+            # Don't bother logging this warning if a dummy empty author attribute
+            # was in the book object
+            if book.author and author_diffs:
                 logging.warning('title_id (%d) authors != author_names (%s != %s)' %
                             (book.title_id, author_names_1, author_names_2))
         # Regardless of any differences, use the author_id way if possible -
