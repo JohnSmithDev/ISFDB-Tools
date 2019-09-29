@@ -33,6 +33,9 @@ def create_parser(description, supported_args):
     # PRESUMPTION: if we support the pattern match form, we also want to support
     #              the exact form
     # TODO: I don't think we need/want the "not supported_args or" test
+    # NOTE: anything added here also (probably) needs an implementation in
+    #       get_filters_and_params_from_args() - although this may well just be
+    #       a case of adding it to param2column_names
     if not supported_args or 'a' in low_args:
         parser.add_argument('-a', nargs='?', dest='author',
                             help='Author to search on (pattern match, case insensitive)')
@@ -80,6 +83,12 @@ def create_parser(description, supported_args):
         parser.add_argument('-k', dest='countries', action='append', default=[],
                             help='2-character code for country/countries to filter/report on')
 
+    if not supported_args or 'g' in low_args:
+        parser.add_argument('-g', nargs='?', dest='tag',
+                            help='Tag to search on (pattern match, case insensitive)')
+        parser.add_argument('-G', action='append', dest='exact_tag', default=[],
+                            help='Tag to search on (exact match, case sensitive)')
+
     parser.add_argument('-v', action='store_true', dest='verbose',
                         help='Log verbosely')
     return parser
@@ -109,15 +118,22 @@ def get_filters_and_params_from_args(filter_args, column_name_prefixes=None):
 
     arg_dict = filter_args.__dict__ # Q: Is there another way to do []/.get() style access?
 
+    # What the characters in the second tuple element mean:
+    # e: exact match
+    # g: group exact match (I think this has never been implemented, and 'e'
+    #    allows groups/multiple values to work) TODO: verify and remove if tre
+    # p: pattern
+    # y: year
     param2column_names = {
         'author': ('author_canonical', 'pe'),
         'title': ('title_title', 'pe'),
         # TODO: award should also support award_type_short_name - primarily for BSFA
         'award': ('award_type_name', 'pe'),
         'award_category': ('award_cat_name', 'pe'),
-        'work_types': ('title_ttype', 'g'),
+        'work_types': ('title_ttype', 'g'), # Note prior comment about not implemented!!!!
 
         'publisher': ('publisher_name', 'pe'),
+        'tag': ('tag_name', 'pe'),
         'year': ('%s_year' % (column_name_prefixes.get('year', 'award')), 'y'),
     }
     # pdb.set_trace()
