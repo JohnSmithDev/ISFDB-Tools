@@ -83,3 +83,10 @@ class TestGetAuthorGenderFromIdAndThenName(unittest.TestCase):
         # IIRC, the name is included after human-names: to indicate that it
         # was a derived name
         self.assertEqual('human-names:Andrew A. Anderson', detail)
+
+    def test_male_with_female_pseudonym(self):
+        # See issue 15
+        gender, detail = get_author_gender_from_id_and_then_name(self.conn, 3161,
+                                                                 'Paul Witcover')
+        self.assertEqual('M', gender)
+        self.assertEqual('human-names', detail.split(':')[0])

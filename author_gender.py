@@ -128,6 +128,10 @@ def get_author_gender_from_id_and_then_name(conn, author_id, name):
     try:
         return get_author_gender_from_ids(conn, author_id, reference=name)
     except UnableToDeriveGenderError:
+        if name:
+            ret = gender_response_from_name(name, name)
+            if ret.gender:
+                return ret
         author_aliases = get_author_aliases(conn, author_id)
         for alias in author_aliases:
             ret = gender_response_from_name(alias, name)

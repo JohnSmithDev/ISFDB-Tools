@@ -178,3 +178,9 @@ class TestGetAuthorsForTitle(unittest.TestCase):
         self.assertEqual([AuthorIdAndName(3664, 'Gabriel King')],
                           get_authors_for_title(self.conn, 21043))
 
+    def test_credited_real_credited_author_found_not_pseudonym(self):
+        # See issue #15, which probably isn't relevant here, but seems reasonable
+        # to use as a test case
+        self.assertEqual([AuthorIdAndName(3161, 'Paul Witcover')],
+                          get_authors_for_title(self.conn, 8616))
+
