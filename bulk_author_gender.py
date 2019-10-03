@@ -104,6 +104,12 @@ if __name__ == '__main__':
     for i, row in enumerate(rows, 1):
         authors = get_definitive_authors(conn, Book(row.title_id))
         for j, author in enumerate(authors, 1):
+            if not author.id:
+                # There are a few (six as of Oct 2019) orphaned canonical_author
+                # records.  See https://sourceforge.net/p/isfdb/bugs/739/
+                # and https://github.com/JohnSmithDev/ISFDB-Tools/issues/17 -
+                # but we shall ignore them
+                continue
             # print(row.copyright_date)
             label = '%s (title_id=%d) written by author #%d %s [%s]' % \
                     (row.title_title,
