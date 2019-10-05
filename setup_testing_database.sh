@@ -35,8 +35,6 @@ DUMP_BASE=`basename $DUMP_NAME`
 DATE=`echo $DUMP_BASE | sed 's/backup-MySQL-55-//g'`
 DATABASE=`echo "isfdb-${DATE}" | sed 's/\-/_/g'` # Avoids needing to quote (I think)
 
-# MYSQL_ROOT_USER=$2
-# MYSQL_ROOT_PASSWORD=$3
 
 # echo "$DUMP_NAME $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $DATABASE_DIR"
 
@@ -111,13 +109,8 @@ create_user() {
         echo "= Creating $USER@$HOST ="
         # TODO: don't create user if they already exist (avoids misleading error
         #       messages)
-        # mysql --user=${MYSQL_ROOT_USER} --password=${MYSQL_ROOT_PASSWORD} ${DATABASE} \
-        #       -e "CREATE USER '${USER}'@'${HOST}' IDENTIFIED BY '${USER}';"
         run_mysql_statement "CREATE USER '${USER}'@'${HOST}' IDENTIFIED BY '${USER}';"
         run_mysql_statement "GRANT SELECT ON ${DATABASE}.* TO '${USER}'@'${HOST}';"
-        #mysql --user=${MYSQL_ROOT_USER} --password=${MYSQL_ROOT_PASSWORD} ${DATABASE} \
-        #      -e "GRANT SELECT ON '${DATABASE}.*' TO '${USER}'@'${HOST}';"
-
         echo
     done
 
@@ -131,8 +124,6 @@ create_user readwrite
 for HOST in $HOSTS
 do
     # Q: Is "GRANT ALL" too generous?
-    # mysql --user=${MYSQL_ROOT_USER} --password=${MYSQL_ROOT_PASSWORD} ${DATABASE} \
-        #          -e "GRANT ALL ON ${DATABASE}.* TO 'readwrite'@'${HOST}';"
     run_mysql_statement "GRANT ALL ON ${DATABASE}.* TO 'readwrite'@'${HOST}';"
 done
 
@@ -192,6 +183,6 @@ done
 ###
 for HOST in $HOSTS
 do
-    # I think INSERT is enough?
-    run_mysql_statement "GRANT INSERT ON ${DATABASE}.metadata TO 'readonly'@'${HOST}';"
+    # I think UPDATE is enough?
+    run_mysql_statement "GRANT UPDATE ON ${DATABASE}.metadata TO 'readonly'@'${HOST}';"
 done
