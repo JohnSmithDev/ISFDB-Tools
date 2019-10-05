@@ -247,7 +247,7 @@ def get_series(conn, series, get_child_series=True,
     See get_titles_for_series_id for docs on arguments and return value.
     """
     raw_data = get_titles_for_series_id(conn, series, get_child_series,
-                                        ignore_unnumbered=UnnumberedHandling)
+                                        ignore_unnumbered=ignore_unnumbered)
 
     data = sorted(raw_data, key=sort_by_volume_number)
     return data
