@@ -163,7 +163,7 @@ echo
 ###
 ### (Optionally) convert to InnoDB
 ###
-if [ $CONVERT_TO_INNODB -eq 1]
+if [ $CONVERT_TO_INNODB -eq 1 ]
 then
     # See https://dba.stackexchange.com/questions/35073/modify-all-tables-in-a-database-with-a-single-command/35089
     # for a (probably) better way of doing all the tables
