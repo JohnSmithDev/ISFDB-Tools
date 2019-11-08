@@ -11,6 +11,7 @@ from common import get_connection, parse_args, get_filters_and_params_from_args
 from title_related import get_definitive_authors
 from author_gender import get_author_gender_from_ids_and_then_name_cached
 from isfdb_utils import safe_year_from_date, convert_dateish_to_date
+from gender_analysis import year_data_as_cells
 
 class Book(object):
     def __init__(self, title_id, author=''):
@@ -79,6 +80,61 @@ def get_title_ids_for_year(conn, args, language_filter=17):
     rows = conn.execute(query, params)
     return rows
 
+
+
+def normalize_gender_source(src):
+    # TODO: this should be moved into gender_analysis.py, and used by
+    # analyse_authors_by_gender()
+    if not src:
+        return 'unknown'
+    elif ':' in src:
+        ret, _ = src.split(':', 1)
+        return ret
+    else:
+        return src
+
+def generate_gender_stats(conn, books, period='year', output_function=print):
+
+    gender_counts = Counter()
+    pgs_counts = Counter() # prefix/period/gender/source
+    for i, row in enumerate(books, 1):
+        authors = get_definitive_authors(conn, Book(row.title_id))
+        for j, author in enumerate(authors, 1):
+            if not author.id:
+                # There are a few (six as of Oct 2019) orphaned canonical_author
+                # records.  See https://sourceforge.net/p/isfdb/bugs/739/
+                # and https://github.com/JohnSmithDev/ISFDB-Tools/issues/17 -
+                # but we shall ignore them
+                continue
+            # print(row.copyright_date)
+            dt = convert_dateish_to_date(row.copyright_date)
+            label = '%s (title_id=%d) written by author #%d %s [%s]' % \
+                    (row.title_title,
+                     row.title_id,
+                     j, author, dt)
+            gender, source = get_author_gender_from_ids_and_then_name_cached(conn,
+                                                                             author.id,
+                                                                             author.name)
+            gender_counts[gender] += 1
+            output_function('%4d. %s : %s (source:%s)' % (i, gender, label,
+                                                source))
+            sanitised_source = normalize_gender_source(source)
+            if period == 'year':
+                if gender:
+                    k = (dt.year, gender, sanitised_source)
+                else:
+                    k = (dt.year, 'unknown')
+            else:
+                raise Exception('Dunno how to handle prefix/period "%s"' % (period))
+            pgs_counts[k] += 1
+
+
+
+    output_function(gender_counts)
+    return pgs_counts
+
+
+
 if __name__ == '__main__':
     args = parse_args(sys.argv[1:],
                       description='Report on gender balance for published novels',
@@ -98,29 +154,12 @@ if __name__ == '__main__':
 
     # rows = get_title_ids_for_year(conn, year, max_year, tags=['science fiction'])
     rows = get_title_ids_for_year(conn, args)
+    stats = generate_gender_stats(conn, rows)
 
+    # for k, c in sorted(stats.items()):
+    #     print(k, c)
 
-    gender_counts = Counter()
-    for i, row in enumerate(rows, 1):
-        authors = get_definitive_authors(conn, Book(row.title_id))
-        for j, author in enumerate(authors, 1):
-            if not author.id:
-                # There are a few (six as of Oct 2019) orphaned canonical_author
-                # records.  See https://sourceforge.net/p/isfdb/bugs/739/
-                # and https://github.com/JohnSmithDev/ISFDB-Tools/issues/17 -
-                # but we shall ignore them
-                continue
-            # print(row.copyright_date)
-            label = '%s (title_id=%d) written by author #%d %s [%s]' % \
-                    (row.title_title,
-                     row.title_id,
-                     j, author, convert_dateish_to_date(row.copyright_date))
-            gender, source = get_author_gender_from_ids_and_then_name_cached(conn,
-                                                                             author.id,
-                                                                             author.name)
-            gender_counts[gender] += 1
-            print('%4d. %s : %s (source:%s)' % (i, gender, label,
-                                                source))
-
-    print(gender_counts)
+    cells = year_data_as_cells(stats)
+    for row in cells:
+        print(row)
 
