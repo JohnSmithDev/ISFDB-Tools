@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""
+Statistics on how many award nominees/finalists are series fiction.
+
+This started off with a slightly different aim (what would finalists look
+like if series could not make repeat appearances), which has been abandoned
+for now, but explains why there's some unnecessary code in here.
+"""
 
 from __future__ import division
 
@@ -10,10 +17,12 @@ import re
 import sys
 
 from common import get_connection, parse_args
-from isfdb_utils import pretty_list, padded_plural, pretty_nth
+from isfdb_utils import (pretty_list, padded_plural, pretty_nth,
+                         generate_variant_titles)
 from finalists import get_type_and_filter, get_finalists
 from author_country import get_author_country
-from award_related import  EXCLUDED_AUTHORS
+from award_related import (EXCLUDED_AUTHORS, extract_variant_titles,
+                           extract_authors_from_author_field)
 from title_related import (get_title_details, discover_title_details,
                            get_title_details_from_id)
 
@@ -141,6 +150,7 @@ def output_revised_finalists(finalist_data, reject_repeats=True,
             series_id = title_details['series_id']
             series_num = title_details['title_seriesnum']
             if series_id and not series_num:
+                # print(finalist, series_id, series_num)
                 series_num = UNNUMBERED_SERIES_VOLUME
             if not series_id:
                 pass
@@ -215,13 +225,27 @@ def get_award_and_series(conn, args, level_filter):
         if not af.author or af.author in EXCLUDED_AUTHORS:
             continue
 
+        # Next bit of code was intended for Hugo/Wheel of Time - but fails
+        # because Wheel of Time isn't a book name, so I'll need a different
+        # approach.
+        MIGHT_BE_USEFUL_ONE_DAY = """
+        if not af.title_id:
+            possible_titles = set()
+            for base_title in extract_variant_titles(af.title):
+                possible_titles.update(generate_variant_titles(af.title))
+            possible_authors = extract_authors_from_author_field(af.author)
+            stuff = discover_title_details(conn, possible_authors, possible_titles)
+            pdb.set_trace()
+        """
+
         details = get_title_details_from_id(conn, af.title_id,
                                             extra_columns=['series_id', 'title_seriesnum'],
                                             parent_search_depth=5)
         if not details:
             # Example: Paul Kincaid special Clarke Award in 2006.  This wouldn't
             # be a problem except for the Clarke is (currently) semi-borked with
-            # weird Winner vs Nominees vs Runnerup categories
+            # weird Winner vs Nominees vs Runnerup categories.  UPDATE: I think
+            # the Clarke data is now fixed
             logging.warning('Failed to get details for title_id=%s (%s/%s)' %
                             (af.title_id, af.author, af.title))
         else:
@@ -234,7 +258,8 @@ if __name__ == '__main__':
     typestring, level_filter = get_type_and_filter('finalists')
 
     args = parse_args(sys.argv[1:],
-                      description='Show %s for an award' % (typestring),
+                      description='Show how serialized work appears in the %s for an award' %
+                      (typestring),
                       supported_args='cwy')
 
     conn = get_connection()
