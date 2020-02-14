@@ -3,8 +3,8 @@
 Statistics on how many award nominees/finalists are series fiction.
 
 This started off with a slightly different aim (what would finalists look
-like if series could not make repeat appearances), which has been abandoned
-for now, but explains why there's some unnecessary code in here.
+like if series could not make repeat appearances), which has been abandoned.
+That code has been deleted, but it's in the Git history prior to 2020-02-14
 """
 
 from __future__ import division
@@ -108,20 +108,10 @@ def colourize(title_etc_tuple):
 
 
 
-def get_best_remaining_nominees(qty, extant_finalists, rejected_finalists, all_nominees):
-    ret = []
-    known_titles = [z[0] for z in extant_finalists]
-    known_titles.extend([z[0] for z in rejected_finalists])
-    for nominee in all_nominees:
-        if len(ret) == qty:
-            break
-        # print('Checking %s against %s' % (nominee, extant_finalists))
-        if nominee not in known_titles:
-            ret.append(nominee)
-    return ret
 
 
-def output_revised_finalists(finalist_data, reject_repeats=True,
+
+def output_revised_finalists(finalist_data,
                              output_function=print):
     # BUG/TODO/QUESION: If for example, series X has been honoured in Best Novella,
     # should we allow it for Best Novel?  (e.g. Lady Astronaut)
@@ -136,11 +126,9 @@ def output_revised_finalists(finalist_data, reject_repeats=True,
             relevant_nominees = None
 
         allowed_finalists = []
-        rejected_finalists = []
         for finalist, title_details in finalist_data[ayc_key]:
             series_id = None
             series_num = None
-            ignore_this_one = False
             appearance_number = 0
             if not title_details: # Ugly hack for now
                 continue
@@ -155,21 +143,9 @@ def output_revised_finalists(finalist_data, reject_repeats=True,
             if not series_id:
                 pass
             else:
-                if series_id not in already_honoured_series:
-                    pass
-                elif series_num == UNNUMBERED_SERIES_VOLUME:
-                    # This is allowable e.g. Provenance
-                    pass
-                else:
-                    ignore_this_one = True
-                    # logging.warning('Ignoring %s - series=%d' % (finalist.title,
-                    #                                            series_id))
                 already_honoured_series[series_id].append(year)
                 appearance_number = len(already_honoured_series[series_id])
-            if reject_repeats and ignore_this_one:
-                rejected_finalists.append((finalist.title, series_num, appearance_number))
-            else:
-                allowed_finalists.append((finalist.title, series_num, appearance_number))
+            allowed_finalists.append((finalist.title, series_num, appearance_number))
             volume_counter[series_num] += 1
 
         output_function('== %s %s %s finalists/nominees/shortlist ==' % (award, year, category))
@@ -181,23 +157,7 @@ def output_revised_finalists(finalist_data, reject_repeats=True,
         # for allowed in allowed_finalists[:max_finalists]:
         for allowed in allowed_finalists:
             output_function('* %s' % colourize(allowed))
-        if reject_repeats and len(allowed_finalists) < max_finalists:
-            if relevant_nominees:
-                extras = get_best_remaining_nominees(max_finalists - len(allowed_finalists),
-                                                     allowed_finalists,
-                                                     rejected_finalists,
-                                                     relevant_nominees)
-                for extra in extras:
-                    # TODO: lookup this so that we have real series details
-                    output_function('* %s' % colourize((extra, ROGUE_SERIES, 0)))
-            else:
-                extras = []
-            shortfall = max_finalists - (len(allowed_finalists) + len(extras))
-            if shortfall:
-                output_function('* ... plus %d others (%d rejected due to series prior appearance)' % \
-                                (shortfall, len(rejected_finalists)))
-
-        print()
+        output_function()
 
     render_count_summary(award, category, volume_counter, output_function)
 
@@ -264,5 +224,5 @@ if __name__ == '__main__':
 
     conn = get_connection()
     finalists = get_award_and_series(conn, args, level_filter)
-    output_revised_finalists(finalists, reject_repeats=False)
+    output_revised_finalists(finalists)
 
