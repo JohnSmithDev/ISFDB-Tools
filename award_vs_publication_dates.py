@@ -24,7 +24,7 @@ from publication_history import get_publications_by_country
 from title_related import get_all_related_title_ids
 
 
-def find_earliest_pub_date(pubs, preferred_countries=None):
+def find_earliest_pub_date(pubs, title, preferred_countries=None, ignore_jan_1st=True):
     if not preferred_countries:
         # preferred_countries = ['GB', 'US'] # TODO: this should be determined by award
         preferred_countries = ['US', 'GB'] # TODO: this should be determined by award
@@ -35,7 +35,16 @@ def find_earliest_pub_date(pubs, preferred_countries=None):
             continue
         pub_dates = [z.date for z in pubs[country] if z.date]
         if pub_dates:
-            return min(pub_dates)
+            if ignore_jan_1st:
+                filtered_dates = [z for z in pub_dates if z.month != 1 or z.day != 1]
+                if not filtered_dates:
+                    logging.warning('All dates are Jan 1st for %s?!?  Skipping...'
+                                    % (title))
+                    pdb.set_trace()
+                    return None
+                return min(filtered_dates)
+            else:
+                return min(pub_dates)
     return None
 
 
@@ -78,7 +87,7 @@ if __name__ == '__main__':
         pubs = get_publications_by_country(conn, title_ids)
 
 
-        earliest_pub_date = find_earliest_pub_date(pubs)
+        earliest_pub_date = find_earliest_pub_date(pubs, title=finalist.title)
         if not earliest_pub_date:
             warn('No pub dates found for "%s/%s" (title_id=%d)- ignoring' %
                  (finalist.title, finalist.author, title_id))
