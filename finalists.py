@@ -16,16 +16,15 @@ import sys
 
 from sqlalchemy.sql import text
 
-from common import get_connection, parse_args, get_filters_and_params_from_args
+from common import (get_connection, parse_args, get_filters_and_params_from_args,
+                    create_parser)
 from isfdb_utils import pretty_nth
 from award_related import (BOGUS_AUTHOR_NAMES, DODGY_TITLES_AND_PSEUDO_AUTHORS,
                            EXCLUDED_AUTHORS,
                            load_category_groupings)
 
 
-# Do we need this, or can we use RowProxy directly?
-# UPDATE: Turn it into a class, for the benefit of other code that builds upon this
-AwardFinalist = namedtuple('AwardFinalist',
+XXX_AwardFinalist = namedtuple('XXX_AwardFinalist',
                            'title, author, rank, year, award, category, award_id, title_id')
 
 class AwardFinalist(object):
@@ -39,6 +38,17 @@ class AwardFinalist(object):
         self.category = category
         self.award_id = award_id
         self.title_id = title_id
+
+    @property
+    def dict_for_csv_output(self):
+        return {
+            'year': self.year,
+            'award': self.award,
+            'category': self.category,
+            'rank': self.rank,
+            'author': self.author,
+            'title': self.title
+            }
 
     def __repr__(self):
         return '"%s" by %s (title_id=%s), %s in the %d %s for %s' % \
@@ -133,13 +143,24 @@ if __name__ == '__main__':
     typestring, level_filter = get_type_and_filter(script_name)
 
 
-    args = parse_args(sys.argv[1:],
-                      description='Show %s for an award' % (typestring),
-                      supported_args='cwy')
+    parser = create_parser(description='Show %s for an award' % (typestring),
+                           supported_args='cwy')
+    parser.add_argument('-k', dest='csv_file', nargs='?',
+                        help='Output as CSV to named file (default is human-readable output)')
+
+    args = parse_args(sys.argv[1:], parser=parser)
 
     conn = get_connection()
     award_results = get_finalists(conn, args, level_filter)
-    for row in award_results:
-        print(row)
+    if args.csv_file:
+        from csv import DictWriter
+        with open(args.csv_file, 'w') as outputstream:
+            writer = DictWriter(outputstream, ['year', 'award', 'category',
+                                               'rank', 'author', 'title'])
+            for finalist in award_results:
+                writer.writerow(finalist.dict_for_csv_output)
+    else:
+        for row in award_results:
+            print(row)
 
 
