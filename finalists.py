@@ -146,17 +146,23 @@ if __name__ == '__main__':
     parser = create_parser(description='Show %s for an award' % (typestring),
                            supported_args='cwy')
     parser.add_argument('-k', dest='csv_file', nargs='?',
-                        help='Output as CSV to named file (default is human-readable output)')
+                        help='Output as CSV to named file, no header row'
+                        '(default is human-readable output)')
+    parser.add_argument('-K', dest='csv_file_with_header', nargs='?',
+                        help='Output as CSV to named file, with header row'
+                        '(default is human-readable output)')
 
     args = parse_args(sys.argv[1:], parser=parser)
 
     conn = get_connection()
     award_results = get_finalists(conn, args, level_filter)
-    if args.csv_file:
+    if args.csv_file or args.csv_file_with_header:
         from csv import DictWriter
-        with open(args.csv_file, 'w') as outputstream:
+        with open(args.csv_file or args.csv_file_with_header, 'w') as outputstream:
             writer = DictWriter(outputstream, ['year', 'award', 'category',
                                                'rank', 'author', 'title'])
+            if args.csv_file_with_header:
+                writer.writeheader()
             for finalist in award_results:
                 writer.writerow(finalist.dict_for_csv_output)
     else:
