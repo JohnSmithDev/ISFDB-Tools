@@ -12,20 +12,6 @@ import re
 
 UNKNOWN_COUNTRY = 'XX'
 
-# Keep these next two dicts in alphabetical order to make life easier
-TWO_CHAR_PRICE_PREFIXES = {
-    'A$': 'AU',
-    'C$': 'CA',
-    'DM': 'DE',
-    'KN': 'HR', # Croation kuna - see The Handmaid's Tale
-    'R$': 'BR', # Brazilian real
-}
-TWO_CHAR_PRICE_SUFFIXES = {
-    'FT': 'HU', # Hungarian forint
-    'KN': 'HR', # Croation kuna - see The Handmaid's Tale
-}
-
-
 # As of 2019-05-29, I think these are pre-decimal UK (poss. incorrect formats)
 # and Canadianm $ (poss. non standard).  NB: not a complete list of everything
 STILL_TO_DO = """
@@ -44,6 +30,25 @@ WARNING:root:Dunno know what country price "C22.95" refers to (ref=title_id=5748
 # link it's a legit currency, certainly not if it doesn't have any digits
 # See http://www.isfdb.org/cgi-bin/title.cgi?154242
 UNKNOWN_PRICE_VALUES = {'UNKNOWN', 'NONE', 'NPP'}
+
+# Keep these next two dicts in alphabetical order to make life easier
+TWO_CHAR_PRICE_PREFIXES = {
+    'A$': 'AU',
+    'C$': 'CA',
+    'DM': 'DE',
+    'KN': 'HR', # Croation kuna - see The Handmaid's Tale
+    'KR': 'DK', # Danish Krone - see The Long Tomorrow
+    'LT': 'LT', # Lithuanian Litas - see HP & Goblet of Fire
+    'R$': 'BR', # Brazilian real
+    'TL': 'TR', # Turkish Lira - see Dune
+}
+TWO_CHAR_PRICE_SUFFIXES = {
+    'FT': 'HU', # Hungarian forint
+    'KN': 'HR', # Croation kuna - see The Handmaid's Tale
+    'LV': 'BG', # Bulgarian Lev
+    'TL': 'TR', # Turkish Lira - see This Immortal
+}
+
 
 def derive_country_from_price(raw_price, ref=None):
     """
@@ -76,16 +81,12 @@ def derive_country_from_price(raw_price, ref=None):
          re.match('\-/[\d\-]+', price) or \
          re.match('\d+D', price):
         return 'GB' # Pre-decimalization
-    elif price.startswith('HUF') or \
-         price.endswith('FT'): # Hungarian forint
+    elif price.startswith('HUF'): # Hungarian forint
         return 'HU'
     elif (price.startswith('Z&#322;') or
           price.endswith('Z&#322;') or
           price.endswith('ZLOTYCH')): # Used on Falling Free
         return 'PL' # Polish zloty
-    #elif (price.startswith('KN') or # Croatian kuna
-    #      price.endswith('KN')): # see Handmaid's Tale
-    #    return 'HR'
     elif (price.endswith('DIN.') or # Serbian Dinar - see To Your Scattered Bodies Go
           price.endswith('DIN')): # See The Vor Game
         return 'RS'
@@ -93,15 +94,10 @@ def derive_country_from_price(raw_price, ref=None):
         return 'RO'
     elif price.startswith('K&#269;') or price.endswith('K&#269;'): # Czech koruna
         return 'CZ'
-    elif price.startswith('LEV') or price.endswith('LV'): # Bulgarian Lev
+    elif price.startswith('LEV'): # Bulgarian Lev
         return 'BG'
     elif price.startswith('NIS'): # Israeli new shekel
         return 'IL'
-    elif (price.startswith('TL') or # Turkish Lira - see Dune
-          price.endswith('TL')): # see This Immortal
-        return 'TR'
-    elif price.startswith('KR'): # Danish Krone - see The Long Tomorrow
-        return 'DK'
     elif price.startswith('NOK'): # Norwegian Krone - see There Will Be Time
         return 'NOK'
     elif price.startswith('SEK') or price.endswith('SEK'): # see The Goblin Reservation
@@ -128,8 +124,6 @@ def derive_country_from_price(raw_price, ref=None):
     elif (price.startswith('PTA') or price.endswith('PTA') or
           price.endswith('PESETAS')): # Used on Brittle Innings
         return 'ES' # Peseta IIRC
-    elif price.startswith('LT'): # Lithuanian Litas - see HP & Goblet of Fire
-        return 'LT'
     elif price[0] == '\x80': # Euro symbol
         return 'EU' # Not a country, but will have to do
 
