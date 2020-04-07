@@ -138,19 +138,23 @@ def batch_check_in_memory(list_of_ids, do_fixer_checks=True,
 
     ret = []
     for val in list_of_ids:
-        if check_both_isbn10_and_13 and possible_asin_but_not_isbn(val):
+        if check_both_isbn10_and_13 and not possible_asin_but_not_isbn(val):
             both_isbns = isbn10and13(val)
             matches = [val in all_isfdb_ids for val in both_isbns if val]
-            if matches:
+            if any(matches): # Remember: [False, False] evaluates to True
                 known = True
                 # First match could be the ISBN variant we didn't supply if
                 # ISFDB has both ISBN-10 and ISBN-13,  but no big deal?
-                matched_id = matches[0]
+                matched_id = [z for z in matches if z][0]
+            else:
+                known = False
         else:
             known = val in all_isfdb_ids
             matched_id = val
-        info = {'id': val, 'supplied_id': val, 'matched_id': matched_id,
-                'known': known}
+        info = {'id': val, 'supplied_id': val, 'known': known}
+        if known:
+            info['matched_id'] =  matched_id
+        # pdb.set_trace()
         if not known and do_fixer_checks:
             if possible_asin_but_not_isbn(val):
                 # Try to convert ASIN to ISBN
@@ -225,13 +229,18 @@ if __name__ == '__main__':
         # On my box this takes around 0.6 seconds
         num_vals = 1000000
 
+
+    initialise()
     print()
 
     # Some useful test ISBNs that are known to either ISFDB or Fixer, the latter
     # with various statuses and priorities
-    batch_stats_pedantic(['9781640637344', '1110000001005', '9781975353636',
-                       '9789963536504', '9789123671182'],
-                do_fixer_checks=True, check_both_isbn10_and_13=True)
+    batch_stats_pedantic(['B073NXRMWJ', # Kindle edition of A Very British History
+                          #'9781640637344', '1110000001005', '9781975353636',
+                          #'9789963536504', '9789123671182',
+
+    ],
+                         do_fixer_checks=True, check_both_isbn10_and_13=True)
 
     print()
 
