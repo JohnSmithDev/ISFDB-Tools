@@ -188,7 +188,7 @@ def batch_check_with_stats(vals, do_fixer_checks=True, check_both_isbn10_and_13=
     for item in results:
         if not item['known']:
             unknowns.append(item['supplied_id'])
-        else:
+            # Record any Fixer status
             try:
                 status_counts[item['status']] += 1
             except KeyError:
