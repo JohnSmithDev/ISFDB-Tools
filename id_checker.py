@@ -18,6 +18,7 @@ References:
 
 from datetime import datetime
 import logging
+import os
 import sys
 import time
 
@@ -91,13 +92,18 @@ def batch_check_via_database(vals, output_function=print):
 
 
 if IN_MEMORY_DATA:
-    checker_function = batch_check_in_memory
-    def batch_stats_wrapper(vals):
-        return batch_stats(vals, do_fixer_checks=True,
-                           check_both_isbn10_and_13=True)
+    # Don't run this twice, per
+    # https://stackoverflow.com/questions/9449101/how-to-stop-flask-from-initialising-twice-in-debug-mode
+    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        checker_function = batch_check_in_memory
+        def batch_stats_wrapper(vals):
+            return batch_stats(vals, do_fixer_checks=True,
+                               check_both_isbn10_and_13=True)
 
-    checker_function = batch_check_with_stats
-    initialise()
+        checker_function = batch_check_with_stats
+        print('About to call initialise()...')
+        initialise()
+        print('Returned from initialise().')
 else:
     checker_function = batch_check_via_database
 
