@@ -140,7 +140,7 @@ def batch_check_in_memory(list_of_ids, do_fixer_checks=True,
     for val in list_of_ids:
         if check_both_isbn10_and_13 and not possible_asin_but_not_isbn(val):
             both_isbns = isbn10and13(val)
-            matches = [val in all_isfdb_ids for val in both_isbns if val]
+            matches = [val for val in both_isbns if val in all_isfdb_ids]
             if any(matches): # Remember: [False, False] evaluates to True
                 known = True
                 # First match could be the ISBN variant we didn't supply if
