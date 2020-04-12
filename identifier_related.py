@@ -8,7 +8,12 @@ connection or are otherwise ISFDB-specific - should go in separate modules
 such as isbn_functions.py
 """
 
+from collections import namedtuple
 import re
+
+
+PubTitleAuthorStuff = namedtuple('PubTitleAuthorStuff',
+                                 'pub_id, pub_title, title_id, title, authors')
 
 from sqlalchemy.sql import text
 
@@ -56,3 +61,59 @@ def check_isbn(conn, raw_isbn, check_only_this_isbn=False):
     query = text("""SELECT  * FROM pubs WHERE pub_isbn in :isbns;""")
     results = conn.execute(query, {'isbns': isbns}).fetchall()
     return len(results) > 0
+
+
+def get_authors_and_title_for_isbn(conn, raw_isbn, check_only_this_isbn=False):
+    """
+    Return a tuple/list of the following for the given ISBN:
+    * pub_id    } Only the first one found, if there's more than one pub
+    * pub_title } for this ISBN
+    * title_id
+    * title_title
+    * A list of (author_id, author name)
+
+    Or None for no match, invalid ISBNs, etc
+    """
+
+    isbn = re.sub('[^\dX]', '', raw_isbn.upper())
+    if check_only_this_isbn:
+        isbns = [isbn]
+    else:
+        isbns = isbn10and13(isbn)
+    if not isbns:
+        return None
+
+    query = text("""SELECT p.pub_id, pub_title, t.title_id, t.title_title
+    FROM pubs p
+    LEFT OUTER JOIN pub_content pc ON pc.pub_id = p.pub_id
+    LEFT OUTER JOIN titles t ON pc.title_id = t.title_id
+    WHERE p.pub_isbn in :isbns;""")
+    results = conn.execute(query, {'isbns': isbns}).fetchall()
+
+    if not results:
+        return None
+
+    r = results[0]
+    ret = [r.pub_id, r.pub_title, r.title_id, r.title_title]
+
+    query = text("""SELECT a.author_id, author_canonical
+    FROM canonical_author ca
+    LEFT OUTER JOIN authors a ON a.author_id = ca.author_id
+    WHERE ca.title_id = :title_id;""")
+    results = conn.execute(query, {'title_id': ret[2]}).fetchall()
+    author_stuff = [(z.author_id, z.author_canonical) for z in results]
+
+    ret.append(author_stuff)
+    return PubTitleAuthorStuff(*ret)
+
+if __name__ == '__main__':
+    import sys
+    from common import (get_connection)
+    conn = get_connection()
+
+    for i, isbn in enumerate(sys.argv[1:]):
+        if i > 0:
+            print()
+        print(get_authors_and_title_for_isbn(conn, isbn))
+
+
