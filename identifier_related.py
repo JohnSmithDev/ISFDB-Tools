@@ -15,6 +15,8 @@ import re
 PubTitleAuthorStuff = namedtuple('PubTitleAuthorStuff',
                                  'pub_id, pub_title, title_id, title, authors')
 
+ASIN_POSSIBLE_INITIAL_CHARACTERS = 'B' # presumably C etc will be added eventually?
+
 from sqlalchemy.sql import text
 
 from isbn_functions import isbn10and13
@@ -63,6 +65,63 @@ def check_isbn(conn, raw_isbn, check_only_this_isbn=False):
     return len(results) > 0
 
 
+def _get_authors_and_title_for_identifiers(conn, identifiers,
+                                           filters, extra_joins=None):
+    """
+    Return a tuple/list of the following for the given identifiers:
+    * pub_id    } Only the first one found, if there's more than one pub
+    * pub_title } for this ISBN
+    * title_id
+    * title_title
+    * A list of (author_id, author name)
+
+    filters should be a list of strings of the form
+    "table.column_name IN :identifiers"
+
+    extra_joins should (iff needed) be a list of strings of the form
+    "LEFT OUTER JOIN tablename x ON x.some_id = y.some_id"
+
+    It is assumed that the identifiers have had basic sanitization e.g.
+    removal of hyphens or spaces in ISBNs, and that any variants that should
+    be checked (e.g. ISBN-10 and ISBN-13 forms) are provided within identifiers)
+
+    Returns None for no match
+    """
+
+    if not extra_joins:
+        extra_joins = []
+    joined_joins = '\n  '.join(extra_joins)
+
+    if isinstance(filters, str):
+        # Convenience in case we forget to pass a list
+        filter = filters
+    else:
+        filter = ' AND '.join(filters)
+
+    query = text(f"""SELECT p.pub_id, pub_title, t.title_id, t.title_title
+    FROM pubs p
+    LEFT OUTER JOIN pub_content pc ON pc.pub_id = p.pub_id
+    LEFT OUTER JOIN titles t ON pc.title_id = t.title_id
+    {joined_joins}
+    WHERE {filter};""")
+    results = conn.execute(query, {'identifiers': identifiers}).fetchall()
+
+    if not results:
+        return None
+
+    r = results[0]
+    ret = [r.pub_id, r.pub_title, r.title_id, r.title_title]
+
+    query = text("""SELECT a.author_id, author_canonical
+    FROM canonical_author ca
+    LEFT OUTER JOIN authors a ON a.author_id = ca.author_id
+    WHERE ca.title_id = :title_id;""")
+    results = conn.execute(query, {'title_id': ret[2]}).fetchall()
+    author_stuff = [(z.author_id, z.author_canonical) for z in results]
+
+    ret.append(author_stuff)
+    return PubTitleAuthorStuff(*ret)
+
 def get_authors_and_title_for_isbn(conn, raw_isbn, check_only_this_isbn=False):
     """
     Return a tuple/list of the following for the given ISBN:
@@ -83,37 +142,46 @@ def get_authors_and_title_for_isbn(conn, raw_isbn, check_only_this_isbn=False):
     if not isbns:
         return None
 
-    query = text("""SELECT p.pub_id, pub_title, t.title_id, t.title_title
-    FROM pubs p
-    LEFT OUTER JOIN pub_content pc ON pc.pub_id = p.pub_id
-    LEFT OUTER JOIN titles t ON pc.title_id = t.title_id
-    WHERE p.pub_isbn in :isbns;""")
-    results = conn.execute(query, {'isbns': isbns}).fetchall()
+    return _get_authors_and_title_for_identifiers(conn, isbns,
+                                                  'p.pub_isbn IN :identifiers')
 
-    if not results:
-        return None
 
-    r = results[0]
-    ret = [r.pub_id, r.pub_title, r.title_id, r.title_title]
+def get_authors_and_title_for_asin(conn, raw_asin):
+    """
+    Return a tuple/list of the following for the given ASIN:
+    * pub_id    } Only the first one found, if there's more than one pub
+    * pub_title } for this ASIN
+    * title_id
+    * title_title
+    * A list of (author_id, author name)
 
-    query = text("""SELECT a.author_id, author_canonical
-    FROM canonical_author ca
-    LEFT OUTER JOIN authors a ON a.author_id = ca.author_id
-    WHERE ca.title_id = :title_id;""")
-    results = conn.execute(query, {'title_id': ret[2]}).fetchall()
-    author_stuff = [(z.author_id, z.author_canonical) for z in results]
+    Or None for no match, invalid ASIN, etc
 
-    ret.append(author_stuff)
-    return PubTitleAuthorStuff(*ret)
+    IMPORTANT NOTE: This will not match ISBN-10s that Amazon uses as ASINs for
+    (some?) physical books.
+    """
+
+    asin = re.sub('\W', '', raw_asin.upper())
+    return _get_authors_and_title_for_identifiers(
+        conn, [asin],
+        ['i.identifier_value IN :identifiers',
+         "it.identifier_type_name IN ('ASIN', 'Audible-ASIN')"],
+        ['LEFT OUTER JOIN identifiers i ON i.pub_id = p.pub_id',
+         'LEFT OUTER JOIN identifier_types it ON i.identifier_type_id = it.identifier_type_id'])
+
+
 
 if __name__ == '__main__':
     import sys
     from common import (get_connection)
     conn = get_connection()
 
-    for i, isbn in enumerate(sys.argv[1:]):
+    for i, identifier in enumerate(sys.argv[1:]):
         if i > 0:
             print()
-        print(get_authors_and_title_for_isbn(conn, isbn))
+        if identifier[0] in ASIN_POSSIBLE_INITIAL_CHARACTERS:
+            print(get_authors_and_title_for_asin(conn, identifier))
+        else:
+            print(get_authors_and_title_for_isbn(conn, identifier))
 
 
