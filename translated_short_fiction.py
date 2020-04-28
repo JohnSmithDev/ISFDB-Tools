@@ -56,6 +56,10 @@ def render(data, output_function=print):
     output_function('</head><body>')
     output_function('<h1>Short fiction translated into English</h1>')
     output_function('<p>Based on data stored in <a href="http://www.isfdb.org">ISFDB</a>.</p>')
+    output_function('<p>Source code to generate this page is '
+                    '<a href="https://github.com/JohnSmithDev/ISFDB-Tools/blob'
+                    '/master/translated_short_fiction.py">here</a>.</p>')
+
 
     output_function('<table>')
     output_function('<thead><tr><th>English title</th><th>English pub/copyright date</th>')
