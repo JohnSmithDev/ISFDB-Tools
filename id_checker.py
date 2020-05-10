@@ -102,8 +102,9 @@ if IN_MEMORY_DATA:
 
         checker_function = batch_check_with_stats
         print('About to call initialise()...')
-        initialise()
+        initialise(conn)
         print('Returned from initialise().')
+        conn.close()
 else:
     checker_function = batch_check_via_database
 
