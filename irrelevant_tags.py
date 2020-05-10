@@ -21,6 +21,8 @@ ISFDB_IRRELEVANT_TAGS = {
     "biography & autobiography / entertainment & performing arts",
     "biography & autobiography / science & technology",
     "biography & autobiography / general",
+    "science, technology & medicine biographies",
+    "science, technology & medicine autobiographies",
 
     "business strategy", "business & management", "business",
     "business/economics", "economic history", "economics: professional & general",
@@ -39,23 +41,34 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "entertainment & performing arts", "other performing arts",
 
+    "fiction / romance / historical / 20th century",
+    "fiction and related items / historical fiction",
+
     "great britain/british isles",
 
     "history", "historical events & topics", "general & world history",
-    "history / europe / general", "historical periods",
+
+    "historical periods", "history / general",
     "postwar 20th century history: 1945 to 2000", "history / world",
 
+    "european history", "history / europe / general",
+    "british & irish history",
 
+    "history / united states / general", "biography & autobiography / historical",
+
+    "history / africa / north", "history / africa / east",
 
     "information technology industries", "social networking", "social network",
     "internet advertising", "e-commerce", "internet - general",
+    "business & economics / industries / computers & information technology",
 
     "international human rights law", "law / general", "legal history"
 
-    "management",
+    "management", "finance", "decision making",
 
-    "military intelligence", "military - aviation",
-    "wars & conflicts (other)",
+    "military intelligence", "military - aviation", "military history",
+    "wars & conflicts (other)", "history / military / united states",
+    "history / military / general", "history / military / special forces",
 
     "music / individual composer & musician",
 
@@ -65,13 +78,20 @@ ISFDB_IRRELEVANT_TAGS = {
     "political science", "government & constitution",
     "political science/comparative politics", "political science / general",
     "politics & government", "political corruption",
-    'international relations',
+    "international relations", "political science & theory",
+    "anf: politics and government", "political science / world / european",
+    "society and social sciences / politics and government",
+    "political science / political process / political parties",
+    "political science / political ideologies / nationalism & patriotism",
+    "political science / political freedom",
+    "political control & freedoms",
 
     "great britain/politics and government",
     "american government", "government & constitution",
 
     "press & journalism", "media studies", "anf: media studies",
     "social science / media studies",
+    "social & cultural history",
 
     "psychology", "sociology", "philosophy", "social psychology",
     "psychological testing & measurement", "popular psychology",
