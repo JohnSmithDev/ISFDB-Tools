@@ -103,7 +103,7 @@ def _get_authors_and_title_for_identifiers(conn, identifiers,
     LEFT OUTER JOIN pub_content pc ON pc.pub_id = p.pub_id
     LEFT OUTER JOIN titles t ON pc.title_id = t.title_id
     {joined_joins}
-    WHERE {filter};""")
+    WHERE p.pub_ctype = t.title_ttype AND {filter};""")
     results = conn.execute(query, {'identifiers': identifiers}).fetchall()
 
     if not results:
@@ -121,6 +121,7 @@ def _get_authors_and_title_for_identifiers(conn, identifiers,
 
     ret.append(author_stuff)
     return PubTitleAuthorStuff(*ret)
+
 
 def get_authors_and_title_for_isbn(conn, raw_isbn, check_only_this_isbn=False):
     """
