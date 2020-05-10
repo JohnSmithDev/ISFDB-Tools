@@ -51,7 +51,6 @@ asin_mappings = {}
 
 
 
-conn = get_connection()
 
 # TODO: make this an Enum?
 FIXER_STATUS_CODES = ['Not processed', # 0
@@ -62,7 +61,7 @@ FIXER_STATUS_CODES = ['Not processed', # 0
                       ]
 
 
-def load_ids(output_function=print):
+def load_ids(conn, output_function=print):
     all_isfdb_ids = set()
     start = time.time()
     output_function('Loading ASINs and ISBNs into memory...')
@@ -214,9 +213,9 @@ def batch_stats_pedantic(vals, do_fixer_checks, check_both_isbn10_and_13,
                        output_function, label)
 
 
-def initialise():
+def initialise(conn):
     global all_isfdb_ids, isbn_mappings, asin_mappings
-    all_isfdb_ids = load_ids()
+    all_isfdb_ids = load_ids(conn)
     isbn_mappings, asin_mappings = load_fixer_ids()
 
 
@@ -229,8 +228,9 @@ if __name__ == '__main__':
         # On my box this takes around 0.6 seconds
         num_vals = 1000000
 
+    conn = get_connection()
 
-    initialise()
+    initialise(conn)
     print()
 
     # Some useful test ISBNs that are known to either ISFDB or Fixer, the latter
