@@ -26,6 +26,8 @@ The copyright details from the header of library.py:
 
 """
 
+import re
+
 def toISBN10(isbn13):
     if len(isbn13) != 13:
         return isbn13
@@ -65,6 +67,13 @@ def toISBN13(isbn):
         return newISBN
     except:
         return isbn
+
+
+
+def normalized_isbn13(txt):
+    clean_txt = re.sub('[^0-9X]', '', txt)
+    return toISBN13(clean_txt)
+
 
 def isbn10and13(isbn):
     """
