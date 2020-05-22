@@ -13,7 +13,7 @@ import re
 
 
 PubTitleAuthorStuff = namedtuple('PubTitleAuthorStuff',
-                                 'pub_id, pub_title, title_id, title, authors')
+                                 'pub_id, pub_title, title_id, title, authors, identifiers')
 
 ASIN_POSSIBLE_INITIAL_CHARACTERS = 'B' # presumably C etc will be added eventually?
 
@@ -98,7 +98,7 @@ def _get_authors_and_title_for_identifiers(conn, identifiers,
     else:
         filter = ' AND '.join(filters)
 
-    query = text(f"""SELECT p.pub_id, pub_title, t.title_id, t.title_title
+    query = text(f"""SELECT p.pub_id, pub_title, t.title_id, t.title_title, p.pub_isbn
     FROM pubs p
     LEFT OUTER JOIN pub_content pc ON pc.pub_id = p.pub_id
     LEFT OUTER JOIN titles t ON pc.title_id = t.title_id
@@ -120,6 +120,7 @@ def _get_authors_and_title_for_identifiers(conn, identifiers,
     author_stuff = [(z.author_id, z.author_canonical) for z in results]
 
     ret.append(author_stuff)
+    ret.append([r.pub_isbn]) # A list, because TODO we need to add any ASIN as well
     return PubTitleAuthorStuff(*ret)
 
 
