@@ -23,9 +23,12 @@ ISFDB_IRRELEVANT_TAGS = {
     "biography & autobiography / general",
     "science, technology & medicine biographies",
     "science, technology & medicine autobiographies",
+    "biography and true stories / true stories / true crime",
 
     "business strategy", "business & management", "business",
     "business/economics", "economic history", "economics: professional & general",
+    "business & ecomomics / entrepreneurship",
+    "business & ecomomics / knowledge capital",
 
     "car racing", "automobile racing", "motor sports", "formula 1 & grand prix",
 
@@ -33,10 +36,13 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "crime & mystery", "crime & mystery fiction", "crime",
 
+    "historical geology", "natural history",
+
     "earth sciences", "geography", "environment", "law / land use",
     "environment",
     "natural history", "natural history: plants",
     "nature / plants / flowers", "nature / plants / trees",
+    "nature / ecology", "applied ecology",
 
 
     "entertainment & performing arts", "other performing arts",
@@ -46,13 +52,22 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "great britain/british isles",
 
+    "health & fitness / healthy living", "health & fitness / longetivity",
+
+
     "history", "historical events & topics", "general & world history",
+    "anf: history",
 
     "historical periods", "history / general",
     "postwar 20th century history: 1945 to 2000", "history / world",
+    "postwar 20th century history",
+    "history / expeditions & discoveries",
 
+    "british & irish history", "history / europe / great britain",
+    "history / europe / great britain / 21st century",
+
+    "history / russia & the former soviet union",
     "european history", "history / europe / general",
-    "british & irish history",
 
     "history / united states / general", "biography & autobiography / historical",
 
@@ -61,6 +76,8 @@ ISFDB_IRRELEVANT_TAGS = {
     "information technology industries", "social networking", "social network",
     "internet advertising", "e-commerce", "internet - general",
     "business & economics / industries / computers & information technology",
+    "computing and information technology / digital lifestyle",
+    "computers / social aspects",
 
     "international human rights law", "law / general", "legal history"
 
@@ -69,8 +86,12 @@ ISFDB_IRRELEVANT_TAGS = {
     "military intelligence", "military - aviation", "military history",
     "wars & conflicts (other)", "history / military / united states",
     "history / military / general", "history / military / special forces",
+    "military / korean war", "war & defence operations",
+    "history / military / world war ii",
 
-    "music / individual composer & musician",
+    "music / individual composer & musician", "rock & pop music",
+    "composers & songwriters", "individual composers & musicians",
+    "music styles & genres", "specific bands & groups",
 
     "poetry, drama & criticism",
 
@@ -85,6 +106,7 @@ ISFDB_IRRELEVANT_TAGS = {
     "political science / political ideologies / nationalism & patriotism",
     "political science / political freedom",
     "political control & freedoms",
+    "anf: society", "social discrimination & equal treatment",
 
     "great britain/politics and government",
     "american government", "government & constitution",
@@ -98,6 +120,7 @@ ISFDB_IRRELEVANT_TAGS = {
     "group or collective psychology", "sociology - general",
 
     "privacy & data protection",
+    "social science / privacy & surveillance",
 
     "religion / religion", "religion: comparative",
 
@@ -107,6 +130,8 @@ ISFDB_IRRELEVANT_TAGS = {
     "popular mathematics", "probability & statistics",
     "anf: popular science and mathematics",
     "testing & measurement", "science / history", "science / ethics",
+
+    "science / life sciences / evolution",
 
     "social activists",
 
