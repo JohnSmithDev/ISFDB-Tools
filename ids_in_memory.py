@@ -50,6 +50,7 @@ isbn_mappings = {}
 asin_mappings = {}
 
 
+MAX_UNKNOWNS_TO_LOG = 10 # was 3, but this doesn't help debugging
 
 
 # TODO: make this an Enum?
@@ -194,7 +195,7 @@ def batch_check_with_stats(vals, do_fixer_checks=True, check_both_isbn10_and_13=
                 pass
     output_function('Checked %d %s IDs in %.3f seconds' % (len(vals), label, duration))
     if unknowns:
-        unknown_str = '(%s ...)' % (', '.join(unknowns[:3]))
+        unknown_str = '(%s ...)' % (', '.join(unknowns[:MAX_UNKNOWNS_TO_LOG]))
     else:
         unknown_str = ''
     output_function('%d were not known to ISFDB %s' % (len(unknowns), unknown_str))
