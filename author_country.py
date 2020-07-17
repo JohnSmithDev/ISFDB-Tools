@@ -17,6 +17,10 @@ from common import (get_connection, parse_args, get_filters_and_params_from_args
 COUNTRY_HACK_DIR = os.path.join(os.path.dirname(__file__), 'country_hacks')
 COUNTRY_OVERRIDES = glob(os.path.join(COUNTRY_HACK_DIR, '*'))
 
+
+class AuthorNotFoundError(Exception):
+    pass
+
 def load_hacks(filenames=None):
     if not filenames:
         filenames = COUNTRY_OVERRIDES
@@ -57,8 +61,14 @@ def get_birthplaces_for_pseudonym(conn, author_id):
         return [None]
 
 
+
 def get_author_country(conn, filter_args, check_pseudonyms=True,
-                       overrides=None):
+                       overrides=None, error_if_not_found=False):
+    """
+    It's probably best to set error_if_not_found=True, so that you can distinguish
+    between unmatched authors and matched authors with no birthplace info, but the
+    default behaviour is to ensure older code using this function doesn't break.
+    """
 
     if filter_args.exact_author and len(filter_args.exact_author) != 1:
         raise ArgumentError('get_author_country() only supports a single exact_author argument')
@@ -78,7 +88,6 @@ def get_author_country(conn, filter_args, check_pseudonyms=True,
         except KeyError:
             pass
 
-
     query = text("""select author_id, author_canonical, author_birthplace
       from authors a
       where %s""" % fltr)
@@ -86,7 +95,10 @@ def get_author_country(conn, filter_args, check_pseudonyms=True,
 
     if not results:
         # logging.error('No author found matching %s' % (filter_args))
-        return None
+        if error_if_not_found:
+            raise AuthorNotFoundError('Did not find author in database')
+        else:
+            return None
     elif len(results) > 1:
         raise AmbiguousArgumentsError('Multiple (%d) authors matching %s: %s...' %
                                         (len(results), filter_args, results[:5]))
@@ -102,6 +114,21 @@ def get_author_country(conn, filter_args, check_pseudonyms=True,
             if bps:
                 return ','.join([get_country(z, ref=author_name) for z in bps])
         return get_country(birthplace, ref=author_name)
+
+
+class FakeArgs(object):
+    def __init__(self, author_name):
+        self.exact_author = [author_name]
+
+def get_exact_author_country(conn, author, check_pseudonyms=True,
+                             overrides=None):
+    """
+    Variant of get_author_country() intended for use when this is called
+    externally
+    """
+    args = FakeArgs(author)
+    return get_author_country(conn, args, check_pseudonyms, overrides,
+                              error_if_not_found=True)
 
 
 
