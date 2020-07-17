@@ -54,12 +54,26 @@ MAX_UNKNOWNS_TO_LOG = 10 # was 3, but this doesn't help debugging
 
 
 # TODO: make this an Enum?
+# I think these codes are for the pre July 2020 files; the newer files have
+# codes with different meanings?
 FIXER_STATUS_CODES = ['Not processed', # 0
                       'In ISFDB', # 1
                       'Submitted', # 2
                       'Suspended', # 3
                       'Rejected' # 4
                       ]
+NEW_FIXER_STATUS_CODES = ['Insufficient information', # 0
+                          'High priority', # 1 : major publisher/established author
+                          'Medium priority', # 2 : self pub/minor author already known
+                          'Low priority', # 3 : unknown self-pub author
+                          'Already uploaded', # 4
+                          'Pending upload', # 5
+                          'Unused #6',
+                          'Unused #7',
+                          'Submitted to server', #8
+                          'Manually rejected' #9
+                          ]
+
 
 
 def load_ids(conn, output_function=print):
@@ -94,7 +108,16 @@ def load_fixer_ids(output_function=print):
     for line in open(os.path.join(FIXER_DUMP_DIR, 'AllISBNs.txt')):
         if line.endswith('\n'):
             line = line[:-1]
-        isbn, raw_status, raw_priority = line.split('|')
+        bits = line.split('|')
+        if len(bits) == 3:
+            # Older format (early 2020)
+            isbn, raw_status, raw_priority = bits
+        else:
+            # Newer foramt (July 2020 onwards)
+            # I don't *think* we ever did anything useful with the status, so
+            # no big deal faking it.
+            isbn, raw_priority = bits
+            raw_status = 0
         isbn_mappings[isbn] = (int(raw_status),
                                (int(raw_priority) if raw_priority != '' else None))
     output_function('Loaded %d Fixer ISBNs in %.3f seconds, size=%.1fMB' %
@@ -108,7 +131,15 @@ def load_fixer_ids(output_function=print):
     for line in open(os.path.join(FIXER_DUMP_DIR, 'AllASINs.txt')):
         if line.endswith('\n'):
             line = line[:-1]
-        asin, isbn = line.split('|')
+        bits = line.split('|')
+        if len(bits) == 2:
+            # Older format (early 2020)
+            asin, isbn = bits
+        else:
+            # Newer format (July 2020 onwards)
+            # Middle field is a 0 or 1 boolean "disposition flag" indicating
+            # whether submitted or not.  For now, we don't care about it
+            asin, _, isbn = bits
         asin_mappings[asin] = isbn or None
 
     output_function('Loaded %d Fixer ASINs in %.3f seconds, size=%.1fMB' %
@@ -203,7 +234,7 @@ def batch_check_with_stats(vals, do_fixer_checks=True, check_both_isbn10_and_13=
         if status_counts:
             output_function('Of the umknowns, the following are known to Fixer:')
             for k, c in sorted(status_counts.items()):
-                output_function('* Status "%s" (%d) : %d' % (FIXER_STATUS_CODES[k], k, c))
+                output_function('* Status "%s" (%d) : %d' % (NEW_FIXER_STATUS_CODES[k], k, c))
         else:
             output_function('None of the unknowns were known to Fixer')
     return results
