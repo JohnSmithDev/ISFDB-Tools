@@ -42,8 +42,11 @@ ISFDB_IRRELEVANT_TAGS = {
     "environment",
     "natural history", "natural history: plants",
     "nature / plants / flowers", "nature / plants / trees",
-    "nature / ecology", "applied ecology",
-
+    "nature / ecology", "applied ecology", "nature / animals / mammals",
+    "life sciences / zoology and animal sciences / animal behaviour",
+    "science / life sciences / biophysics",
+    "science / life sciences / biology",
+    "science / life sciences / developmental biology",
 
     "entertainment & performing arts", "other performing arts",
 
@@ -77,7 +80,8 @@ ISFDB_IRRELEVANT_TAGS = {
     "internet advertising", "e-commerce", "internet - general",
     "business & economics / industries / computers & information technology",
     "computing and information technology / digital lifestyle",
-    "computers / social aspects",
+    "computers / social aspects", "computing & information technology",
+    "microcomputers - history",
 
     "international human rights law", "law / general", "legal history"
 
@@ -118,11 +122,13 @@ ISFDB_IRRELEVANT_TAGS = {
     "psychology", "sociology", "philosophy", "social psychology",
     "psychological testing & measurement", "popular psychology",
     "group or collective psychology", "sociology - general",
+    "psychology / creative ability", "science / cognitive science",
 
     "privacy & data protection",
     "social science / privacy & surveillance",
 
     "religion / religion", "religion: comparative",
+    "history of religion",
 
     "contemporary romance",
 
@@ -131,17 +137,20 @@ ISFDB_IRRELEVANT_TAGS = {
     "anf: popular science and mathematics",
     "testing & measurement", "science / history", "science / ethics",
 
-    "science / life sciences / evolution",
+    "science / life sciences / evolution", "popular science",
+    "science / general", "life sciences",
+    "science / physics / quantum theory",
 
     "social activists",
 
     "society & culture", "cultural studies",
     "social science / anthropology / cultural & social",
 
-
     "spiritualism", "self-help",
 
     "thriller & adventure",
+
+    "travel / general", "travel & holiday",
 
     "anf: transport", "transport industries"
     }
