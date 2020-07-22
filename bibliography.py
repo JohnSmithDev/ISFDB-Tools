@@ -205,7 +205,8 @@ def postprocess_bibliography(raw_rows):
     return sorted(titles_to_first_pub.items(), key=lambda z: z[1])
 
 def get_author_bibliography(conn, author_names):
-    author_ids = get_author_alias_ids(conn, author_names)
+    # author_ids = get_author_alias_ids(conn, author_names)
+    author_ids = get_author_alias_ids(conn, author_names[0])
     if not author_ids:
         raise AmbiguousArgumentsError('Do not know author "%s"' % (author_names))
     bibliography = get_bibliography(conn, author_ids, author_names)
