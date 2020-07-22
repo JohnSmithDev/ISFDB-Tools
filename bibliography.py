@@ -42,11 +42,6 @@ class DuplicateBookError(DuplicatedOrMergedRecordError):
     pass
 
 class BookByAuthor(object):
-    # Older code, don't think we need this now
-    # _title_id_to_titles = defaultdict(set)
-    # _publication_dict = defaultdict(set) # title_id => {dates}
-    # _titles_to_first_pub = {}
-
     # _tid_to_bba maps title_ids to BookByAuthor, and is used to merge duplicates
     # (as determined by common title_id)
     _tid_to_bba = {}
@@ -127,7 +122,15 @@ class BookByAuthor(object):
     def __repr__(self):
         return '%s [%d]' % (self.title, self.year)
 
-def get_bibliography(conn, author_ids, author_names):
+def get_bibliography(conn, author_ids, author_name):
+    """
+    Given a list of author_ids, return a sorted bibliography.
+
+    author_name is a bit of a hack to avoid having to do another lookup on
+    the authors table (which *might* have complications with multiple matches
+    e.g. an author with variant names, that a book has been issued under both
+    variants?)
+    """
     # title_copyright is not reliably populated, hence the joining to pubs
     # for their date as well.
     # Or is that just an artefact of 0 day-of-month causing them to be output as None?
@@ -152,26 +155,12 @@ def get_bibliography(conn, author_ids, author_names):
                                 'title_languages': VALID_LANGUAGE_IDS})
     # return postprocess_bibliography(rows)
 
-    EARLIER = """
-    def make_list_excluding_duplicates(accumulator, new_value):
-        if not accumulator:
-            accumulator = []
-        try:
-            accumulator.append(BookByAuthor(new_value,
-                                            allow_duplicates=False))
-        except DuplicateBookError:
-            pass
-        return accumulator
-
-    books = reduce(make_list_excluding_duplicates, rows, None)
-    """
-
     def make_bba(stuff, allow_duplicates):
         """
         Curried wrapper to BookByAuthor class.
         The use of author_names[0] is a bit of a hack - TODO: better
         """
-        return BookByAuthor(stuff, author=author_names[0],
+        return BookByAuthor(stuff, author=author_name,
                             allow_duplicates=allow_duplicates)
 
     books = make_list_excluding_duplicates(
@@ -206,10 +195,11 @@ def postprocess_bibliography(raw_rows):
 
 def get_author_bibliography(conn, author_names):
     # author_ids = get_author_alias_ids(conn, author_names)
-    author_ids = get_author_alias_ids(conn, author_names[0])
+    author_name = author_names[0]
+    author_ids = get_author_alias_ids(conn, author_name)
     if not author_ids:
         raise AmbiguousArgumentsError('Do not know author "%s"' % (author_names))
-    bibliography = get_bibliography(conn, author_ids, author_names)
+    bibliography = get_bibliography(conn, author_ids, author_name)
     return bibliography
 
 if __name__ == '__main__':
