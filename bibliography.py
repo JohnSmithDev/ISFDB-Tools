@@ -15,6 +15,7 @@ Known bugs/issues:
 
 from collections import defaultdict, Counter
 from functools import reduce, lru_cache
+import logging
 import pdb
 import sys
 
@@ -30,6 +31,9 @@ from deduplicate import (DuplicatedOrMergedRecordError,
 # See language table, titles.title_language
 VALID_LANGUAGE_IDS = [17]
 
+DEFAULT_TITLE_TYPES = ['NOVEL']
+
+
 def safe_min(values):
     valid_values = [z for z in values if z is not None]
     if not valid_values:
@@ -42,12 +46,26 @@ class DuplicateBookError(DuplicatedOrMergedRecordError):
     pass
 
 class BookByAuthor(object):
+    """
+    Mainly a data class for all the books (and maybe other titles/pubs?) by an
+    author, but with some useful helper properties.
+    """
     # _tid_to_bba maps title_ids to BookByAuthor, and is used to merge duplicates
     # (as determined by common title_id)
     _tid_to_bba = {}
 
+    @classmethod
+    def reset_duplicate_cache(cls):
+        """
+        If you are processing multiple bibliographies, possibly for the same
+        or related author (e.g. variant, maybe co-author too), you need to clear
+        out the cache, otherwise later queries for bibliographies will return
+        zero or reduced rows.
+        """
+        cls._tid_to_bba = {}
 
     def __init__(self, row, author='Author', allow_duplicates=False):
+        # Q: I don't see that allow_duplicates is ever used?
         self.title_id = row['title_id']
         self.parent_id = row['title_parent']
         self.title_title = row['title_title'] # Use the .title property over this
@@ -122,14 +140,12 @@ class BookByAuthor(object):
     def __repr__(self):
         return '%s [%d]' % (self.title, self.year)
 
-def get_bibliography(conn, author_ids, author_name):
-    """
-    Given a list of author_ids, return a sorted bibliography.
 
-    author_name is a bit of a hack to avoid having to do another lookup on
-    the authors table (which *might* have complications with multiple matches
-    e.g. an author with variant names, that a book has been issued under both
-    variants?)
+def get_raw_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITLE_TYPES):
+    """
+    Pulled out of get_bibliography() when testing where a bug was occurring;
+    probably not amazingly useful without the post-processing, but it's here
+    if you want it...
     """
     # title_copyright is not reliably populated, hence the joining to pubs
     # for their date as well.
@@ -151,9 +167,23 @@ def get_bibliography(conn, author_ids, author_name):
       AND title_language IN :title_languages
     ORDER BY t.title_id, p.pub_year; """)
     rows = conn.execute(query, {'author_ids':author_ids,
-                                'title_types': ['NOVEL'],
+                                'title_types': title_types,
                                 'title_languages': VALID_LANGUAGE_IDS})
-    # return postprocess_bibliography(rows)
+    # print(len(rows)) # This only works if you do a .fetchall() above
+    return rows
+
+def get_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITLE_TYPES):
+    """
+    Given a list of author_ids, return a sorted bibliography.
+
+    author_name is a bit of a hack to avoid having to do another lookup on
+    the authors table (which *might* have complications with multiple matches
+    e.g. an author with variant names, that a book has been issued under both
+    variants?)
+    """
+    rows = get_raw_bibliography(conn, author_ids, author_name, title_types)
+
+    BookByAuthor.reset_duplicate_cache()
 
     def make_bba(stuff, allow_duplicates):
         """
@@ -170,7 +200,9 @@ def get_bibliography(conn, author_ids, author_name):
     if not books:
         # Hack for 1975 Campbell New Writer winner P. J. Plauger, who seems to only
         # have 2 novels, both of which only ever printed as magazine serializations?
+        logging.warning('No books found for %s/%s' % (author_ids, author_name))
         return []
+    # rows.close() # Doesn't fix the re-run failure
     return sorted(books, key=lambda z: z.year)
 
 
@@ -199,6 +231,7 @@ def get_author_bibliography(conn, author_names):
     author_ids = get_author_alias_ids(conn, author_name)
     if not author_ids:
         raise AmbiguousArgumentsError('Do not know author "%s"' % (author_names))
+    # print(author_ids)
     bibliography = get_bibliography(conn, author_ids, author_name)
     return bibliography
 
@@ -208,6 +241,8 @@ if __name__ == '__main__':
                       supported_args='av')
 
     conn = get_connection()
+
     bibliography = get_author_bibliography(conn, args.exact_author)
     for i, bk in enumerate(bibliography, 1):
         print('%2d. %s [%d]' % (i, bk.all_titles, bk.year))
+
