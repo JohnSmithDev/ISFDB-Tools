@@ -59,8 +59,13 @@ class CountrySpecificBook(object):
         # set is used for authors to avoid stuff like Ken MacLeod being added
         # 3 times for The Corporration Wars Trilogy
         self.authors = set([value_dict['author_canonical']])
+        self.author_ids = set([value_dict['author_id']])
+        # author_id_to_name should supercede .authors and .author_ids (probably
+        # with properties to cover any code that used them
+        self.author_id_to_name = {value_dict['author_id']: value_dict['author_canonical']}
         self.title = value_dict['pub_title']
         self.title_id = value_dict['title_id']
+        self.title_parent = value_dict['title_parent']
         self.copyright_date = convert_dateish_to_date(value_dict['copyright_dateish'])
         self.publication_type = value_dict['title_ttype']
 
@@ -69,8 +74,10 @@ class CountrySpecificBook(object):
 
         self.valid_countries = valid_countries
 
-    def add_coauthor(self, coauthor):
+    def add_coauthor(self, coauthor, coauthor_id):
         self.authors.add(coauthor)
+        self.author_ids.add(coauthor_id)
+        self.author_id_to_name[coauthor_id] = coauthor
 
     def add_publication(self, value_dict):
         publication = Publication(value_dict, self.valid_countries,
@@ -84,7 +91,7 @@ class CountrySpecificBook(object):
     def add_variant(self, value_dict):
         # This blind calling of add_coauthor depends on its use of set() to
         # avoid dupes
-        self.add_coauthor(value_dict['author_canonical'])
+        self.add_coauthor(value_dict['author_canonical'], value_dict['author_id'])
 
         # Maybe this should use sets too?  Or hash magic?
         if value_dict['pub_id'] not in self.publication_ids:
@@ -146,9 +153,10 @@ def get_publisher_books(conn, args, countries=None):
 
     # We include pubs.pub_id as that's (maybe) the easiest way to track
     # publications with multiple authors
-    query = text("""SELECT publisher_name, author_canonical,
+    query = text("""SELECT publisher_name,
+                           a.author_id, author_canonical,
                            pub_title, pubs.pub_id,
-                           title_title, t.title_id,
+                           title_title, t.title_id, t.title_parent,
                            CAST(pub_year AS CHAR) pub_dateish,
                            CAST(title_copyright AS CHAR) copyright_dateish,
                            pub_ptype, pub_price, pub_isbn,
