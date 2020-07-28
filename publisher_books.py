@@ -5,7 +5,9 @@ Show what books a publisher published, optionally over a year range
 
 from collections import namedtuple
 from datetime import timedelta, date
+from functools import lru_cache
 import json
+import logging
 from os.path import basename
 import pdb
 import sys
@@ -54,7 +56,7 @@ class Publication(object):
 
 
 class CountrySpecificBook(object):
-    def __init__(self, value_dict, valid_countries=None):
+    def __init__(self, value_dict, valid_countries=None, conn=None):
         self.publisher = value_dict['publisher_name']
         # set is used for authors to avoid stuff like Ken MacLeod being added
         # 3 times for The Corporration Wars Trilogy
@@ -66,7 +68,13 @@ class CountrySpecificBook(object):
         self.title = value_dict['pub_title']
         self.title_id = value_dict['title_id']
         self.title_parent = value_dict['title_parent']
+        self.title_language = value_dict['title_language']
         self.copyright_date = convert_dateish_to_date(value_dict['copyright_dateish'])
+        if self.title_parent and conn:
+            self.best_copyright_date = self._get_best_copyright_date(conn)
+        else:
+            self.best_copyright_date = self.copyright_date
+
         self.publication_type = value_dict['title_ttype']
 
         publication = Publication(value_dict, valid_countries, reference=self.title)
@@ -83,6 +91,35 @@ class CountrySpecificBook(object):
         publication = Publication(value_dict, self.valid_countries,
                                   reference=self.title)
         self.publications.append(publication)
+
+
+    @lru_cache()
+    def _get_best_copyright_date(self, conn):
+        """
+        The .copyright_date value will return the date of the title, but the title
+        might be a child of an older parent - use this to ensure that
+        the latter is checked, at the (possible) expense of extra database load.
+        """
+        if not self.title_parent:
+            return self.copyright_date
+        query = text("""SELECT title_title, CAST(title_copyright AS CHAR) copyright_dateish
+        FROM titles WHERE title_id = :title_parent AND title_language = :language;""")
+        results = conn.execute(query, {'title_parent': self.title_parent,
+                                       'language': self.title_language}).fetchall()
+
+        if not results:
+            # Hopefully this is due to language mismatch
+            return self.copyright_date
+        stuff = results[0]
+        cdt = convert_dateish_to_date(stuff['copyright_dateish'])
+        if cdt and cdt.year != self.copyright_date.year:
+            THIS_IS_TOO_NOISY = """
+            logging.warning('Copyright year inconsistency for %d/%s vs %d/%s : %d != %d' %
+                            (self.title_id, self.title,
+                             self.title_parent, stuff['title_title'],
+                             self.copyright_date.year, cdt.year))
+            """
+        return cdt or self.copyright_date
 
     @property
     def publication_ids(self):
@@ -157,6 +194,7 @@ def get_publisher_books(conn, args, countries=None):
                            a.author_id, author_canonical,
                            pub_title, pubs.pub_id,
                            title_title, t.title_id, t.title_parent,
+                           t.title_language,
                            CAST(pub_year AS CHAR) pub_dateish,
                            CAST(title_copyright AS CHAR) copyright_dateish,
                            pub_ptype, pub_price, pub_isbn,
@@ -192,7 +230,8 @@ def get_publisher_books(conn, args, countries=None):
                 pass
         except KeyError:
             try:
-                bk = CountrySpecificBook(row, valid_countries=countries)
+                bk = CountrySpecificBook(row, valid_countries=countries,
+                                         conn=conn)
                 ret_list.append(bk)
                 titleid_dict[titleid] = bk
             except InvalidCountryError as err:
