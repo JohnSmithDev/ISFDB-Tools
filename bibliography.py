@@ -45,6 +45,8 @@ def safe_min(values):
 class DuplicateBookError(DuplicatedOrMergedRecordError):
     pass
 
+FALLBACK_YEAR = 8888
+
 class BookByAuthor(object):
     """
     Mainly a data class for all the books (and maybe other titles/pubs?) by an
@@ -133,7 +135,7 @@ class BookByAuthor(object):
     def year(self):
         dt = safe_min([self.earliest_copyright_date, self.earliest_publication_date])
         if not dt:
-            return None
+            return FALLBACK_YEAR
         else:
             return dt.year
 
@@ -190,8 +192,12 @@ def get_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITLE_TY
         Curried wrapper to BookByAuthor class.
         The use of author_names[0] is a bit of a hack - TODO: better
         """
-        return BookByAuthor(stuff, author=author_name,
+        bba =  BookByAuthor(stuff, author=author_name,
                             allow_duplicates=allow_duplicates)
+        # if bba.year is None or bba.year == FALLBACK_YEAR:
+        #    logging.warning('Year is None or %s for %s (possibly unpublished?' %
+        #                    (FALLBACK_YEAR, bba))
+        return bba
 
     books = make_list_excluding_duplicates(
         rows, make_bba,
