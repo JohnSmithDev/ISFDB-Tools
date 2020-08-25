@@ -16,13 +16,12 @@ from sqlalchemy.sql import text
 
 
 from common import get_connection, parse_args, get_filters_and_params_from_args
-# from country_related import derive_country_from_price
-from isfdb_utils import convert_dateish_to_date, pretty_list
-# from magazine_reviews import normalize_month
+# from isfdb_utils import convert_dateish_to_date, pretty_list
 
 from publisher_books import get_publisher_books
 from bibliography import get_bibliography
 from author_aliases import get_real_author_id_and_name
+from publisher_variants import PUBLISHER_VARIANTS
 
 def debut_report(conn, args, output_function=print):
     bibliographies = {} # Maps author_id to list of something
@@ -31,7 +30,6 @@ def debut_report(conn, args, output_function=print):
                                   countries=[z.upper() for z in args.countries])
     novels = [z for z in results if z.publication_type.lower() == 'novel']
     new_novels = [z for z in novels if z.best_copyright_date.year == z.first_publication.year]
-    # debut_count = 0
     debut_authors = set()
     book_author_count = 0
     for i, bk in enumerate(new_novels, 1):
@@ -72,7 +70,6 @@ def debut_report(conn, args, output_function=print):
             if bk_ids.intersection(debut_ids):
                 # debut_flag = '*DEBUT NOVEL for %d *' % (author_id)
                 debut_flag = '*DEBUT NOVEL*'
-                # debut_count += 1
                 debut_authors.add(author_name)
                 # print('debut_ids=%s; bk_ids=%s' % (debut_ids, bk_ids))
                 # print(bk.copyright_date, bk.best_copyright_date)
@@ -93,12 +90,9 @@ def debut_report(conn, args, output_function=print):
                         ))
 
 if __name__ == '__main__':
-    # script_name = basename(sys.argv[0])
-
     args = parse_args(sys.argv[1:],
                       description='Report on debut novels published by a publisher',
                       supported_args='kpy')
 
     conn = get_connection()
-    # pdb.set_trace()
     debut_report(conn, args)
