@@ -7,9 +7,8 @@ comments to explain/document things, and I hate the "__comment__" hack you
 sometimes see in JSON.  I've used double quotes " rather than apostrophes '
 so that this could at least be converted to JSON easily (I think?).
 
-Anything not explicitly defined in here should *probably* be used directly as
-the publisher name to query against - although it's useful to have them in here.
-so that we can iterate over all all major/known genre publishers
+The (current) argument handling logic aborts if a publisher isn't explicitly
+defined here, which is why there are several one-to-one entries.
 """
 
 PUBLISHER_VARIANTS = {
@@ -84,9 +83,33 @@ PUBLISHER_VARIANTS = {
         # "Ace Star / Ace Books" ?
         ],
 
-    # Baen
+    "Baen": [
+        "Baen",
+        "Baen / SFBC",
+        "Baen Books",
+        "Baen Books / SFBC",
+        "Baen Fantasy",
+        "Baen Science Fiction Books",
+        "Starline / Baen"
+    ],
 
-    # Bantam
+
+    "Bantam": [ # This is likely incomplete, there are 37 pubs with this in tehir name
+        "Bantam Books",
+        "Bantam Books / BCE",
+        "Bantam Books / BOMC",
+        "Bantam Books / QPBC",
+        "Bantam Books / SFBC",
+        # Ignoring UK and Australian "Bantam"s, including
+        # Bantam Press,
+        # Others to ignore are:
+        # Bantam Publications
+
+        # Unsure about:
+        # Bantam Spectra (with variants)
+
+
+    ],
 
     "DAW": [
         "DAW Books",
@@ -134,10 +157,17 @@ PUBLISHER_VARIANTS = {
     ### Global publishers
     ###
 
-    # "47North" / "Thomas & Mercer"
-    # "Angry Robot"
-    # "Titan Books"
-    # "Tor.com"
+    "Amazon": ["47North", "Thomas & Mercer"],
+    "Angry Robot": ["Angry Robot"],
+    "Titan Books": [
+        "Titan Books",
+        "Titan Books / Design Studio Press",
+        "Titan Books / SFBC",
+        "Hard Case Crime / Titan Books"
+        # Deliberately missing: Titan Comics; Titan Magazines
+        # Unsure about: Titan Publishing
+    ],
+    "Tor.com": ["Tor.com"],
     "Solaris": [ # Would this be better/more accurate as Rebellion as the parent?
         "Solaris",
         "Abaddon Books",
