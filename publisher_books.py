@@ -180,9 +180,14 @@ class CountrySpecificBook(object):
              extra_bit)
 
 
-def get_publisher_books(conn, args, countries=None):
+def get_publisher_books(conn, args, countries=None, original_adult_genre_only=True):
     fltr, params = get_filters_and_params_from_args(
         args, column_name_mappings={'year': 'pub_year'})
+
+    if original_adult_genre_only:
+    # if False:
+        fltr += " AND title_non_genre = 'No' AND title_graphic = 'No' " + \
+                " AND title_nvz = 'No' AND title_jvn = 'No'"
 
     # Q: maybe this should also join tot titles via pc.title_id?
     # A: Yes, but not for that reason - we need it to exclude INTERIORART,
