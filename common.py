@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 
 from argparse import ArgumentParser
+import logging
 import os
 import pdb
 import sys
 
 from sqlalchemy import create_engine
 from sqlalchemy.sql import text
+
+from expansions import EXPANSION_MAPPINGS
 
 class AmbiguousArgumentsError(Exception):
     pass
@@ -53,6 +56,8 @@ def create_parser(description, supported_args):
                             help='Publisher to search on (pattern match, case insensitive)')
         parser.add_argument('-P', action='append', dest='exact_publisher', default=[],
                             help='Publisher to search on (exact match, case sensitive)')
+        parser.add_argument('-PP', action='store_true', dest='exact_publisher_expanded',
+                            help='Expand known publisher to all known variants (requires -P)')
 
     if not supported_args or 'n' in low_args:
         parser.add_argument('-n', dest='work_types', action='append', default=[],
@@ -160,7 +165,7 @@ def get_filters_and_params_from_args(filter_args, column_name_mappings=None):
         'award_category': ('award_cat_name', 'pe'),
         'work_types': ('title_ttype', 'g'), # Note prior comment about not implemented!!!!
 
-        'publisher': ('publisher_name', 'pe'),
+        'publisher': ('publisher_name', 'pex'),
         'tag': ('tag_name', 'pe'),
 
         # 'year': ('%s_year' % (column_name_prefixes.get('year', 'award')), 'y'),
@@ -175,37 +180,51 @@ def get_filters_and_params_from_args(filter_args, column_name_mappings=None):
         if not val: # Does this break anything?  Not sure why I didn't do it originally
             # continue
             pass
-        if variants == 'pe': # pattern and exact match
-            try:
-                if val is not None:
-                   # pattern variant
-                    params[prm] = '%%%s%%' % (val.lower())
-                    filters.append('LOWER(%s) LIKE :%s' % (col, prm))
+        if variants in ('pe', 'pex'): # pattern and exact match, optionally expand
+            if val is not None:
+                # pattern variant
+                params[prm] = '%%%s%%' % (val.lower())
+                filters.append('LOWER(%s) LIKE :%s' % (col, prm))
+                continue
 
-                # TODO: double check we didn't raise beforehand
+            try:
+                # TODO: double check we didn't raise beforehand Q: What does this refer to?
                 exact_prm = 'exact_' + prm
                 exact_val = arg_dict[exact_prm]
-                # PRESUMPTION: "colname = value" is more efficient than
-                # "colname IN [value]", so use = over IN when there is a single
-                # value for an argument that can take take multiple values
-                # hasattr(foo,'extend') is to avoid doing the wrong thing
-                # on string values w.r.t. len(foo)  (Ideally this shouldn't ever
-                # happen if the arg parser is properly configured.)
-                if exact_val is None or \
-                   (hasattr(exact_val, 'extend') and len(exact_val) == 0):
-                    continue # ignore it
-                if hasattr(exact_val, 'extend'):
-                    if len(exact_val) > 1:
-                        params[exact_prm] = exact_val
-                        filters.append('%s IN :%s' % (col, exact_prm))
-                    else:
-                        params[exact_prm] = exact_val[0]
-                        filters.append('%s = :%s' % (col, exact_prm))
-                else:
-                    params[exact_prm] = exact_val
-                    filters.append('%s = :%s' % (col, exact_prm))
             except KeyError:
-                pass
+                continue # to next argument
+
+            if 'x' in variants and arg_dict[exact_prm + '_expanded']:
+                expanded_vals = []
+                for v in exact_val:
+                    try:
+                        exp = EXPANSION_MAPPINGS[prm][v]
+                    except KeyError as err:
+                        raise KeyError(f'"{v}" is not a known expandable {prm}')
+                    expanded_vals.extend(exp)
+                    logging.debug(f'Expanded vals for {v} are {expanded_vals}')
+                exact_val = expanded_vals
+
+
+            # PRESUMPTION: "colname = value" is more efficient than
+            # "colname IN [value]", so use = over IN when there is a single
+            # value for an argument that can take take multiple values
+            # hasattr(foo,'extend') is to avoid doing the wrong thing
+            # on string values w.r.t. len(foo)  (Ideally this shouldn't ever
+            # happen if the arg parser is properly configured.)
+            if exact_val is None or \
+               (hasattr(exact_val, 'extend') and len(exact_val) == 0):
+                continue # ignore it
+            if hasattr(exact_val, 'extend'): # Duck type for list
+                if len(exact_val) > 1:
+                    params[exact_prm] = exact_val
+                    filters.append('%s IN :%s' % (col, exact_prm))
+                else:
+                    params[exact_prm] = exact_val[0]
+                    filters.append('%s = :%s' % (col, exact_prm))
+            else:
+                params[exact_prm] = exact_val
+                filters.append('%s = :%s' % (col, exact_prm))
         elif variants == 'g': # group (exact) match
             pass # TODO
             # params[prm] = [z.lower() for z in val]
