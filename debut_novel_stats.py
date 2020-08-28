@@ -45,19 +45,20 @@ class DebutStats(object):
 
 
     def _process(self, books):
-
-        self.book_author_count = 0
+        self.all_books = []
         # Dict mapping author name to book details; this is to avoid counting
         # an author twice
         self.debut_details = {}
 
         for i, bk in enumerate(books, 1):
             for (author_id, author_name) in sorted(bk.author_id_to_name.items()):
+                details = AuthorAndTitleStuff(author_id, author_name,
+                                              bk.title_id, bk.title)
+                self.all_books.append(details)
                 author_ids = [author_id]
                 other_author_stuff = get_real_author_id_and_name(conn, author_id)
                 if other_author_stuff:
                     author_ids.extend([z.id for z in other_author_stuff])
-                self.book_author_count += 1
                 try:
                     bib = bibliographies[author_id]
                 except KeyError:
@@ -74,10 +75,10 @@ class DebutStats(object):
                                     (author_name, author_id))
                     # pdb.set_trace()
                     continue
-                debut_novel = bib[0]
 
                 # Check the title IDs and the title parent IDs to be (hopefully)
                 # sure of finding a match
+                debut_novel = bib[0]
                 debut_ids = set([debut_novel.title_id])
                 if debut_novel.parent_id:
                     debut_ids.add(debut_novel.parent_id)
@@ -86,13 +87,17 @@ class DebutStats(object):
                     bk_ids.add(bk.title_parent)
                 if bk_ids.intersection(debut_ids):
                     if author_name not in self.debut_details:
-                        details = AuthorAndTitleStuff(author_id, author_name,
-                                                      bk.title_id, bk.title)
                         self.debut_details[author_name] = details
                     # print('debut_ids=%s; bk_ids=%s' % (debut_ids, bk_ids))
                     # print(bk.copyright_date, bk.best_copyright_date)
 
-        # print(self.debut_details)
+        for i, bk in enumerate(self.all_books, 1):
+            # print(i,bk)
+            pass
+
+    @property
+    def book_author_count(self):
+        return len(self.all_books)
 
     @property
     def debut_authors(self):
@@ -117,11 +122,7 @@ def debut_report(conn, args, output_function=print):
     ds = DebutStats(results, do_prefilter=True)
 
     if ds.book_author_count:
-        output_function('%s. %2d of %3d (%2d%%) new novels/authors were debuts : %s' %
-                        (args.year, ds.debut_count, ds.book_author_count,
-                         100 * ds.debut_count / ds.book_author_count,
-                         ', '.join(sorted(ds.debut_authors))
-                        ))
+        output_function('%s. %s' % (args.year, ds))
 
 if __name__ == '__main__':
     args = parse_args(sys.argv[1:],
