@@ -4,7 +4,7 @@ Report on which novels a publisher published were debuts.
 
 """
 
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from datetime import timedelta, date
 #import json
 # from os.path import basename
@@ -115,14 +115,28 @@ class DebutStats(object):
             )
 
 
+def split_books_by_year(books):
+    """
+    Given a list/iterable of books, return a sorted list of tuples of
+    (year, [list of that years books])
+    """
+    # I'm sure there's a more mapreducy way of doing this.
+    year_to_books = defaultdict(list)
+    for bk in books:
+        year_to_books[bk.year].append(bk)
+    return sorted(year_to_books.items())
+
 def debut_report(conn, args, output_function=print):
 
     results = get_publisher_books(conn, args,
                                   countries=[z.upper() for z in args.countries])
-    ds = DebutStats(results, do_prefilter=True)
 
-    if ds.book_author_count:
-        output_function('%s. %s' % (args.year, ds))
+    yearly_results = split_books_by_year(results)
+    for year, books in yearly_results:
+        ds = DebutStats(books, do_prefilter=True)
+
+        if ds.book_author_count:
+            output_function('%s. %s' % (year, ds))
 
 if __name__ == '__main__':
     args = parse_args(sys.argv[1:],
