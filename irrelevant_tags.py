@@ -111,12 +111,13 @@ ISFDB_IRRELEVANT_TAGS = {
     "political science / political freedom",
     "political control & freedoms",
     "anf: society", "social discrimination & equal treatment",
+    "political science / history & theory",
 
     "great britain/politics and government",
     "american government", "government & constitution",
 
     "press & journalism", "media studies", "anf: media studies",
-    "social science / media studies",
+    "social science / media studies", "social science / social classes",
     "social & cultural history",
 
     "psychology", "sociology", "philosophy", "social psychology",
