@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """
-Show what books a publisher published, optionally over a year range
+Show what books a publisher published, optionally over a year range.
+
+This is intended for both standalone use and as a library module for use in
+more complicated scripts/reports/whatever.
 """
 
-from collections import namedtuple
+# from collections import namedtuple
 from datetime import timedelta, date
 from functools import lru_cache
-import json
+# import json
 import logging
-from os.path import basename
+# from os.path import basename
 import pdb
 import sys
 
@@ -20,9 +23,16 @@ from country_related import derive_country_from_price
 from isfdb_utils import convert_dateish_to_date, pretty_list
 from magazine_reviews import normalize_month
 
+ZERO_DAY = date(1,1,1)
+
 OLD_BOOK_INTERVAL = timedelta(days=365*2)
 
-ZERO_DAY = date(1,1,1)
+# See comment in docstring for get_publisher_books() about what values are
+# supported
+DEFAULT_BOOK_TYPES = ('NOVEL', 'CHAPBOOK', 'ANTHOLOGY', 'COLLECTION')
+
+
+
 def none_tolerant_date_sort_key(dt):
     """Stop max(), sorted() etc blowing up if a set of date values includes None"""
     if not dt:
@@ -171,7 +181,9 @@ class CountrySpecificBook(object):
             extra_bit = ''
         pubs = '; '.join(str(z) for z in self.publications)
         return '%s published %s %s by %s in %s%s' % \
-            (self.publisher, self.publication_type.lower(), self.title,
+            (self.publisher, self.publication_type.lower(),
+             self.title,
+             # self.title_id, self.publication_ids,
              # ', '.join(self.authors),
              pretty_list(list(self.authors), 2, 'authors'),
              # self.format, self.price or '<unknown price>',
@@ -180,14 +192,23 @@ class CountrySpecificBook(object):
              extra_bit)
 
 
-def get_publisher_books(conn, args, countries=None, original_adult_genre_only=True):
+
+def get_publisher_books(conn, args, countries=None, original_adult_genre_only=True,
+                        book_types=DEFAULT_BOOK_TYPES):
+    """
+    Note that book_types is (effectively) checked against both title_ttype and
+    pub_ctype, but there are some values that are valid in one but not the other.
+    The common ones are: 'ANTHOLOGY', 'COLLECTION', 'NONFICTION', 'NOVEL',
+    'OMNIBUS' and 'CHAPBOOK'.
+    """
     fltr, params = get_filters_and_params_from_args(
         args, column_name_mappings={'year': 'pub_year'})
 
     if original_adult_genre_only:
-    # if False:
         fltr += " AND title_non_genre = 'No' AND title_graphic = 'No' " + \
                 " AND title_nvz = 'No' AND title_jvn = 'No'"
+
+    params['book_types'] = book_types
 
     # Q: maybe this should also join tot titles via pc.title_id?
     # A: Yes, but not for that reason - we need it to exclude INTERIORART,
@@ -203,14 +224,15 @@ def get_publisher_books(conn, args, countries=None, original_adult_genre_only=Tr
                            CAST(pub_year AS CHAR) pub_dateish,
                            CAST(title_copyright AS CHAR) copyright_dateish,
                            pub_ptype, pub_price, pub_isbn,
-                           title_ttype
+                           title_ttype, pub_ctype
       FROM publishers p
         LEFT OUTER JOIN pubs ON pubs.publisher_id = p.publisher_id
         LEFT OUTER JOIN pub_content pc ON pubs.pub_id = pc.pub_id
         LEFT OUTER JOIN canonical_author ca ON ca.title_id = pc.title_id
         LEFT OUTER JOIN authors a ON ca.author_id = a.author_id
         LEFT OUTER JOIN titles t on t.title_id = pc.title_id
-      WHERE title_ttype in ('NOVEL', 'CHAPBOOK', 'ANTHOLOGY', 'COLLECTION')
+      WHERE title_ttype in :book_types
+        AND title_ttype = pub_ctype
         AND %s
       ORDER BY t.title_id, pub_dateish, pubs.pub_id""" % (fltr))
 
@@ -226,6 +248,14 @@ def get_publisher_books(conn, args, countries=None, original_adult_genre_only=Tr
     for row in results:
         pubid = row['pub_id']
         titleid = row['title_id']
+
+        # Could/should this be done in the SQL?
+        if row['pub_ctype'] == 'COLLECTION' and \
+           row['title_ttype'] != 'COLLECTION':
+            logging.warning('Skipping inconsistent title %d/%s/%s != pub %d/%s/%s' %
+                            (pubid, row['pub_title'], row['pub_ctype'],
+                            titleid, row['title_title'], row['title_ttype']))
+            continue
 
         try:
             known_title = titleid_dict[titleid]
@@ -245,8 +275,6 @@ def get_publisher_books(conn, args, countries=None, original_adult_genre_only=Tr
 
 
 if __name__ == '__main__':
-    # script_name = basename(sys.argv[0])
-
     args = parse_args(sys.argv[1:],
                       description='Show books published by a publisher',
                       supported_args='kpy')
