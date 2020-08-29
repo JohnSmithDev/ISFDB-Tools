@@ -46,7 +46,7 @@ PUBLISHER_VARIANTS = {
         "Orbit Book / Futura Publications" # 9 pubs 1974-1977 and 1988-1989
         "Orbit / Futura",  # 191 pubs 1974-1990
         "Orbit / Futura Publications", # 7 pubs 1974-1988
-        "Orbint/Future/General" # 1 pub 1984
+        "Orbit/Future/General" # 1 pub 1984
     ],
     "Harper Voyager UK": [
         "Harper Voyager (UK",
@@ -137,12 +137,17 @@ PUBLISHER_VARIANTS = {
     ],
 
     "Orbit US": [
-        "Orbit (US)"
+        "Orbit (US)",
         "Orbit (US) / SFBC",
         "Orbit / SFBC" # 6 pubs betwen 2008 and 2016, all USD prices
     ],
 
-    # Saga / Saga Gallery
+    "Saga Press": {
+        "Saga Press",
+        "Saga Press / Gallery",
+        "Saga Press / SFBC",
+        "Saga Press / Simon & Schuster"
+    },
 
     "Tor": [
         # This explicitly excludes Tor.com, Tor Teen and Tor UK, Fischer Tor, etc
