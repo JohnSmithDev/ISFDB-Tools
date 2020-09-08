@@ -38,7 +38,7 @@ from sqlalchemy.sql import text
 
 from common import get_connection
 from isbn_functions import isbn10and13
-from identifier_related import check_asin, check_isbn
+from isfdb_lib.identifier_related import check_asin, check_isbn
 
 FIXER_DUMP_DIR = os.environ.get('ISFDB_FIXER_DUMP_DIR') or \
                  os.path.join('/', 'mnt', 'data2019', '_isfdb_')

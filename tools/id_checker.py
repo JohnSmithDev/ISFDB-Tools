@@ -25,11 +25,10 @@ import time
 # import json # flask.jsonify might be enough?
 
 # isfdb_tools
-from common import get_connection
-from identifier_related import check_asin, check_isbn
-
-from ids_in_memory import (initialise, # load_ids, load_fixer_ids,
-                           batch_check_in_memory, batch_check_with_stats)
+from isfdb_lib.common import get_connection
+from isfdb_lib.identifier_related import check_asin, check_isbn
+from isfdb_lib.ids_in_memory import (initialise, # load_ids, load_fixer_ids,
+                                     batch_check_in_memory, batch_check_with_stats)
 
 IN_MEMORY_DATA = True
 
