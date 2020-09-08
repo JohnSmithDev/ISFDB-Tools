@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""
+Code which is used by pretty much every script, broadly covering:
+* Getting a database connection
+* Parsing command-line arguments
+* Turning the arguments into SQL snippets for filtering results
+More specialized library functions should go elsewhere.
+"""
 
 from argparse import ArgumentParser
 import logging
@@ -9,7 +16,7 @@ import sys
 from sqlalchemy import create_engine
 from sqlalchemy.sql import text
 
-from expansions import EXPANSION_MAPPINGS
+from isfdb_lib.expansions import EXPANSION_MAPPINGS
 
 class AmbiguousArgumentsError(Exception):
     pass
@@ -26,6 +33,28 @@ def get_connection(connection_string=None):
 
 
 def create_parser(description, supported_args):
+    """
+    Return an ArgumentParser with support for arguments specified by supported_args.
+    supported args is a string or iterable containing letters indicating the
+    script supports the following:
+    * a : author
+    * c : award category (e.g. "Best Novel", "Best Novella")
+    * g : tag
+    * k : country (2 character codes, e.g. "us", "ca")
+    * n : work types (e.g. novel, anthology) Q: Is this title or pub types?
+    * p : publisher
+    * t : book title
+    * v : verbose mode
+    * w : award (e.g. "Hugo Award", "Nebula Award"
+    * y : year(s) (e.g. "2001", "1970-2020")
+
+    With the exception of v/verbose and y/year, two argument variants are supported:
+    * -x foo : case insensitive pattern match
+    * -X "Exact Match" : exact match, but can be passed multiple times for an OR check
+
+    Publisher support also supports a -PP additional argument to use a manually
+    maintained (and likely very incomplete) list of publisher aliases.
+    """
     parser = ArgumentParser(description=description)
 
     if supported_args:
