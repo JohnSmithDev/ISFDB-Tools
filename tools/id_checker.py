@@ -10,7 +10,7 @@ Dependencies:
 
 Usage:
 
-  export FLASK_ENV=development ; export FLASK_APP=id_checker.py ; flask run
+  export FLASK_ENV=development ; export FLASK_APP=tools/id_checker.py ; flask run
 
 References:
 * https://medium.com/@onejohi/building-a-simple-rest-api-with-python-and-flask-b404371dc699
