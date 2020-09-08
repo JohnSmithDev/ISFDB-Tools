@@ -15,7 +15,7 @@ etc, and so may have fairly rudimentary/user-unfriendly output.
 GPL v3 - see [LICENCE.txt](docs/LICENCE.txt) for full text.
 
 All the code is heavily dependent on the ISFDB database, I'm not sure how exactly
-that is licenced, but that's a question for them to answer, not me ;_)
+that is licenced, but that's a question for them to answer, not me ;-)
 
 ## Disclaimers
 
