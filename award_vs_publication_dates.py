@@ -40,7 +40,6 @@ def find_earliest_pub_date(pubs, title, preferred_countries=None, ignore_jan_1st
                 if not filtered_dates:
                     logging.warning('All dates are Jan 1st for %s?!?  Skipping...'
                                     % (title))
-                    pdb.set_trace()
                     return None
                 return min(filtered_dates)
             else:
