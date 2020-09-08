@@ -15,14 +15,14 @@ UNKNOWN_COUNTRY = 'XX'
 # As of 2019-05-29, I think these are pre-decimal UK (poss. incorrect formats)
 # and Canadianm $ (poss. non standard).  NB: not a complete list of everything
 STILL_TO_DO = """
-WARNING:root:Dunno know what country price "25-" refers to (ref=title_id=924,ISBN=0575002271)
-WARNING:root:Dunno know what country price "25-" refers to (ref=title_id=924,ISBN=0575002271)
-WARNING:root:Dunno know what country price "C22.95" refers to (ref=title_id=5748,ISBN=9780889954441)
-WARNING:root:Dunno know what country price "C22.95" refers to (ref=title_id=5748,ISBN=9780889954441)
-WARNING:root:Dunno know what country price "A6/-" refers to (ref=title_id=1034,ISBN=None)
-WARNING:root:Dunno know what country price "A6/-" refers to (ref=title_id=1034,ISBN=None)
-WARNING:root:Dunno know what country price "C22.95" refers to (ref=title_id=5748,ISBN=9780889954441)
-WARNING:root:Dunno know what country price "C22.95" refers to (ref=title_id=5748,ISBN=9780889954441)
+WARNING:root:Dunno what country price "25-" refers to (ref=title_id=924,ISBN=0575002271)
+WARNING:root:Dunno what country price "25-" refers to (ref=title_id=924,ISBN=0575002271)
+WARNING:root:Dunno what country price "C22.95" refers to (ref=title_id=5748,ISBN=9780889954441)
+WARNING:root:Dunno what country price "C22.95" refers to (ref=title_id=5748,ISBN=9780889954441)
+WARNING:root:Dunno what country price "A6/-" refers to (ref=title_id=1034,ISBN=None)
+WARNING:root:Dunno what country price "A6/-" refers to (ref=title_id=1034,ISBN=None)
+WARNING:root:Dunno what country price "C22.95" refers to (ref=title_id=5748,ISBN=9780889954441)
+WARNING:root:Dunno what country price "C22.95" refers to (ref=title_id=5748,ISBN=9780889954441)
 """
 
 
@@ -102,7 +102,7 @@ def derive_country_from_price(raw_price, ref=None):
         return 'NOK'
     elif price.startswith('SEK') or price.endswith('SEK'): # see The Goblin Reservation
         return 'SE' # Swedish Krona
-    elif price.endswith('UAH'): # Ukrainian hryvnia- see Hyperion
+    elif price.startswith('UAH') or price.endswith('UAH'): # Ukrainian hryvnia- see Hyperion
         return 'UA'
     elif price.startswith('CHF') or price.startswith('SFR'): # Swiss franc
         return 'CH'
@@ -153,7 +153,7 @@ def derive_country_from_price(raw_price, ref=None):
     elif price[0] == 'R':
         return 'ZA' # Rand?  See http://www.isfdb.org/cgi-bin/title.cgi?2422094
     else:
-        logging.warning('Dunno know what country price "%s" refers to (ref=%s)' % \
+        logging.warning('Dunno what country price "%s" refers to (ref=%s)' % \
                         (price, ref))
         # pdb.set_trace()
         return None
