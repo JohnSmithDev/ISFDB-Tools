@@ -1,0 +1,13 @@
+./publisher_books.py -P Tor -y 2016
+
+reports
+211. Tor published collection Arcanum Unbounded: The Cosmere Collection by Brandon Sanderson in hc for $27.99 on 2016-11-22; digital audio download for $41.95 on 2016-11-22; audio MP3 CD for $69.99 on 2016-11-22; ebook for $14.99 on 2016-11-22
+217. Tor published novel Arcanum Unbounded: The Cosmere Collection by Brandon Sanderson in hc for $27.99 on 2016-11-22; digital audio download for $41.95 on 2016-11-22; audio MP3 CD for $69.99 on 2016-11-22; ebook for $14.99 on 2016-11-22
+
+The second one shouldn't appear; whilst there are standalone pubs of this title,
+netiher are from Tor.
+
+UPDATE: I think this is fixed, but not optimally.
+
+--------------
+
