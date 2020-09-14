@@ -88,8 +88,10 @@ class DebutStats(object):
                 author_ids = [author_id]
                 # Not sure why I originally chose get_real_author_id_and_name(), it seems
                 # to only pick up parent authors, and we only need IDs here.
+                # Had to filter out gestalt pseudonyms (the 2 argument) - this probably needs
+                # revisiting/pondering...
                 # other_author_stuff = get_real_author_id_and_name(self.conn, author_id)
-                other_author_stuff = get_author_alias_ids(self.conn, author_name)
+                other_author_stuff = get_author_alias_ids(self.conn, author_name, 2)
                 if other_author_stuff:
                     # author_ids.extend([z.id for z in other_author_stuff])
                     author_ids.extend(other_author_stuff)
