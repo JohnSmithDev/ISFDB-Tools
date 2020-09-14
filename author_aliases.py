@@ -112,12 +112,34 @@ def order_aliases_by_name_resemblance(author, aliases):
 
     return sorted(aliases, key=word_difference)
 
+def get_gestalt_ids(conn, ids_to_check, more_than=2):
+    """
+    Given a list/iterable/whatever of IDs, return a list of any that are
+    pseudonyms used by more than the specified value.
+    """
+    query = text("""SELECT pseudonym FROM
+    (
+      SELECT pseudonym, COUNT(1) num_uses
+      FROM pseudonyms
+      WHERE pseudonym in :ids_to_check
+      GROUP BY pseudonym
+    ) foo
+    WHERE foo.num_uses > :more_than ;""")
+    results = conn.execute(query, {'ids_to_check': ids_to_check,
+                                   'more_than': more_than}).fetchall()
+    return [z.pseudonym for z in results]
 
-def get_author_alias_ids(conn, author):
+
+def get_author_alias_ids(conn, author, ignore_gestalt_threshold=None):
     """
     Return all [*] IDs for an author, inc.  pseudonyms, alternate spellings, etc
     Basically the same query as get_author_aliases, just returning different
     values.
+
+    Optionally set ignore_gestalt_threshold to ignore pseudonyms used by more
+    than the specified value, suggestion is 2 if this is used.  (There'll be an
+    extra database call if a value is passed for this.)
+
     TODO (probably): merge common code from get_author_aliases.
 
     [*] See commented example in the tests for a flaw in this - if given a
@@ -162,7 +184,13 @@ def get_author_alias_ids(conn, author):
                 id_to_name[author_id] = word_difference(row[(i*2)+1])
     sortable_id_tuples = id_to_name.items()
     sorted_id_tuples = sorted(sortable_id_tuples, key=lambda z: z[1])
-    return [z[0] for z in sorted_id_tuples]
+    sorted_ids = [z[0] for z in sorted_id_tuples]
+    if ignore_gestalt_threshold is not None:
+        ids_to_ignore = set(get_gestalt_ids(conn, sorted_ids, ignore_gestalt_threshold))
+        # print(f'Ignoring {ids_to_ignore}')
+        return [z for z in sorted_ids if z not in ids_to_ignore]
+    else:
+        return sorted_ids
 
     ORIG = """
     ret = set()
@@ -228,3 +256,4 @@ if __name__ == '__main__':
             print('<No known aliases/variant names>')
         if len(sys.argv) > 2 and i < len(sys.argv) - 1:
             print('\n')
+

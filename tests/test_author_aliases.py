@@ -9,7 +9,7 @@ import unittest
 from ..common import get_connection
 from ..author_aliases import (unlegalize, get_author_aliases,
                               get_author_alias_ids, get_real_author_id,
-                              get_real_author_id_and_name)
+                              get_real_author_id_and_name, get_gestalt_ids)
 
 class TestUnlegalize(unittest.TestCase):
     def test_none(self):
@@ -102,6 +102,19 @@ class TestGetAuthorAliases(unittest.TestCase):
         self.assertEqual(['A. A. Anderson', 'Andrew A. Anderson'],
                          get_author_aliases(self.conn, 162343))
 
+class TestGetGestaltIds(unittest.TestCase):
+    conn = get_connection()
+
+    HOLDSTOCKS = [1024, 14689, 114231, 93937, 2584, 2586, 308265,
+                  256642, 2585, 2583, 2559, 114794]
+
+    def test_get_gestalt_ids(self):
+        self.assertEqual([2559],
+                         get_gestalt_ids(self.conn, self.HOLDSTOCKS, 2))
+
+    def test_get_gestalt_ids_not_enough(self):
+        self.assertEqual([],
+                         get_gestalt_ids(self.conn, self.HOLDSTOCKS, 99))
 
 class TestGetAuthorAliasIds(unittest.TestCase):
     conn = get_connection()
@@ -114,6 +127,17 @@ class TestGetAuthorAliasIds(unittest.TestCase):
         self.assertEqual([133814, # Mira Grant ID should precede Seanan McGuire ID
                           129348],
                          get_author_alias_ids(self.conn, 'Mira Grant'))
+
+    def test_get_alias_ids_excluding_gestalts(self):
+        # Excludes "Richard Kirk" (id 2559), used by 3 authors inc. Holdstock
+        self.assertEqual([1024, 14689, 114231, 93937, 2584, 2586, 308265,
+                          256642, 2585, 2583, 114794],
+                         get_author_alias_ids(self.conn, 'Robert Holdstock', 2))
+
+    def test_get_alias_ids_including_gestalts(self):
+        self.assertEqual([1024, 14689, 114231, 93937, 2584, 2586, 308265,
+                          256642, 2585, 2583, 2559, 114794],
+                         get_author_alias_ids(self.conn, 'Robert Holdstock', 99))
 
 
 class TestGetRealAuthorId(unittest.TestCase):
