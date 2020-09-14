@@ -7,6 +7,7 @@ Report on which novels a publisher published were debuts, or an author's
 
 from collections import namedtuple, defaultdict
 from datetime import timedelta, date
+from functools import lru_cache
 #import json
 # from os.path import basename
 import logging
@@ -24,7 +25,7 @@ from common import (get_connection, parse_args, get_filters_and_params_from_args
 
 from publisher_books import get_publisher_books
 from bibliography import get_bibliography
-from author_aliases import get_real_author_id_and_name
+from author_aliases import get_real_author_id_and_name, get_author_alias_ids
 from publisher_variants import PUBLISHER_VARIANTS
 
 # Maps author_id to list of something.  A global variable so that once we've
@@ -85,9 +86,13 @@ class DebutStats(object):
                                               bk.title_id, bk.title, bk)
                 self.all_details.append(details)
                 author_ids = [author_id]
-                other_author_stuff = get_real_author_id_and_name(self.conn, author_id)
+                # Not sure why I originally chose get_real_author_id_and_name(), it seems
+                # to only pick up parent authors, and we only need IDs here.
+                # other_author_stuff = get_real_author_id_and_name(self.conn, author_id)
+                other_author_stuff = get_author_alias_ids(self.conn, author_name)
                 if other_author_stuff:
-                    author_ids.extend([z.id for z in other_author_stuff])
+                    # author_ids.extend([z.id for z in other_author_stuff])
+                    author_ids.extend(other_author_stuff)
                 try:
                     bib = bibliographies[author_id]
                 except KeyError:
@@ -153,6 +158,7 @@ class DebutStats(object):
         return ret
 
     @property
+    @lru_cache()
     def average_nth_book(self):
         """
         Returns a (named)tuple of
@@ -176,7 +182,8 @@ class DebutStats(object):
                                sum(weighted_nth_items) / len(nth_items) ,
                                sorted_weighted_items[median_idx])
         else:
-            return 0, 0, 0, 0
+            return NthAverages(0, 0, 0, 0)
+
 
     def output_detail(self, output_function=print):
         details = self.nth_book_details
@@ -191,14 +198,17 @@ class DebutStats(object):
 
 
     def __repr__(self):
+        if self.debut_authors:
+            author_list = ', '.join(sorted(self.debut_authors))
+        else:
+            author_list = 'N/A'
         return '%2d of %3d (%2d%%) new novels/authors were debuts : %s' % \
             (self.debut_count, self.book_author_count,
-             100 * self.debut_count / self.book_author_count,
-             ', '.join(sorted(self.debut_authors))
-            )
+             100 * self.debut_count / self.book_author_count, author_list)
 
 def pretty_ordinal(n):
     """Return '1st', '2nd', '3rd' etc for a given integer"""
+    # Isn't this basically the same as isfdb_utils.pretty_nth ?
     pos_n = abs(n)
     if (pos_n % 100) in (11, 12, 13):
         return f'{n}th'
@@ -227,8 +237,14 @@ def split_books_by_year(books):
     """
     # I'm sure there's a more mapreducy way of doing this.
     year_to_books = defaultdict(list)
+    bad_years = []
     for bk in books:
-        year_to_books[bk.year].append(bk)
+        if bk.year and bk.year not in (8888,):
+            year_to_books[bk.year].append(bk)
+        else:
+            bad_years.append(bk)
+    if bad_years:
+        logging.warning(f'Found {len(bad_years)} books with no year defined, which will be ignored')
     return sorted(year_to_books.items())
 
 def debut_report(conn, args, output_function=print):
@@ -257,6 +273,10 @@ def debut_report(conn, args, output_function=print):
             except AttributeError:
                 pass
         ret.append((year, ds))
+        if args.verbose:
+            for nth, bk in ds.nth_book_details:
+                pretty_nth = pretty_ordinal(nth)
+                print(f'{pretty_nth} novel by {bk.author} : {bk.title}')
     return ret
 
 
