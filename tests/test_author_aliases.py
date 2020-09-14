@@ -73,7 +73,7 @@ class TestGetAuthorAliases(unittest.TestCase):
     # I'm not doing that, instead using examples that are well known and thus
     # easy to see what the expected result should be.)
     def test_get_aliases_for_real_name(self):
-        self.assertEqual(['Seanan McGuire', 'Mira Grant'],
+        self.assertEqual(['Seanan McGuire', 'Mira Grant', 'A. Deborah Baker'],
                          get_author_aliases(self.conn, 'Seanan McGuire'))
 
     def test_get_aliases_for_pseudonym(self):
