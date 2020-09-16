@@ -49,7 +49,7 @@ PUBLISHER_VARIANTS = {
         "Orbit/Future/General" # 1 pub 1984
     ],
     "Harper Voyager UK": [
-        "Harper Voyager (UK",
+        "Harper Voyager (UK)",
         "HarperVoyager",
         "HarperVoyager / HarperCollinsPublishers"
     ],
@@ -177,5 +177,12 @@ PUBLISHER_VARIANTS = {
         "Solaris",
         "Abaddon Books",
         "Rebellion"
-    ]
+    ],
+
+    ###
+    ### Ad hoc requests
+    ###
+
+    # "Tyche": ["Tyche Books"],
+
 }
