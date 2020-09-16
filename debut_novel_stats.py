@@ -16,9 +16,6 @@ import sys
 
 from sqlalchemy.sql import text
 
-
-
-
 from common import (get_connection, parse_args, get_filters_and_params_from_args,
                     create_parser)
 # from isfdb_utils import convert_dateish_to_date, pretty_list
@@ -27,6 +24,10 @@ from publisher_books import get_publisher_books
 from bibliography import get_bibliography
 from author_aliases import get_real_author_id_and_name, get_author_alias_ids
 from publisher_variants import PUBLISHER_VARIANTS
+
+
+AUTHORS_TO_IGNORE = {'uncredited'}
+
 
 # Maps author_id to list of something.  A global variable so that once we've
 # looked up an author's bibliography, we can re-use that data if they come up
@@ -82,6 +83,8 @@ class DebutStats(object):
 
         for i, bk in enumerate(self.books, 1):
             for (author_id, author_name) in sorted(bk.author_id_to_name.items()):
+                if author_name in AUTHORS_TO_IGNORE:
+                    continue
                 details = AuthorAndTitleStuff(author_id, author_name,
                                               bk.title_id, bk.title, bk)
                 self.all_details.append(details)
