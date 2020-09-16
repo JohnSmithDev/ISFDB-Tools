@@ -39,6 +39,26 @@ def none_tolerant_date_sort_key(dt):
         return ZERO_DAY
     return dt
 
+def are_dates_consistent(this_date, other_date):
+    """
+    Return True iff this_date is reasonably close to earlier_date - by
+    default within a year.  (Returns False if either dates are unknown or vague)
+
+    Currently this functionality is not (meaningfully) used, and perhaps the
+    logic needs tweaking.
+    """
+
+    if not this_date or not other_date:
+        return False
+    if this_date.year in (0, 8888) or other_date.year in (0, 8888):
+        return False
+
+    if this_date.year == other_date.year:
+        return True
+    else:
+        return False
+
+
 class InvalidCountryError(Exception):
     pass
 
@@ -122,13 +142,15 @@ class CountrySpecificBook(object):
             return self.copyright_date
         stuff = results[0]
         cdt = convert_dateish_to_date(stuff['copyright_dateish'])
-        if cdt and cdt.year != self.copyright_date.year:
+        if are_dates_consistent(cdt, self.copyright_date):
             THIS_IS_TOO_NOISY = """
             logging.warning('Copyright year inconsistency for %d/%s vs %d/%s : %d != %d' %
                             (self.title_id, self.title,
                              self.title_parent, stuff['title_title'],
                              self.copyright_date.year, cdt.year))
             """
+            pass
+
         return cdt or self.copyright_date
 
     @property
