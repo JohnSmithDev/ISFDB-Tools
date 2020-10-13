@@ -23,6 +23,9 @@ Stats as of end March 2020:
   functionality, excluding the Fixer-related stuff, which slows things down a
   bit.
 
+UPDATE#2: Format has changed again per
+http://www.isfdb.org/wiki/index.php/User:Fixer/Queues#Lists_of_ISBNs_and_ASINs_known_to_Fixer
+
 
 """
 
@@ -62,6 +65,8 @@ FIXER_STATUS_CODES = ['Not processed', # 0
                       'Suspended', # 3
                       'Rejected' # 4
                       ]
+# As of Sep 2020, there's also a priority/queue "n" for new, as yet unprioritized
+# IDs
 NEW_FIXER_STATUS_CODES = ['Insufficient information', # 0
                           'High priority', # 1 : major publisher/established author
                           'Medium priority', # 2 : self pub/minor author already known
@@ -83,7 +88,7 @@ def load_ids(conn, output_function=print):
     for query in ("""SELECT DISTINCT identifier_value v
     FROM identifiers i
     LEFT OUTER JOIN identifier_types it ON i.identifier_type_id = it.identifier_type_id
-    WHERE it.identifier_type_name IN ('ASIN', 'Audible-ISIN');""",
+    WHERE it.identifier_type_name IN ('ASIN', 'Audible-ASIN');""",
                     """SELECT DISTINCT pub_isbn v FROM pubs
                     WHERE pub_isbn IS NOT NULL;"""):
         results = conn.execute(text(query)).fetchall()
@@ -97,7 +102,9 @@ def load_fixer_ids(output_function=print):
     """
     Returns a tuple of:
     * A dict mapping ISBNs Fixer knows about to a tuple of
-      (their status in Fixer, their priority in Fixer (if status==0), else None)
+      - their status in Fixer,
+      - their priority in Fixer (if status==0), else None
+      - their ASIN (if any)
     * A dict mapping ASINs to ISBNs or None - the latter if the publication
       doesn't have an ISBN
     """
@@ -109,17 +116,29 @@ def load_fixer_ids(output_function=print):
         if line.endswith('\n'):
             line = line[:-1]
         bits = line.split('|')
+        asin = None
         if len(bits) == 3:
             # Older format (early 2020)
             isbn, raw_status, raw_priority = bits
-        else:
-            # Newer foramt (July 2020 onwards)
+        elif len(bits) == 2:
+            # Short-lived format (July-Sep 2020)
             # I don't *think* we ever did anything useful with the status, so
             # no big deal faking it.
             isbn, raw_priority = bits
             raw_status = 0
-        isbn_mappings[isbn] = (int(raw_status),
-                               (int(raw_priority) if raw_priority != '' else None))
+        else:
+            # Newest format as of Sep 2020
+            raw_status = 0
+            isbn10, isbn, raw_priority, asin = bits
+        try:
+            priority = int(raw_priority)
+        except ValueError:
+            if raw_priority in ('', None):
+                priority = None
+            else:
+                priority = raw_priority # e.g. 'n'
+        isbn_mappings[isbn] = (int(raw_status), priority, asin)
+
     output_function('Loaded %d Fixer ISBNs in %.3f seconds, size=%.1fMB' %
                     (len(isbn_mappings), time.time() - start,
                      sys.getsizeof(isbn_mappings) / (1024 * 1024)))
@@ -136,10 +155,15 @@ def load_fixer_ids(output_function=print):
             # Older format (early 2020)
             asin, isbn = bits
         else:
-            # Newer format (July 2020 onwards)
-            # Middle field is a 0 or 1 boolean "disposition flag" indicating
-            # whether submitted or not.  For now, we don't care about it
-            asin, _, isbn = bits
+            if len(bits[2]) >= 10:
+                # Short-lived format (July-Sep 2020),
+                #   Middle field is a 0 or 1 boolean "disposition flag" indicating
+                #   whether submitted or not.  For now, we don't care about it
+                asin, _, isbn = bits
+            else:
+                # Even newer format (Sep 2020 onwards), final value is a queue/
+                # priority that we don't care about
+                asin, isbn, _ = bits
         asin_mappings[asin] = isbn or None
 
     output_function('Loaded %d Fixer ASINs in %.3f seconds, size=%.1fMB' %
@@ -234,7 +258,11 @@ def batch_check_with_stats(vals, do_fixer_checks=True, check_both_isbn10_and_13=
         if status_counts:
             output_function('Of the umknowns, the following are known to Fixer:')
             for k, c in sorted(status_counts.items()):
-                output_function('* Status "%s" (%d) : %d' % (NEW_FIXER_STATUS_CODES[k], k, c))
+                if k == 'n':
+                    status = 'New/unprioritized'
+                else:
+                    status = NEW_FIXER_STATUS_CODES[k]
+                output_function('* Status "%s" (%s) : %d' % (status, k, c))
         else:
             output_function('None of the unknowns were known to Fixer')
     return results
