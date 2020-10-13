@@ -56,6 +56,7 @@ ISFDB_IRRELEVANT_TAGS = {
     "great britain/british isles",
 
     "health & fitness / healthy living", "health & fitness / longetivity",
+    "health care issues",
 
 
     "history", "historical events & topics", "general & world history",
@@ -65,6 +66,7 @@ ISFDB_IRRELEVANT_TAGS = {
     "postwar 20th century history: 1945 to 2000", "history / world",
     "postwar 20th century history",
     "history / expeditions & discoveries",
+    "history / essays",
 
     "british & irish history", "history / europe / great britain",
     "history / europe / great britain / 21st century",
@@ -72,9 +74,14 @@ ISFDB_IRRELEVANT_TAGS = {
     "history / russia & the former soviet union",
     "european history", "history / europe / general",
 
-    "history / united states / general", "biography & autobiography / historical",
+    "history / united states / general",
+
+    "biography & autobiography / historical", "autobiography: historical",
 
     "history / africa / north", "history / africa / east",
+    "history / middle east / iraq",
+    "history / asia / japan",
+    "history / modern / 20th century",
 
     "information technology industries", "social networking", "social network",
     "internet advertising", "e-commerce", "internet - general",
@@ -112,6 +119,9 @@ ISFDB_IRRELEVANT_TAGS = {
     "political control & freedoms",
     "anf: society", "social discrimination & equal treatment",
     "political science / history & theory",
+    "political science / political process / elections",
+    "political science / political process / political parties",
+    "social science / social work", "social work",
 
     "great britain/politics and government",
     "american government", "government & constitution",
@@ -141,6 +151,7 @@ ISFDB_IRRELEVANT_TAGS = {
     "science / life sciences / evolution", "popular science",
     "science / general", "life sciences",
     "science / physics / quantum theory",
+    "life sciences - general",
 
     "social activists",
 
