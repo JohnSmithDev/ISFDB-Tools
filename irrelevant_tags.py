@@ -28,9 +28,13 @@ ISFDB_IRRELEVANT_TAGS = {
     "business strategy", "business & management", "business",
     "business/economics", "economic history", "economics: professional & general",
     "business & ecomomics / entrepreneurship",
-    "business & ecomomics / knowledge capital",
+    "business & ecomomics / knowledge capital", "business & economics",
 
     "car racing", "automobile racing", "motor sports", "formula 1 & grand prix",
+
+    "computing: professional & programming", "computers / information technology",
+    "anf: computers and it", "computers / internet / general",
+    "technology / general issues", "internet: general works",
 
     "conjuring & magic",
 
@@ -50,6 +54,8 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "entertainment & performing arts", "other performing arts",
 
+    "family & relationships / death",
+
     "fiction / romance / historical / 20th century",
     "fiction and related items / historical fiction",
 
@@ -57,6 +63,10 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "health & fitness / healthy living", "health & fitness / longetivity",
     "health care issues",
+    "medical / general", "medical / infectious diseases",
+    "medical / clinical medicine", "health & fitness",
+    "medicine: general issues",
+    "popular medicine & health",
 
 
     "history", "historical events & topics", "general & world history",
@@ -75,6 +85,9 @@ ISFDB_IRRELEVANT_TAGS = {
     "european history", "history / europe / general",
 
     "history / united states / general",
+    "united states - social conditions - 21st century",
+    "united states - social life and customs - 21st century",
+    "travel / united states / general",
 
     "biography & autobiography / historical", "autobiography: historical",
 
@@ -83,12 +96,18 @@ ISFDB_IRRELEVANT_TAGS = {
     "history / asia / japan",
     "history / modern / 20th century",
 
+    "humor / form / essays",
+    "humor / topic / internet & social media",
+    "sport and leisure / humour",
+
     "information technology industries", "social networking", "social network",
     "internet advertising", "e-commerce", "internet - general",
     "business & economics / industries / computers & information technology",
     "computing and information technology / digital lifestyle",
     "computers / social aspects", "computing & information technology",
     "microcomputers - history",
+    "computers / natural language processing",
+    "computing and information technology / computer science / artifical intelligence",
 
     "international human rights law", "law / general", "legal history"
 
@@ -106,6 +125,8 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "poetry, drama & criticism",
 
+    "police in mass media", "police & security services",
+
     "politics/intl relations", "political leaders & leadership",
     "political science", "government & constitution",
     "political science/comparative politics", "political science / general",
@@ -122,6 +143,9 @@ ISFDB_IRRELEVANT_TAGS = {
     "political science / political process / elections",
     "political science / political process / political parties",
     "social science / social work", "social work",
+    "political science / intelligence & espionage",
+    "espionage & secret services",
+    "political science / terrorism",
 
     "great britain/politics and government",
     "american government", "government & constitution",
@@ -134,6 +158,7 @@ ISFDB_IRRELEVANT_TAGS = {
     "psychological testing & measurement", "popular psychology",
     "group or collective psychology", "sociology - general",
     "psychology / creative ability", "science / cognitive science",
+    "philosophy: free will & determinism",
 
     "privacy & data protection",
     "social science / privacy & surveillance",
@@ -147,23 +172,39 @@ ISFDB_IRRELEVANT_TAGS = {
     "popular mathematics", "probability & statistics",
     "anf: popular science and mathematics",
     "testing & measurement", "science / history", "science / ethics",
+    "mathematics / general",
 
     "science / life sciences / evolution", "popular science",
     "science / general", "life sciences",
     "science / physics / quantum theory",
     "life sciences - general",
 
+    "self-help / general",
+
+    "anf: skills for life",
+
     "social activists",
 
     "society & culture", "cultural studies",
     "social science / anthropology / cultural & social",
+    "society & culture: general",
+    "social science / sociology / general", "social & ethical issues",
+    "corruption in society",
+    "social & ethical issues", "social issues & processes",
+    "social classes & economic disparity",
 
     "spiritualism", "self-help",
+    "mind & spirit: mindfulness & meditation",
 
     "thriller & adventure",
 
     "travel / general", "travel & holiday",
 
-    "anf: transport", "transport industries"
+    "anf: transport", "transport industries",
+
+    "virus / corona virus",
+
+    "creative writing & creative writing guides",
+    "usage & writing guides"
     }
 
