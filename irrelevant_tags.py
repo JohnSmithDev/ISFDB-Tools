@@ -21,6 +21,7 @@ ISFDB_IRRELEVANT_TAGS = {
     "biography & autobiography / entertainment & performing arts",
     "biography & autobiography / science & technology",
     "biography & autobiography / general",
+    "biography & autobiography / music",
     "science, technology & medicine biographies",
     "science, technology & medicine autobiographies",
     "biography and true stories / true stories / true crime",
@@ -58,6 +59,8 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "fiction / romance / historical / 20th century",
     "fiction and related items / historical fiction",
+    "fiction / historical / general", "fiction / historical / world war ii",
+    "fiction: general & literary",
 
     "great britain/british isles",
 
@@ -80,6 +83,8 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "british & irish history", "history / europe / great britain",
     "history / europe / great britain / 21st century",
+    "humanities / history / history: earliest times to present day / early history: c. 500 to c. 1450/1500",
+    "humanities / history / regional and national history / european history / british and irish history",
 
     "history / russia & the former soviet union",
     "european history", "history / europe / general",
@@ -99,6 +104,7 @@ ISFDB_IRRELEVANT_TAGS = {
     "humor / form / essays",
     "humor / topic / internet & social media",
     "sport and leisure / humour",
+    "humor / form / comic strips & cartoons",
 
     "information technology industries", "social networking", "social network",
     "internet advertising", "e-commerce", "internet - general",
@@ -111,17 +117,26 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "international human rights law", "law / general", "legal history"
 
+    "language arts & disciplines / grammar",
+    "language / language: reference and general / writing and editing guides",
+
+    "greater london",
+
     "management", "finance", "decision making",
 
     "military intelligence", "military - aviation", "military history",
     "wars & conflicts (other)", "history / military / united states",
     "history / military / general", "history / military / special forces",
     "military / korean war", "war & defence operations",
-    "history / military / world war ii",
+    "history / military / world war ii", "history / military / world war i",
+
 
     "music / individual composer & musician", "rock & pop music",
     "composers & songwriters", "individual composers & musicians",
     "music styles & genres", "specific bands & groups",
+    "music / history & criticism", "music / discography & buyer's guides",
+
+    "new south wales",
 
     "poetry, drama & criticism",
 
@@ -177,7 +192,9 @@ ISFDB_IRRELEVANT_TAGS = {
     "science / life sciences / evolution", "popular science",
     "science / general", "life sciences",
     "science / physics / quantum theory",
+    "science / physics / general",
     "life sciences - general",
+    "science - miscellanea",
 
     "self-help / general",
 
