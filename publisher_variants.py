@@ -180,6 +180,26 @@ PUBLISHER_VARIANTS = {
     ],
 
     ###
+    ### Indies
+    ###
+    "Chris Kennedy Publishing": [
+        "Chris Kennedy Publishing",
+        "Theogony Books",
+        "New Mythology Press",
+        "Anticipation Press",
+        "Blood Moon Press",
+        "Seventh Seal Press",
+        "Wyld Stallions Press",
+        "Beyond Terra Press"
+    ],
+
+    "LMBPN": [
+        "LMBPN Publishing",
+        "BrixBaxter Publishing / LMBPN Publishing"
+    ]
+
+
+    ###
     ### Ad hoc requests
     ###
 
