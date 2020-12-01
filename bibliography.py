@@ -13,7 +13,7 @@ Known bugs/issues:
 * Some issues with variant editions e.g. Peter F. Hamilton, Charles Stross
 """
 
-from collections import defaultdict, Counter
+from collections import defaultdict, Counter, namedtuple
 from functools import reduce, lru_cache
 import logging
 import pdb
@@ -46,6 +46,8 @@ class DuplicateBookError(DuplicatedOrMergedRecordError):
     pass
 
 FALLBACK_YEAR = 8888
+
+PubStuff = namedtuple('PubStuff', 'pub_id, date, format price')
 
 class BookByAuthor(object):
     """
@@ -87,6 +89,12 @@ class BookByAuthor(object):
 
         self.author = author
 
+
+        self.pub_stuff = PubStuff(self.publication_date, self.publication_date,
+                                  row['pub_ptype'], row['pub_price'])
+        self.all_pub_stuff = [self.pub_stuff]
+
+
         key = self.parent_id or self.title_id
         # self._title_id_to_titles[key].update([self.title, self.pub_title])
         # self._publication_dict[key].update([self.copyright_date, self.publication_date])
@@ -107,7 +115,7 @@ class BookByAuthor(object):
         self._copyright_dates.extend(other._copyright_dates)
         self._publication_dates.extend(other._publication_dates)
         self.isbns.extend(other.isbns)
-
+        self.all_pub_stuff.extend(other.all_pub_stuff)
 
     @property
     def earliest_copyright_date(self):
@@ -139,9 +147,36 @@ class BookByAuthor(object):
         else:
             return dt.year
 
+    @property
+    def pub_stuff_string(self):
+        with_dates = [z for z in self.all_pub_stuff
+                      if z.date and 1800 <= z.date.year <= 2100]
+        date_sorted = sorted(with_dates, key=lambda z: z.date)
+        year_to_stuff = {} # deliberately not using defaultdict
+        for year in range(MIN_PUB_YEAR, MAX_PUB_YEAR+1):
+            year_to_stuff[year] = []
+            # TODO: make this more efficient
+            for stuff in date_sorted:
+                if stuff.date.year == year:
+                    year_to_stuff[year].append(stuff)
+        counts = [len(v) for k, v in sorted(year_to_stuff.items())]
+
+        def num_rep(v):
+            if v >= 10:
+                return 'X'
+            elif v == 0:
+                return '.'
+            else:
+                return str(v)
+        return ''.join([num_rep(z) for z in counts])
+
+
     def __repr__(self):
         return '%s [%d]' % (self.title, self.year)
 
+
+MIN_PUB_YEAR = 1990
+MAX_PUB_YEAR = 2020
 
 def get_raw_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITLE_TYPES):
     """
@@ -158,7 +193,7 @@ def get_raw_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITL
           CAST(t.title_copyright AS CHAR) t_copyright,
           t.series_id, t.title_seriesnum, t.title_seriesnum_2,
           p.pub_id, p.pub_title, CAST(p.pub_year as CHAR) p_publication_date,
-          p.pub_isbn
+          p.pub_isbn, p.pub_price, p.pub_ptype
     FROM canonical_author ca
     LEFT OUTER JOIN titles t ON ca.title_id = t.title_id
     LEFT OUTER JOIN pub_content pc ON t.title_id = pc.title_id
@@ -250,5 +285,6 @@ if __name__ == '__main__':
 
     bibliography = get_author_bibliography(conn, args.exact_author)
     for i, bk in enumerate(bibliography, 1):
-        print('%2d. %s [%d]' % (i, bk.all_titles, bk.year))
+        print('%2d. %s %s [%d]' % (i, bk.pub_stuff_string, bk.all_titles, bk.year))
+        # pdb.set_trace()
 
