@@ -19,9 +19,11 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "biography: sport",
     "biography & autobiography / entertainment & performing arts",
-    "biography & autobiography / science & technology",
     "biography & autobiography / general",
     "biography & autobiography / music",
+    "biography & autobiography / political",
+    "biography & autobiography / presidents & heads of state",
+    "biography & autobiography / science & technology",
     "science, technology & medicine biographies",
     "science, technology & medicine autobiographies",
     "biography and true stories / true stories / true crime",
@@ -38,6 +40,8 @@ ISFDB_IRRELEVANT_TAGS = {
     "technology / general issues", "internet: general works",
 
     "conjuring & magic",
+
+    "general cookery & recipes", "alcoholic drinks", "food & drink",
 
     "crime & mystery", "crime & mystery fiction", "crime",
 
@@ -88,6 +92,7 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "history / russia & the former soviet union",
     "european history", "history / europe / general",
+    "history / europe / germany",
 
     "history / united states / general",
     "united states - social conditions - 21st century",
@@ -98,8 +103,10 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "history / africa / north", "history / africa / east",
     "history / middle east / iraq",
+    "history / middle east / arabian peninsular",
     "history / asia / japan",
     "history / modern / 20th century",
+    "history & theory",
 
     "humor / form / essays",
     "humor / topic / internet & social media",
@@ -161,13 +168,14 @@ ISFDB_IRRELEVANT_TAGS = {
     "political science / intelligence & espionage",
     "espionage & secret services",
     "political science / terrorism",
+    "political science / world / middle eastern",
 
     "great britain/politics and government",
     "american government", "government & constitution",
 
     "press & journalism", "media studies", "anf: media studies",
     "social science / media studies", "social science / social classes",
-    "social & cultural history",
+    "social & cultural history", "social & cultural studies",
 
     "psychology", "sociology", "philosophy", "social psychology",
     "psychological testing & measurement", "popular psychology",
