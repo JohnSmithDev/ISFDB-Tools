@@ -36,7 +36,12 @@ conn = get_connection()
 
 
 from flask import Flask, jsonify, request, make_response
+# https://stackoverflow.com/questions/25594893/how-to-enable-cors-in-flask
+from flask_cors import CORS, cross_origin
+
 app = Flask(__name__)
+cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 @app.route('/')
 def index():
@@ -50,6 +55,11 @@ def json_response(data):
     """
     resp =  make_response(jsonify(data))
     resp.headers['X-ID-Checker-API-Version'] = '0.2'
+
+    # Next line didn't seem to work; I'm guessing it only affected explicit
+    # request handlers we define, not OPTIONS
+    # resp.headers['Access-Control-Allow-Origin'] = '*' # Needed for Chrome 87+ ?
+    # See https://stackoverflow.com/questions/25594893/how-to-enable-cors-in-flask
     return resp
 
 
@@ -108,6 +118,7 @@ else:
     checker_function = batch_check_via_database
 
 @app.route('/batch_check/', methods=['POST'])
+@cross_origin()
 def batch_check_response():
 
     # print(request) # Doesn't show anything useful
