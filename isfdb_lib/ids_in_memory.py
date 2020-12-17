@@ -221,7 +221,7 @@ def batch_check_in_memory(list_of_ids, do_fixer_checks=True,
                 except KeyError:
                     info['asin_known_to_fixer'] = False
             try:
-                info['status'], info['priority'] = isbn_mappings[val]
+                info['status'], info['priority'], _ = isbn_mappings[val]
             except KeyError:
                 pass
         ret.append(info)
