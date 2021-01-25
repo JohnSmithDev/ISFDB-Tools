@@ -86,6 +86,7 @@ ISFDB_IRRELEVANT_TAGS = {
     "history / essays",
 
     "british & irish history", "history / europe / great britain",
+    "history / europe / ireland",
     "history / europe / great britain / 21st century",
     "humanities / history / history: earliest times to present day / early history: c. 500 to c. 1450/1500",
     "humanities / history / regional and national history / european history / british and irish history",
@@ -111,7 +112,7 @@ ISFDB_IRRELEVANT_TAGS = {
     "humor / form / essays",
     "humor / topic / internet & social media",
     "sport and leisure / humour",
-    "humor / form / comic strips & cartoons",
+    "humor / form / comic strips & cartoons", "humor / form / trivia",
 
     "information technology industries", "social networking", "social network",
     "internet advertising", "e-commerce", "internet - general",
@@ -126,6 +127,7 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "language arts & disciplines / grammar",
     "language / language: reference and general / writing and editing guides",
+    "language: history & general works", "english language - etymology",
 
     "greater london",
 
@@ -226,6 +228,8 @@ ISFDB_IRRELEVANT_TAGS = {
     "travel / general", "travel & holiday",
 
     "anf: transport", "transport industries",
+
+    "true crime / espionage",
 
     "virus / corona virus",
 
