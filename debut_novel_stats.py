@@ -8,6 +8,7 @@ Report on which novels a publisher published were debuts, or an author's
 from collections import namedtuple, defaultdict
 from datetime import timedelta, date
 from functools import lru_cache
+from itertools import chain
 #import json
 # from os.path import basename
 import logging
@@ -62,14 +63,32 @@ def is_same_book(bk1, bk2):
     return bk1_ids.intersection(bk2_ids)
 
 
+def get_original_novels(books, valid_pub_types=None):
+    """
+    Given a list of book-like objects, return just the ones that are:
+    * original publications (based on copyright year = publication year)
+    * novels (can be overriden via valid_pub_types)
+    """
+    if not valid_pub_types:
+        valid_pub_types = {'NOVEL'}
+    books_filtered_by_type = [z for z in books
+                              if z.publication_type.upper() in valid_pub_types]
+    return [z for z in books_filtered_by_type
+            if z.best_copyright_date.year == z.first_publication.year]
+
+
 class DebutStats(object):
     def __init__(self, books, conn, do_prefilter=True):
         self.conn = conn
 
         if do_prefilter:
+            # Now refactored as this is of more general use
+            ORIG = """
             novels = [z for z in books if z.publication_type.lower() == 'novel']
             self.books = [z for z in novels
                           if z.best_copyright_date.year == z.first_publication.year]
+            """
+            self.books = get_original_novels(books)
         else:
             self.books = books
         self._process()
@@ -143,6 +162,13 @@ class DebutStats(object):
         return len(self.debut_authors)
 
     @property
+    def distinct_authors(self):
+        raw_authors = [bk.author_id_to_name.values() for bk in self.books]
+        flattened_authors = chain(*raw_authors)
+        ret = set(flattened_authors)
+        return ret
+
+    @property
     def nth_book_details(self):
         """
         Note that the nth book details returned start at 1, whereas other
@@ -190,7 +216,10 @@ class DebutStats(object):
             return NthAverages(0, 0, 0, 0)
 
 
-    def output_detail(self, output_function=print):
+    def output_nth_detail(self, output_function=print):
+        """
+        Output details pertinent to whether the books are debuts or nth novels
+        """
         details = self.nth_book_details
         max_nth = max([z[0] for z in details])
         for nth, bk in sorted(details):
@@ -201,15 +230,33 @@ class DebutStats(object):
                                                             nth_string,
                                                             bk.title))
 
+    def output_pub_detail(self, output_function=print):
+        """
+        Output details pertinent the titles and their individual publications
+        """
+        for i, bk in enumerate(self.books, 1):
+            output_function('%3d. %s' % (i, bk))
 
     def __repr__(self):
         if self.debut_authors:
-            author_list = ', '.join(sorted(self.debut_authors))
+            debut_author_list = ', '.join(sorted(self.debut_authors))
         else:
-            author_list = 'N/A'
-        return '%2d of %3d (%2d%%) new novels/authors were debuts : %s' % \
-            (self.debut_count, self.book_author_count,
-             100 * self.debut_count / self.book_author_count, author_list)
+            debut_author_list = 'N/A'
+        all_books_bit = '%d new novels' % (len(self.books))
+        all_authors_bit = '%d distinct authors' % (len(self.distinct_authors))
+        #  100 * self.debut_count / len(self.books))
+
+        return 'Of %s by %s, %d books had a debut author | %s' % (
+            all_books_bit, all_authors_bit, self.debut_count,
+            debut_author_list)
+
+        BLAH ="""
+
+ / %3d (%2d%%) new novels/authors were debuts : %s' % \
+all_books_bit, all_authors_bit,
+             self.book_author_count, 100 * self.debut_count / self.book_author_count,
+             debut_author_list)
+        """
 
 def pretty_ordinal(n):
     """Return '1st', '2nd', '3rd' etc for a given integer"""
@@ -265,17 +312,20 @@ def debut_report(conn, args, output_function=print):
                                   book_types=['NOVEL'])
 
     yearly_results = split_books_by_year(results)
-    for year, books in sorted(yearly_results):
-        ds = DebutStats(books, conn, do_prefilter=True)
+    for year, all_published_books in sorted(yearly_results):
+        new_novels = get_original_novels(all_published_books)
+        ds = DebutStats(new_novels, conn)
 
         if ds.book_author_count:
             mean, weighted_mean, median, weighted_median= ds.average_nth_book
             output_function('%s. %s (mean %dth/%dth book, median %dth/%dth book)' %
                             (year, ds, mean, weighted_mean, median, weighted_median))
             try:
-                if args.show_detail:
-                    ds.output_detail(output_function)
-            except AttributeError:
+                if args.show_nth_detail:
+                    ds.output_nth_detail(output_function)
+                if args.show_pub_detail:
+                    ds.output_pub_detail(output_function)
+            except AttributeError: # Why might this blow up?
                 pass
         ret.append((year, ds))
         if args.verbose:
@@ -288,8 +338,10 @@ def debut_report(conn, args, output_function=print):
 if __name__ == '__main__':
     parser = create_parser(description='Report on debut novels published by a publisher',
                            supported_args='kpy')
-    parser.add_argument('-d', dest='show_detail', action='store_true',
-                        help='Enable detailed output')
+    parser.add_argument('-d', dest='show_nth_detail', action='store_true',
+                        help='Enable detailed output re. debut/nth novel')
+    parser.add_argument('-D', dest='show_pub_detail', action='store_true',
+                        help='Enable detailed output re. titles and publications')
     args = parse_args(sys.argv[1:], parser=parser)
 
 
