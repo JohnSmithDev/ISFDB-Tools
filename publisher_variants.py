@@ -39,14 +39,14 @@ PUBLISHER_VARIANTS = {
     # Jo Fletcher?
 
     "Orbit UK": [
-        "Orbit",
-        "Orbit / Little, Brown", # 2 pubs in 1999 and 2012
-        "Orbit / Little, Brown UK", # 19 pubs between 1992 and 2011
-        "Orbit / Time Warner Books UK", # 3 pubs in 2004 and 2005
+        "Orbit",                           # 113
+        "Orbit / Little, Brown",           # 58047 : 2 pubs in 1999 and 2012
+        "Orbit / Little, Brown UK",        # 42733 : 19 pubs between 1992 and 2011
+        "Orbit / Time Warner Books UK",    # 43424 : 3 pubs in 2004 and 2005
         "Orbit Book / Futura Publications" # 9 pubs 1974-1977 and 1988-1989
-        "Orbit / Futura",  # 191 pubs 1974-1990
-        "Orbit / Futura Publications", # 7 pubs 1974-1988
-        "Orbit/Future/General" # 1 pub 1984
+        "Orbit / Futura",                  # 191 pubs 1974-1990
+        "Orbit / Futura Publications",     # 7 pubs 1974-1988
+        "Orbit/Future/General"             # 1 pub 1984
     ],
     "Harper Voyager UK": [
         "Harper Voyager (UK)",
@@ -137,9 +137,12 @@ PUBLISHER_VARIANTS = {
     ],
 
     "Orbit US": [
-        "Orbit (US)",
-        "Orbit (US) / SFBC",
-        "Orbit / SFBC" # 6 pubs betwen 2008 and 2016, all USD prices
+        "Orbit (US)",            # 25520
+        "Orbit (US) / SFBC",     # 25280
+        "Orbit / SFBC",          # 50874 : 6 pubs betwen 2008 and 2016, all USD prices
+        # The "BCA by..." have no price, so unclear if they are UK or US; the
+        # earliest being 1995 makes me think they might be UK?
+        "BCA by arrangement with Orbit" # 17789 : 7 pubs between 1995 and 2005
     ],
 
     "Saga Press": {
@@ -196,13 +199,21 @@ PUBLISHER_VARIANTS = {
     "LMBPN": [
         "LMBPN Publishing",
         "BrixBaxter Publishing / LMBPN Publishing"
-    ]
+    ],
 
 
     ###
     ### Ad hoc requests
     ###
 
-    # "Tyche": ["Tyche Books"],
+    "Tyche": ["Tyche Books"],
+    "Orbit AU": [
+        "Orbit / Hachette Australia",      # 29541 : 15 pubs between 2009-2013
+        "Orbit / Hachette Livre Australia" # 45819 : 2 pubs in 2008
+    ]
 
 }
+
+PUBLISHER_VARIANTS['Orbit Global'] = PUBLISHER_VARIANTS['Orbit UK'] + \
+                                     PUBLISHER_VARIANTS['Orbit US'] + \
+                                     PUBLISHER_VARIANTS['Orbit AU']
