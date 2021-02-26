@@ -32,6 +32,7 @@ from deduplicate import (DuplicatedOrMergedRecordError,
 VALID_LANGUAGE_IDS = [17]
 
 DEFAULT_TITLE_TYPES = ['NOVEL']
+# DEFAULT_TITLE_TYPES = ['SHORTFICTION']
 
 
 def safe_min(values):
@@ -131,6 +132,9 @@ class BookByAuthor(object):
 
     @property
     def all_titles(self):
+        # This is reasonable for novels, but will be wrong for (most) short fiction,
+        # as it will dump out the story name alongside the mag/anth/coll it appears
+        # in
         return ' aka '.join(self.prioritized_titles)
 
     @property
@@ -187,8 +191,21 @@ def get_raw_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITL
     # title_copyright is not reliably populated, hence the joining to pubs
     # for their date as well.
     # Or is that just an artefact of 0 day-of-month causing them to be output as None?
-    # NB: title_types and pub_ctypes are not the same, so if/when we extend
-    #     this beyond NOVEL, that code will need to change
+
+    # NB: title_types and pub_ctypes are not the same, the following is a hack
+    #     that may not be desirable in some contexts e.g. should OMNIBUS be added
+    #     when we want NOVELs
+    pub_types = set()
+    for tt in title_types:
+        if tt == 'NOVEL':
+            pub_types.update(['NOVEL'])
+        elif tt == 'SHORTFICTION':
+            # OMNIBUS also?
+            pub_types.update(['COLLECTION', 'CHAPBOOK', 'ANTHOLOGY', 'MAGAZINE'])
+        else:
+            logging.warning(f'Dunno pub types for title type "{tt}"')
+
+
     query = text("""SELECT t.title_id, t.title_parent, t.title_title,
           CAST(t.title_copyright AS CHAR) t_copyright,
           t.series_id, t.title_seriesnum, t.title_seriesnum_2,
@@ -200,11 +217,12 @@ def get_raw_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITL
     LEFT OUTER JOIN pubs p ON pc.pub_id = p.pub_id
     WHERE author_id IN :author_ids
       AND t.title_ttype IN :title_types
-      AND p.pub_ctype IN :title_types
+      AND p.pub_ctype IN :pub_types
       AND title_language IN :title_languages
     ORDER BY t.title_id, p.pub_year; """)
     rows = conn.execute(query, {'author_ids':author_ids,
                                 'title_types': title_types,
+                                'pub_types': list(pub_types), # Doesn't seem to like set?
                                 'title_languages': VALID_LANGUAGE_IDS})
     # print(len(rows)) # This only works if you do a .fetchall() above
     return rows
