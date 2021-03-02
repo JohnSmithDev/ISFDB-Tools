@@ -41,7 +41,7 @@ def create_parser(description, supported_args):
     * c : award category (e.g. "Best Novel", "Best Novella")
     * g : tag
     * k : country (2 character codes, e.g. "us", "ca")
-    * n : work types (e.g. novel, anthology) Q: Is this title or pub types?
+    * n : work types (e.g. novel, anthology, chapbook - i.e. title_ttype not pub_ctype)
     * p : publisher
     * t : book title
     * v : verbose mode
@@ -90,7 +90,7 @@ def create_parser(description, supported_args):
 
     if not supported_args or 'n' in low_args:
         parser.add_argument('-n', dest='work_types', action='append', default=[],
-                            help='Types of work to search on e.g. novels, novellas, etc '
+                            help='Types of work to search on e.g. novel, chapbook, anthology, etc '
                             '(case insensitive but otherwise exact match, multiple "OR" values allowed)')
 
     if not supported_args or 'w' in low_args:
@@ -182,8 +182,7 @@ def get_filters_and_params_from_args(filter_args, column_name_mappings=None):
 
     # What the characters in the second tuple element mean:
     # e: exact match
-    # g: group exact match (I think this has never been implemented, and 'e'
-    #    allows groups/multiple values to work) TODO: verify and remove if tre
+    # g: group exact match
     # p: pattern
     # y: year
     param2column_names = {
@@ -192,7 +191,7 @@ def get_filters_and_params_from_args(filter_args, column_name_mappings=None):
         # TODO: award should also support award_type_short_name - primarily for BSFA
         'award': ('award_type_name', 'pe'),
         'award_category': ('award_cat_name', 'pe'),
-        'work_types': ('title_ttype', 'g'), # Note prior comment about not implemented!!!!
+        'work_types': ('title_ttype', 'g'), # Note prior comment about 'g' not implemented!!!!
 
         'publisher': ('publisher_name', 'pex'),
         'tag': ('tag_name', 'pe'),
@@ -254,10 +253,12 @@ def get_filters_and_params_from_args(filter_args, column_name_mappings=None):
             else:
                 params[exact_prm] = exact_val
                 filters.append('%s = :%s' % (col, exact_prm))
-        elif variants == 'g': # group (exact) match
-            pass # TODO
-            # params[prm] = [z.lower() for z in val]
-            # filters.append('LOWER(%s) IN :%s' % (col, prm))
+        elif variants == 'g':
+            # group (exact) match,
+            # i.e. value should match one of the values passed in the group arg
+            # e.g. '-n NOVEL -n CHAPBOOK' will match NOVEL *or* CHAPBOOK
+            params[prm] = [z.lower() for z in val]
+            filters.append('LOWER(%s) IN :%s' % (col, prm))
         elif variants == 'y': # year
             if val is None:
                 continue
