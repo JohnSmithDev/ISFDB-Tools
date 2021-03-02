@@ -22,11 +22,13 @@ import sys
 
 from sqlalchemy.sql import text
 
-from common import (get_connection, parse_args, AmbiguousArgumentsError)
+from common import (get_connection, create_parser, parse_args,
+                    AmbiguousArgumentsError)
 from isfdb_utils import (convert_dateish_to_date, merge_similar_titles)
 from author_aliases import get_author_alias_ids
 from deduplicate import (DuplicatedOrMergedRecordError,
                          make_list_excluding_duplicates)
+from publisher_variants import REVERSE_PUBLISHER_VARIANTS
 
 # See language table, titles.title_language
 VALID_LANGUAGE_IDS = [17]
@@ -47,6 +49,9 @@ class DuplicateBookError(DuplicatedOrMergedRecordError):
     pass
 
 FALLBACK_YEAR = 8888
+
+MIN_PUB_YEAR = 1990
+MAX_PUB_YEAR = 2021
 
 PubStuff = namedtuple('PubStuff', 'pub_id, date, format price')
 
@@ -84,6 +89,10 @@ class BookByAuthor(object):
         self._publication_dates = [self.publication_date]
         self.isbns = [row['pub_isbn']]
 
+        pn = row['publisher_name']
+        sanitised_publisher = REVERSE_PUBLISHER_VARIANTS.get(pn, pn)
+        self.publishers = {sanitised_publisher}
+
         # Q: should this count twice if title and pub_title are the same?
         valid_titles = [z for z in [self.title_title, self.pub_title] if z]
         self._titles = Counter(valid_titles)
@@ -116,6 +125,7 @@ class BookByAuthor(object):
         self._copyright_dates.extend(other._copyright_dates)
         self._publication_dates.extend(other._publication_dates)
         self.isbns.extend(other.isbns)
+        self.publishers.update(other.publishers)
         self.all_pub_stuff.extend(other.all_pub_stuff)
 
     @property
@@ -179,8 +189,6 @@ class BookByAuthor(object):
         return '%s [%d]' % (self.title, self.year)
 
 
-MIN_PUB_YEAR = 1990
-MAX_PUB_YEAR = 2020
 
 def get_raw_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITLE_TYPES):
     """
@@ -210,11 +218,13 @@ def get_raw_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITL
           CAST(t.title_copyright AS CHAR) t_copyright,
           t.series_id, t.title_seriesnum, t.title_seriesnum_2,
           p.pub_id, p.pub_title, CAST(p.pub_year as CHAR) p_publication_date,
-          p.pub_isbn, p.pub_price, p.pub_ptype
+          p.pub_isbn, p.pub_price, p.pub_ptype,
+          p.publisher_id, pl.publisher_name
     FROM canonical_author ca
     LEFT OUTER JOIN titles t ON ca.title_id = t.title_id
     LEFT OUTER JOIN pub_content pc ON t.title_id = pc.title_id
     LEFT OUTER JOIN pubs p ON pc.pub_id = p.pub_id
+    LEFT OUTER JOIN publishers pl ON p.publisher_id = pl.publisher_id
     WHERE author_id IN :author_ids
       AND t.title_ttype IN :title_types
       AND p.pub_ctype IN :pub_types
@@ -284,6 +294,17 @@ def postprocess_bibliography(raw_rows):
         titles_to_first_pub[tuple(titles)] = min(pubdates)
     return sorted(titles_to_first_pub.items(), key=lambda z: z[1])
 
+
+def output_publisher_stats(publisher_counts, output_function=print):
+    output_function(f'\n= This author has been published by the following =')
+    for i, (publisher, book_count) in enumerate(publisher_counts.most_common()):
+        pc = 100 * book_count / len(bibliography)
+        if pc < 5 or i > 10:
+            output_function('...and %d other publishers' % (len(publisher_counts) - i))
+            break
+        output_function('%-40s : %3d (%d%%)' % (publisher, book_count, pc))
+
+
 def get_author_bibliography(conn, author_names):
     # author_ids = get_author_alias_ids(conn, author_names)
     author_name = author_names[0]
@@ -295,14 +316,20 @@ def get_author_bibliography(conn, author_names):
     return bibliography
 
 if __name__ == '__main__':
-    args = parse_args(sys.argv[1:],
-                      description="List an author's bibliography",
+    parser = create_parser(description="List an author's bibliography",
                       supported_args='av')
+    parser.add_argument('-p', dest='show_publishers', action='store_true',
+                        help='Show stats on which publishers this author had')
+    args = parse_args(sys.argv[1:], parser=parser)
+
 
     conn = get_connection()
 
     bibliography = get_author_bibliography(conn, args.exact_author)
+    publisher_counts = Counter()
     for i, bk in enumerate(bibliography, 1):
         print('%2d. %s %s [%d]' % (i, bk.pub_stuff_string, bk.all_titles, bk.year))
-        # pdb.set_trace()
+        publisher_counts.update(bk.publishers)
 
+    if args.show_publishers:
+        output_publisher_stats(publisher_counts)
