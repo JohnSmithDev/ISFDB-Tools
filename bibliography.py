@@ -34,6 +34,7 @@ from publisher_variants import REVERSE_PUBLISHER_VARIANTS
 VALID_LANGUAGE_IDS = [17]
 
 DEFAULT_TITLE_TYPES = ['NOVEL']
+#DEFAULT_TITLE_TYPES = ['NOVEL', 'CHAPBOOK']
 # DEFAULT_TITLE_TYPES = ['SHORTFICTION']
 
 
@@ -50,6 +51,7 @@ class DuplicateBookError(DuplicatedOrMergedRecordError):
 
 FALLBACK_YEAR = 8888
 
+# TODO: these should be automatically inferred from author's history
 MIN_PUB_YEAR = 1990
 MAX_PUB_YEAR = 2021
 
@@ -184,10 +186,8 @@ class BookByAuthor(object):
                 return str(v)
         return ''.join([num_rep(z) for z in counts])
 
-
     def __repr__(self):
         return '%s [%d]' % (self.title, self.year)
-
 
 
 def get_raw_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITLE_TYPES):
@@ -202,16 +202,22 @@ def get_raw_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITL
 
     # NB: title_types and pub_ctypes are not the same, the following is a hack
     #     that may not be desirable in some contexts e.g. should OMNIBUS be added
-    #     when we want NOVELs
+    #     when we want NOVELs?
+    # Q: Why do we need to check both title_ttype and pub_ctype?  Isn't the
+    #    first enough?
+
+    # logging.debug(f'title_types={title_types}')
+    if not title_types:
+        title_types = DEFAULT_TITLE_TYPES
+
     pub_types = set()
     for tt in title_types:
-        if tt == 'NOVEL':
-            pub_types.update(['NOVEL'])
-        elif tt == 'SHORTFICTION':
+        if tt == 'SHORTFICTION':
             # OMNIBUS also?
             pub_types.update(['COLLECTION', 'CHAPBOOK', 'ANTHOLOGY', 'MAGAZINE'])
         else:
-            logging.warning(f'Dunno pub types for title type "{tt}"')
+            # Assume user knew what they were doing
+            pub_types.update([tt])
 
 
     query = text("""SELECT t.title_id, t.title_parent, t.title_title,
@@ -236,6 +242,7 @@ def get_raw_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITL
                                 'title_languages': VALID_LANGUAGE_IDS})
     # print(len(rows)) # This only works if you do a .fetchall() above
     return rows
+
 
 def get_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITLE_TYPES):
     """
@@ -305,19 +312,20 @@ def output_publisher_stats(publisher_counts, output_function=print):
         output_function('%-40s : %3d (%d%%)' % (publisher, book_count, pc))
 
 
-def get_author_bibliography(conn, author_names):
+def get_author_bibliography(conn, author_names, title_types=None):
     # author_ids = get_author_alias_ids(conn, author_names)
     author_name = author_names[0]
     author_ids = get_author_alias_ids(conn, author_name)
     if not author_ids:
         raise AmbiguousArgumentsError('Do not know author "%s"' % (author_names))
     # print(author_ids)
-    bibliography = get_bibliography(conn, author_ids, author_name)
+    bibliography = get_bibliography(conn, author_ids, author_name, title_types)
     return bibliography
+
 
 if __name__ == '__main__':
     parser = create_parser(description="List an author's bibliography",
-                      supported_args='av')
+                      supported_args='anv')
     parser.add_argument('-p', dest='show_publishers', action='store_true',
                         help='Show stats on which publishers this author had')
     args = parse_args(sys.argv[1:], parser=parser)
@@ -325,7 +333,7 @@ if __name__ == '__main__':
 
     conn = get_connection()
 
-    bibliography = get_author_bibliography(conn, args.exact_author)
+    bibliography = get_author_bibliography(conn, args.exact_author, args.work_types)
     publisher_counts = Counter()
     for i, bk in enumerate(bibliography, 1):
         print('%2d. %s %s [%d]' % (i, bk.pub_stuff_string, bk.all_titles, bk.year))
