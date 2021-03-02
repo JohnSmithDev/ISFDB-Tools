@@ -214,6 +214,11 @@ PUBLISHER_VARIANTS = {
 
 }
 
+REVERSE_PUBLISHER_VARIANTS = {}
+for pub_group, pub_list in PUBLISHER_VARIANTS.items():
+    for p in pub_list:
+        REVERSE_PUBLISHER_VARIANTS[p] = pub_group
+
 PUBLISHER_VARIANTS['Orbit Global'] = PUBLISHER_VARIANTS['Orbit UK'] + \
                                      PUBLISHER_VARIANTS['Orbit US'] + \
                                      PUBLISHER_VARIANTS['Orbit AU']
