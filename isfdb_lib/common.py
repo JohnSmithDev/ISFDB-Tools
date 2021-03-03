@@ -257,6 +257,8 @@ def get_filters_and_params_from_args(filter_args, column_name_mappings=None):
             # group (exact) match,
             # i.e. value should match one of the values passed in the group arg
             # e.g. '-n NOVEL -n CHAPBOOK' will match NOVEL *or* CHAPBOOK
+            if val is None:
+                continue
             params[prm] = [z.lower() for z in val]
             filters.append('LOWER(%s) IN :%s' % (col, prm))
         elif variants == 'y': # year
