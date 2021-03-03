@@ -63,18 +63,26 @@ def is_same_book(bk1, bk2):
     return bk1_ids.intersection(bk2_ids)
 
 
-def get_original_novels(books, valid_pub_types=None):
+def get_original_novels(books, valid_pub_types=None, year_difference_threshold=0):
     """
     Given a list of book-like objects, return just the ones that are:
-    * original publications (based on copyright year = publication year)
+    * original publications (based on copyright year == publication year*)
     * novels (can be overriden via valid_pub_types)
+
+    If you set year_difference_threshold (e.g. to be 2 or more) this can be used
+    as a crude filter to (hopefully) pick newish novels and avoid archive titles.
+    e.g. if the first pub was a hc a year earlier, a tp published this year is
+    still a somewhat new title, as opposed to an archive title from the distant
+    past.
     """
+
     if not valid_pub_types:
         valid_pub_types = {'NOVEL'}
     books_filtered_by_type = [z for z in books
                               if z.publication_type.upper() in valid_pub_types]
     return [z for z in books_filtered_by_type
-            if z.best_copyright_date.year == z.first_publication.year]
+            if abs(z.best_copyright_date.year - z.first_publication.year) \
+            <= year_difference_threshold]
 
 
 class DebutStats(object):
@@ -299,6 +307,12 @@ def split_books_by_year(books):
         logging.warning(f'Found {len(bad_years)} books with no year defined, which will be ignored')
     return sorted(year_to_books.items())
 
+# This should be controlled by CLI arg (-n is now supported in the common arg
+# handling code, but may need some more massaging/testing before being workable
+# here)
+# VALID_BOOK_TYPES = ['NOVEL', 'CHAPBOOK']
+VALID_BOOK_TYPES = ['NOVEL']
+
 def debut_report(conn, args, output_function=print):
     """
     Besides outputting a textual report, returns a sorted list of
@@ -309,12 +323,21 @@ def debut_report(conn, args, output_function=print):
     ret = []
     results = get_publisher_books(conn, args,
                                   countries=[z.upper() for z in args.countries],
-                                  book_types=['NOVEL'])
+                                  book_types=VALID_BOOK_TYPES)
 
     yearly_results = split_books_by_year(results)
     for year, all_published_books in sorted(yearly_results):
-        new_novels = get_original_novels(all_published_books)
-        ds = DebutStats(new_novels, conn)
+        new_novels = get_original_novels(all_published_books, valid_pub_types=VALID_BOOK_TYPES)
+        non_backlist_novels = get_original_novels(all_published_books,
+                                                  valid_pub_types=VALID_BOOK_TYPES,
+                                                  year_difference_threshold=5)
+        num_backlist_novels = len(all_published_books) - len(non_backlist_novels)
+        output_function('Of %d novels published in %d, %d (%d%%) were brand new novels and %d classic' %
+                        (len(all_published_books), year,
+                         len(new_novels), 100 * len(new_novels) / len(all_published_books),
+                         num_backlist_novels
+                        ))
+        ds = DebutStats(new_novels, conn, do_prefilter=False)
 
         if ds.book_author_count:
             mean, weighted_mean, median, weighted_median= ds.average_nth_book
@@ -331,11 +354,12 @@ def debut_report(conn, args, output_function=print):
         if args.verbose:
             for nth, bk in ds.nth_book_details:
                 pretty_nth = pretty_ordinal(nth)
-                print(f'{pretty_nth} novel by {bk.author} : {bk.title}')
+                output_function(f'{pretty_nth} novel by {bk.author} : {bk.title}')
     return ret
 
 
 if __name__ == '__main__':
+    # TODO: add -n for title type support
     parser = create_parser(description='Report on debut novels published by a publisher',
                            supported_args='kpy')
     parser.add_argument('-d', dest='show_nth_detail', action='store_true',
