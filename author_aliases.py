@@ -5,6 +5,7 @@ a perfunctory standalone functionality that may be of use.
 """
 
 from collections import namedtuple
+import logging
 import pdb
 import re
 import sys
@@ -37,27 +38,26 @@ def unlegalize(txt):
             return None
 
 
-def get_author_aliases(conn, author):
+def get_author_aliases(conn, author, search_for_additional_pseudonyms=True):
     """
     Author can be a text string or an integer, the latter indicating an author_id.
 
-    Return all [*] aliases, pseudonyms, alternate spellings, etc for an author.
+    Return all aliases, pseudonyms, alternate spellings, etc for an author.
     This originally returned a set of names, it now returns a list, ordered
     (roughly) by how much the names resemble the supplied name.
 
-    [*] See commented example in the tests for a flaw in this - if given a
-        pseudonym, this doesn't currently return other pseudonyms - e.g. results
-        for "Robert Heinlein" vs "Robert A. Heinlein" are very different.
-        Perhaps maybe instead do one lookup to exstablish the "official" author_id
-        (which may well be the same as the supplied name), and then a second
-        one to get all of its aliases?  (Or perhaps, a single query that
-        effectively does that?)
+    If a pseudonym is provided, then by default a second query will be done on
+    the real/canonical/primary name to pick up any other pseudonums.  Set
+    search_for_additional_pseudonyms to False if you don't want this extra lookup,
+    at the risk of missing out on all pseudonyms.
     """
 
     if isinstance(author, int):
         filter = 'a1.author_id = :author'
     else:
         filter = 'a1.author_canonical = :author OR a1.author_legalname = :author'
+
+    primary_name = None
 
     # This would be much nicer if I had a newer MySQL/Maria with CTEs...
     # The two lots of joins are because we don't know if we have been given
@@ -77,6 +77,12 @@ def get_author_aliases(conn, author):
     results = conn.execute(query, author=author).fetchall()
     ret = set()
     for row in results:
+        if row['name3']:
+            if primary_name:
+                logging.warning('Not sure if %s or %s is the primary name?!' %
+                                (primary_name, row['name3']))
+            else:
+                primary_name = row['name3']
         for col in ('name1', 'name2', 'name3'):
             if row[col]:
                 ret.add(row[col])
@@ -86,6 +92,16 @@ def get_author_aliases(conn, author):
                 if legal:
                     ret.add(legal)
 
+    if not primary_name:
+        # The name supplied should be the primary name, so no need to do another
+        # lookup
+        pass
+    elif search_for_additional_pseudonyms:
+        # print(f'Before: {ret}')
+        ret.update(get_author_aliases(conn, primary_name,
+                                      search_for_additional_pseudonyms=False))
+        # print(f'After: {ret}')
+
     if isinstance(author, int):
         # Pass dummy value for resemblance sorting
         return order_aliases_by_name_resemblance('', ret)
@@ -93,7 +109,6 @@ def get_author_aliases(conn, author):
         return order_aliases_by_name_resemblance(author, ret)
 
 def order_aliases_by_name_resemblance(author, aliases):
-
     # The following functions and sorting are an attempt to return the most
     # relevant names first - this is to minimize the risk of having authors
     # who used house pseudonyms having the latter being prioritized (e.g.
@@ -130,27 +145,12 @@ def get_gestalt_ids(conn, ids_to_check, more_than=2):
     return [z.pseudonym for z in results]
 
 
-def get_author_alias_ids(conn, author, ignore_gestalt_threshold=None):
+def _get_author_alias_tuples(conn, author, ignore_gestalt_threshold=None,
+                             comparison_name=None):
     """
-    Return all [*] IDs for an author, inc.  pseudonyms, alternate spellings, etc
-    Basically the same query as get_author_aliases, just returning different
-    values.
-
-    Optionally set ignore_gestalt_threshold to ignore pseudonyms used by more
-    than the specified value, suggestion is 2 if this is used.  (There'll be an
-    extra database call if a value is passed for this.)
-
-    TODO (probably): merge common code from get_author_aliases.
-
-    [*] See commented example in the tests for a flaw in this - if given a
-        pseudonym, this doesn't currently return other pseudonyms - e.g. results
-        for "Robert Heinlein" vs "Robert A. Heinlein" are very different.
-        Perhaps maybe instead do one lookup to exstablish the "official" author_id
-        (which may well be the same as the supplied name), and then a second
-        one to get all of its aliases?  (Or perhaps, a single query that
-        effectively does that?)
+    Helper function for _get_author_alias_ids, basically for supporting the
+    secondary lookup if a pseudonym was supplied.
     """
-
     # This would be much nicer if I had a newer MySQL/Maria with CTEs...
     # The two lots of joins are because we don't know if we have been given
     # a real name or an alias, so we try going "in both directions".
@@ -169,7 +169,9 @@ def get_author_alias_ids(conn, author, ignore_gestalt_threshold=None):
     # Uggh, horrible copypasting from above
     def name_words(name):
         return set([z.lower() for z in re.split('\W', name) if z])
-    author_name_words = name_words(author)
+
+    author_name_words = name_words(comparison_name or author)
+
     def word_difference(name):
         # The second value in the returned tuple is just to ensure consistency
         # (mainly for tests) when 2 names have the same score
@@ -177,14 +179,70 @@ def get_author_alias_ids(conn, author, ignore_gestalt_threshold=None):
         return (len(this_words.symmetric_difference(author_name_words)),
                 name)
     id_to_name = {} # Use a dict so that any duplicate IDs overwrite each other
+
+    primary_name = None
+
     for row in results:
         # print(row)
+        possible_primary_name = row['author3']
+        if possible_primary_name:
+            if primary_name:
+                logging.warning('Not sure if %s or %s is the primary name?!' %
+                                (primary_name, possible_primary_name))
+            else:
+                primary_name = possible_primary_name
+
         for i, author_id in enumerate(row[::2]):
             if author_id: # Skip 0/None/null values
                 id_to_name[author_id] = word_difference(row[(i*2)+1])
+
+    return id_to_name, primary_name
+
+
+def get_author_alias_ids(conn, author, ignore_gestalt_threshold=None,
+                         search_for_additional_pseudonyms=True):
+    """
+    Return all [*] IDs for an author, inc.  pseudonyms, alternate spellings, etc
+    Basically the same query as get_author_aliases, just returning different
+    values.
+
+    Optionally set ignore_gestalt_threshold to ignore pseudonyms used by more
+    than the specified value, suggestion is 2 if this is used.  (There'll be an
+    extra database call if a value is passed for this.)
+
+    If a pseudonym is provided, then by default a second query will be done on
+    the real/canonical/primary name to pick up any other pseudonums.  Set
+    search_for_additional_pseudonyms to False if you don't want this extra lookup,
+    at the risk of missing out on all pseudonyms.
+
+    TODO (probably): merge common code from get_author_aliases - although that's
+    more likely to happen in the helper function above.
+
+    """
+
+    id_to_name, primary_name = _get_author_alias_tuples(conn, author,
+                                                        ignore_gestalt_threshold)
+    if not primary_name:
+        # The name supplied should be the primary name, so no need to do another
+        # lookup
+        pass
+    elif search_for_additional_pseudonyms:
+        # print(f'Before: {id_to_name}')
+        # Passing comparison_name arg ensures we do a "diff" against the supplied
+        # name, not the real/primary name - this means the diff values are
+        # consistent for sorting a few lines down.
+        more_mappings, _ = _get_author_alias_tuples(conn, primary_name,
+                                                    ignore_gestalt_threshold,
+                                                    comparison_name=author)
+        id_to_name.update(more_mappings)
+        # print(f'After: {id_to_name}')
+
+
+    # This sorting is so that the IDs for the most similar names appear first
     sortable_id_tuples = id_to_name.items()
     sorted_id_tuples = sorted(sortable_id_tuples, key=lambda z: z[1])
     sorted_ids = [z[0] for z in sorted_id_tuples]
+
     if ignore_gestalt_threshold is not None:
         ids_to_ignore = set(get_gestalt_ids(conn, sorted_ids, ignore_gestalt_threshold))
         # print(f'Ignoring {ids_to_ignore}')

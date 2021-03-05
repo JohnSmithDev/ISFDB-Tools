@@ -76,27 +76,47 @@ class TestGetAuthorAliases(unittest.TestCase):
         self.assertEqual(['Seanan McGuire', 'Mira Grant', 'A. Deborah Baker'],
                          get_author_aliases(self.conn, 'Seanan McGuire'))
 
-    def test_get_aliases_for_pseudonym(self):
-        self.assertEqual(['Mira Grant', 'Seanan McGuire'],
+    def test_get_aliases_for_pseudonym_default_behaviour(self):
+        self.assertEqual(['Mira Grant', 'Seanan McGuire', 'A. Deborah Baker'],
                          get_author_aliases(self.conn, 'Mira Grant'))
+
+    def test_get_aliases_for_pseudonym_no_extra_lookup(self):
+        self.assertEqual(['Mira Grant', 'Seanan McGuire'],
+                         get_author_aliases(self.conn, 'Mira Grant',
+                                            search_for_additional_pseudonyms=False))
 
     # These next two tests show an inconsistency - if we put in a pseudonym,
     # we don't get any other pseudonyms back.  TODO: fix this if it becomes
-    # an issue
+    # an issue (it's been an issue for the Seanan McGuire aliases)
     def test_get_aliases_for_joint_pseudonym(self):
         self.assertEqual(['James S. A. Corey',
                           'Tyler Corey Franck',
                           'Daniel Abraham',
                           'Ty Franck'],
-                         get_author_aliases(self.conn, 'James S. A. Corey'))
-    def test_get_aliases_for_real_name_usingjoint_pseudonym(self):
+                         get_author_aliases(self.conn, 'James S. A. Corey',
+                                            search_for_additional_pseudonyms=False))
+
+
+    def test_get_aliases_for_real_name_using_joint_pseudonym(self):
+        # The returned list is ordered by "similarity", although this is a
+        # somewhat nebulous concept and shouldn't be relied on in production code
         self.assertEqual(['Daniel Abraham',
                           'Daniel Hanover',
                           'James Corey',
                           'James S. A. Corey',
-                          'M. L. N. Hanover'],
-
-                         get_author_aliases(self.conn, 'Daniel Abraham'))
+                          'M. L. N. Hanover',
+                          # The following were added to the DB whilst I was
+                          # being too idle to run & update the tests :-(
+                          'D\x9eejms S. A. Kori', # 319366
+                          # Note next string is split over 2 lines
+                          '&#1044;&#1078;&#1077;&#1081;&#1084;&#1089; '
+                          '&#1050;&#1086;&#1088;&#1080;',
+                          # Note next string is split over 2 lines
+                          '&#1044;&#1078;&#1077;&#1081;&#1084;&#1089; &#1057;. &#1040;. '
+                          '&#1050;&#1086;&#1088;&#1080;' # 319390
+                          ],
+                         get_author_aliases(self.conn, 'Daniel Abraham',
+                                            search_for_additional_pseudonyms=False))
 
     def test_numeric_author_id_argument(self):
         self.assertEqual(['A. A. Anderson', 'Andrew A. Anderson'],
@@ -120,13 +140,43 @@ class TestGetAuthorAliasIds(unittest.TestCase):
     conn = get_connection()
 
     def test_get_alias_ids_for_real_name(self):
-        self.assertEqual([129348, 133814],
+        self.assertEqual([129348, 133814, 317644],
                          get_author_alias_ids(self.conn, 'Seanan McGuire'))
 
-    def test_get_alias_ids_for_real_name(self):
-        self.assertEqual([133814, # Mira Grant ID should precede Seanan McGuire ID
-                          129348],
+    def test_get_alias_ids_for_pseudonym1_default_behaviour(self):
+        # Mira Grant ID should precede Seanan McGuire & A. Deborah Baker IDs
+        # The order of the 2nd and 3rd names/IDs is fairly arbitrary, so if the
+        # algorithm ever changes, it'll be OK to swap those values around in
+        # this test
+        self.assertEqual([133814,
+                          129348,
+                          317644],
                          get_author_alias_ids(self.conn, 'Mira Grant'))
+
+    def test_get_alias_ids_for_pseudonym2_default_behaviour(self):
+        # A. Deborah Baker ID should precede Seanan McGuire & Mira Grant IDs
+        # The order of the 2nd and 3rd names/IDs is fairly arbitrary, so if the
+        # algorithm ever changes, it'll be OK to swap those values around in
+        # this test
+        self.assertEqual([317644,
+                          133814,
+                          129348],
+                         get_author_alias_ids(self.conn, 'A. Deborah Baker'))
+
+    def test_get_alias_ids_for_pseudonym1_no_extra_lookup(self):
+        # Mira Grant ID should precede Seanan McGuire ID
+        self.assertEqual([133814,
+                          129348],
+                         get_author_alias_ids(self.conn, 'Mira Grant',
+                                              search_for_additional_pseudonyms=False))
+
+    def test_get_alias_ids_for_pseudonym2_no_extra_lookup(self):
+        # A. Deborah Baker ID should precede Seanan McGuire ID
+        self.assertEqual([317644,
+                          129348],
+                         get_author_alias_ids(self.conn, 'A. Deborah Baker',
+                                              search_for_additional_pseudonyms=False))
+
 
     def test_get_alias_ids_excluding_gestalts(self):
         # Excludes "Richard Kirk" (id 2559), used by 3 authors inc. Holdstock
