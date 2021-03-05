@@ -18,7 +18,8 @@ import sys
 from sqlalchemy.sql import text
 
 
-from common import get_connection, parse_args, get_filters_and_params_from_args
+from common import (get_connection,
+                    parse_args, create_parser, get_filters_and_params_from_args)
 from country_related import derive_country_from_price
 from isfdb_utils import convert_dateish_to_date, pretty_list
 from magazine_reviews import normalize_month
@@ -296,13 +297,74 @@ def get_publisher_books(conn, args, countries=None, original_adult_genre_only=Tr
     return ret_list
 
 
+def get_original_books(books, year_difference_threshold=0):
+    return [z for z in books
+            if abs(z.best_copyright_date.year - z.first_publication.year) \
+            <= year_difference_threshold]
+
+def get_original_novels(books, valid_pub_types=None, year_difference_threshold=0):
+    """
+    Given a list of book-like objects, return just the ones that are:
+    * original publications (based on copyright year == publication year*)
+    * novels (can be overriden via valid_pub_types)
+
+    If you set year_difference_threshold (e.g. to be 2 or more) this can be used
+    as a crude filter to (hopefully) pick newish novels and avoid archive titles.
+    e.g. if the first pub was a hc a year earlier, a tp published this year is
+    still a somewhat new title, as opposed to an archive title from the distant
+    past.
+
+    Q: Should this be a method of PublisherBooks?
+    """
+
+    # Q: are thse definitely pub types, or are they title types?
+    # (It probably doesn't matter that much, but removing ambiguity would be nice)
+    if not valid_pub_types:
+        valid_pub_types = {'NOVEL'}
+    books_filtered_by_type = [z for z in books
+                              if z.publication_type.upper() in valid_pub_types]
+    return get_original_books(books_filtered_by_type, year_difference_threshold)
+
+class PublisherBooks(object):
+    """
+    Class to store a collection of books by a publisher.
+
+    This is primarily intended use for subclassing for more detailed/specific
+    analysis
+    """
+    def __init__(self, books, conn, original_books_only=False):
+        self.conn = conn
+
+        if original_books_only:
+            self.books = get_original_books(books)
+        else:
+            self.books = books
+
+
+    def output_pub_detail(self, output_function=print):
+        """
+        Output details pertinent the titles and their individual publications
+        """
+        for i, bk in enumerate(self.books, 1):
+            output_function('%3d. %s' % (i, bk))
+
+
+
 if __name__ == '__main__':
-    args = parse_args(sys.argv[1:],
-                      description='Show books published by a publisher',
+    parser = create_parser(description='Show books published by a publisher',
                       supported_args='kpy')
+    parser.add_argument('-o', dest='only_original', action='store_true',
+                        help='Only report on original books being published for the first time')
+    args = parse_args(sys.argv[1:], parser=parser)
+
 
     conn = get_connection()
     results = get_publisher_books(conn, args,
                                   countries=[z.upper() for z in args.countries])
+
+    ORIG = """
     for i, bk in enumerate(results, 1):
         print('%3d. %s' % (i, bk))
+    """
+    pb = PublisherBooks(results, conn, original_books_only=args.only_original)
+    pb.output_pub_detail()

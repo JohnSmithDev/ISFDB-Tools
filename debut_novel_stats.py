@@ -21,7 +21,8 @@ from common import (get_connection, parse_args, get_filters_and_params_from_args
                     create_parser)
 # from isfdb_utils import convert_dateish_to_date, pretty_list
 
-from publisher_books import get_publisher_books
+from publisher_books import (get_publisher_books, PublisherBooks,
+                             get_original_novels)
 from bibliography import get_bibliography
 from author_aliases import get_real_author_id_and_name, get_author_alias_ids
 from publisher_variants import PUBLISHER_VARIANTS
@@ -63,7 +64,8 @@ def is_same_book(bk1, bk2):
     return bk1_ids.intersection(bk2_ids)
 
 
-def get_original_novels(books, valid_pub_types=None, year_difference_threshold=0):
+# Now moved to publisher_books.py
+def xxx_get_original_novels(books, valid_pub_types=None, year_difference_threshold=0):
     """
     Given a list of book-like objects, return just the ones that are:
     * original publications (based on copyright year == publication year*)
@@ -85,8 +87,13 @@ def get_original_novels(books, valid_pub_types=None, year_difference_threshold=0
             <= year_difference_threshold]
 
 
-class DebutStats(object):
-    def __init__(self, books, conn, do_prefilter=True):
+class DebutStats(PublisherBooks):
+    def __init__(self, books, conn, original_books_only=True):
+        super().__init__(books, conn, original_books_only)
+        self._process()
+
+
+        ORIG2 = '''
         self.conn = conn
 
         if do_prefilter:
@@ -100,7 +107,7 @@ class DebutStats(object):
         else:
             self.books = books
         self._process()
-
+        '''
 
     def _process(self):
         self.all_details = []
@@ -238,8 +245,9 @@ class DebutStats(object):
                                                             nth_string,
                                                             bk.title))
 
-    def output_pub_detail(self, output_function=print):
+    def xxx_output_pub_detail(self, output_function=print):
         """
+        NOW MOVED TO PARENT CLASS
         Output details pertinent the titles and their individual publications
         """
         for i, bk in enumerate(self.books, 1):
@@ -337,7 +345,7 @@ def debut_report(conn, args, output_function=print):
                          len(new_novels), 100 * len(new_novels) / len(all_published_books),
                          num_backlist_novels
                         ))
-        ds = DebutStats(new_novels, conn, do_prefilter=False)
+        ds = DebutStats(new_novels, conn, original_books_only=False)
 
         if ds.book_author_count:
             mean, weighted_mean, median, weighted_median= ds.average_nth_book
