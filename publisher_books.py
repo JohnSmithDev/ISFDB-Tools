@@ -362,9 +362,5 @@ if __name__ == '__main__':
     results = get_publisher_books(conn, args,
                                   countries=[z.upper() for z in args.countries])
 
-    ORIG = """
-    for i, bk in enumerate(results, 1):
-        print('%3d. %s' % (i, bk))
-    """
     pb = PublisherBooks(results, conn, original_books_only=args.only_original)
     pb.output_pub_detail()

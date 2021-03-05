@@ -64,50 +64,10 @@ def is_same_book(bk1, bk2):
     return bk1_ids.intersection(bk2_ids)
 
 
-# Now moved to publisher_books.py
-def xxx_get_original_novels(books, valid_pub_types=None, year_difference_threshold=0):
-    """
-    Given a list of book-like objects, return just the ones that are:
-    * original publications (based on copyright year == publication year*)
-    * novels (can be overriden via valid_pub_types)
-
-    If you set year_difference_threshold (e.g. to be 2 or more) this can be used
-    as a crude filter to (hopefully) pick newish novels and avoid archive titles.
-    e.g. if the first pub was a hc a year earlier, a tp published this year is
-    still a somewhat new title, as opposed to an archive title from the distant
-    past.
-    """
-
-    if not valid_pub_types:
-        valid_pub_types = {'NOVEL'}
-    books_filtered_by_type = [z for z in books
-                              if z.publication_type.upper() in valid_pub_types]
-    return [z for z in books_filtered_by_type
-            if abs(z.best_copyright_date.year - z.first_publication.year) \
-            <= year_difference_threshold]
-
-
 class DebutStats(PublisherBooks):
     def __init__(self, books, conn, original_books_only=True):
         super().__init__(books, conn, original_books_only)
         self._process()
-
-
-        ORIG2 = '''
-        self.conn = conn
-
-        if do_prefilter:
-            # Now refactored as this is of more general use
-            ORIG = """
-            novels = [z for z in books if z.publication_type.lower() == 'novel']
-            self.books = [z for z in novels
-                          if z.best_copyright_date.year == z.first_publication.year]
-            """
-            self.books = get_original_novels(books)
-        else:
-            self.books = books
-        self._process()
-        '''
 
     def _process(self):
         self.all_details = []
@@ -244,14 +204,6 @@ class DebutStats(PublisherBooks):
             output_function('%25s\'s %3s book: "%s"' % (bk.author,
                                                             nth_string,
                                                             bk.title))
-
-    def xxx_output_pub_detail(self, output_function=print):
-        """
-        NOW MOVED TO PARENT CLASS
-        Output details pertinent the titles and their individual publications
-        """
-        for i, bk in enumerate(self.books, 1):
-            output_function('%3d. %s' % (i, bk))
 
     def __repr__(self):
         if self.debut_authors:
