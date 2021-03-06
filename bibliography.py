@@ -49,6 +49,8 @@ def safe_min(values):
 class DuplicateBookError(DuplicatedOrMergedRecordError):
     pass
 
+# This probably needs more work - there's a difference between unknown (0000)
+# and never published (8888)
 FALLBACK_YEAR = 8888
 
 # TODO: these should be automatically inferred from author's history
@@ -81,6 +83,7 @@ class BookByAuthor(object):
         self.title_id = row['title_id']
         self.parent_id = row['title_parent']
         self.title_title = row['title_title'] # Use the .title property over this
+        self.title_ttype = row['title_ttype']
 
         self.copyright_date = convert_dateish_to_date(row['t_copyright'])
         self._copyright_dates = [self.copyright_date]
@@ -149,6 +152,24 @@ class BookByAuthor(object):
         # in
         return ' aka '.join(self.prioritized_titles)
 
+    def titles(self, max_length=100):
+        # This is reasonable for novels, but will be wrong for (most) short fiction,
+        # as it will dump out the story name alongside the mag/anth/coll it appears
+        # in
+        if len(self.prioritized_titles) > max_length:
+            # Catch an unlikely edge case
+            return self.prioritized_titles
+        ret = ' aka '.join(self.prioritized_titles)
+        if len(ret) < max_length:
+            return ret
+        truncated_index = -1 # 0 doesn't work, hence the above check
+        ret = ' aka '.join(self.prioritized_titles[:truncated_index])
+        while len(ret) > max_length:
+            truncated_index -= 1
+            ret = ' aka '.join(self.prioritized_titles[:truncated_index])
+        return ret
+
+
     @property
     @lru_cache()
     def title(self):
@@ -163,13 +184,12 @@ class BookByAuthor(object):
         else:
             return dt.year
 
-    @property
-    def pub_stuff_string(self):
+    def pub_stuff_string(self, min_year=MIN_PUB_YEAR, max_year=MAX_PUB_YEAR):
         with_dates = [z for z in self.all_pub_stuff
                       if z.date and 1800 <= z.date.year <= 2100]
         date_sorted = sorted(with_dates, key=lambda z: z.date)
         year_to_stuff = {} # deliberately not using defaultdict
-        for year in range(MIN_PUB_YEAR, MAX_PUB_YEAR+1):
+        for year in range(min_year, max_year+1):
             year_to_stuff[year] = []
             # TODO: make this more efficient
             for stuff in date_sorted:
@@ -223,6 +243,7 @@ def get_raw_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITL
     query = text("""SELECT t.title_id, t.title_parent, t.title_title,
           CAST(t.title_copyright AS CHAR) t_copyright,
           t.series_id, t.title_seriesnum, t.title_seriesnum_2,
+          t.title_ttype,
           p.pub_id, p.pub_title, CAST(p.pub_year as CHAR) p_publication_date,
           p.pub_isbn, p.pub_price, p.pub_ptype,
           p.publisher_id, pl.publisher_name
@@ -335,8 +356,21 @@ if __name__ == '__main__':
 
     bibliography = get_author_bibliography(conn, args.exact_author, args.work_types)
     publisher_counts = Counter()
+    min_year, max_year = 7777, -7777
+    book_years = [z.year for z in bibliography if z.year and z.year not in (0, 8888)]
+    if book_years:
+        min_year = min(book_years)
+        max_year = max(book_years)
+    if max_year - min_year > 80:
+        min_year = MIN_PUB_YEAR
+        max_year = MAX_PUB_YEAR
     for i, bk in enumerate(bibliography, 1):
-        print('%2d. %s %s [%d]' % (i, bk.pub_stuff_string, bk.all_titles, bk.year))
+        if len(args.work_types) > 1:
+            year_bit = f'{bk.title_ttype.lower()}, {bk.year}'
+        else:
+            year_bit = f'{bk.year}'
+        print('%3d. %s %s [%s]' % (i, bk.pub_stuff_string(min_year, max_year),
+                                   bk.titles(), year_bit))
         publisher_counts.update(bk.publishers)
 
     if args.show_publishers:
