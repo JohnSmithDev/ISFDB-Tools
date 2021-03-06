@@ -153,22 +153,20 @@ class BookByAuthor(object):
         return ' aka '.join(self.prioritized_titles)
 
     def titles(self, max_length=100):
-        # This is reasonable for novels, but will be wrong for (most) short fiction,
-        # as it will dump out the story name alongside the mag/anth/coll it appears
-        # in
-        if len(self.prioritized_titles) > max_length:
-            # Catch an unlikely edge case
-            return self.prioritized_titles
-        ret = ' aka '.join(self.prioritized_titles)
-        if len(ret) < max_length:
+        # The repeated string concatenation is a bit naive (as opposed to just
+        # keeping a running total, and only joining at the end), but in the
+        # overall scheme of things, I don't think it matters
+        pts = self.prioritized_titles
+        ret = pts[0]
+        if len(ret) >= max_length:
+            ret = ret[:max_length-3] + '...'
             return ret
-        truncated_index = -1 # 0 doesn't work, hence the above check
-        ret = ' aka '.join(self.prioritized_titles[:truncated_index])
-        while len(ret) > max_length:
-            truncated_index -= 1
-            ret = ' aka '.join(self.prioritized_titles[:truncated_index])
+        for i in range(1, len(pts)):
+            try_this = f'{ret} aka {pts[i]}'
+            if len(try_this) > max_length:
+                return ret
+            ret = try_this
         return ret
-
 
     @property
     @lru_cache()
