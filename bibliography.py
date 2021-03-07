@@ -14,7 +14,9 @@ Known bugs/issues:
 """
 
 from collections import defaultdict, Counter, namedtuple
+from datetime import date
 from functools import reduce, lru_cache
+from itertools import chain
 import logging
 import pdb
 import sys
@@ -37,13 +39,25 @@ DEFAULT_TITLE_TYPES = ['NOVEL']
 #DEFAULT_TITLE_TYPES = ['NOVEL', 'CHAPBOOK']
 # DEFAULT_TITLE_TYPES = ['SHORTFICTION']
 
+# Not sure if (a) I need these, and (b) how they're converted to Python dates
+# DATES_TO_EXCLUDE = {date(0,1,1), date(8888, 1, 1)}
+DATES_TO_EXCLUDE = set()
 
-def safe_min(values):
-    valid_values = [z for z in values if z is not None]
+def safe_limit(values, func, values_to_exclude=None):
+    if not values_to_exclude:
+        values_to_exclude = []
+    valid_values = [z for z in values if z is not None and z not in values_to_exclude]
     if not valid_values:
         return None
     else:
-        return min(valid_values)
+        return func(valid_values)
+
+def safe_min(values, values_to_exclude=None):
+    return safe_limit(values, min, values_to_exclude)
+
+def safe_max(values, values_to_exclude=None):
+    return safe_limit(values, max, values_to_exclude)
+
 
 
 class DuplicateBookError(DuplicatedOrMergedRecordError):
@@ -135,11 +149,15 @@ class BookByAuthor(object):
 
     @property
     def earliest_copyright_date(self):
-        return safe_min(self._copyright_dates)
+        return safe_min(self._copyright_dates, DATES_TO_EXCLUDE)
 
     @property
     def earliest_publication_date(self):
-        return safe_min(self._publication_dates)
+        return safe_min(self._publication_dates, DATES_TO_EXCLUDE)
+
+    @property
+    def latest_publication_date(self):
+        return safe_max(self._publication_dates, DATES_TO_EXCLUDE)
 
     @property
     def prioritized_titles(self):
@@ -355,13 +373,32 @@ if __name__ == '__main__':
     bibliography = get_author_bibliography(conn, args.exact_author, args.work_types)
     publisher_counts = Counter()
     min_year, max_year = 7777, -7777
-    book_years = [z.year for z in bibliography if z.year and z.year not in (0, 8888)]
-    if book_years:
-        min_year = min(book_years)
-        max_year = max(book_years)
+    pub_dates = [z._publication_dates for z in bibliography]
+    flattened_pub_dates = chain(*pub_dates)
+    pub_years = [z.year for z in flattened_pub_dates if z and z.year and z.year not in (0, 8888)]
+    if pub_years:
+        min_year = min(pub_years)
+        max_year = max(pub_years)
     if max_year - min_year > 80:
         min_year = MIN_PUB_YEAR
         max_year = MAX_PUB_YEAR
+
+    year_bits = []
+    for year in range(min_year, max_year+1):
+        year_string = str(year)
+        digit = year % 10
+        year_chars = {0: '\u2193', # https://unicode-table.com/en/sets/arrow-symbols/#down-arrows
+                      1: year_string[0],
+                      2: year_string[1],
+                      3: year_string[2],
+                      4: '0'}
+        year_bits.append(year_chars.get(digit, '-'))
+    while 1 <= digit <= 3:
+        digit += 1
+        year_bits.append(year_chars.get(digit, '-'))
+
+    print('     ' + ''.join(year_bits))
+
     for i, bk in enumerate(bibliography, 1):
         if len(args.work_types) > 1:
             year_bit = f'{bk.title_ttype.lower()}, {bk.year}'
