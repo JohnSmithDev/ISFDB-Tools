@@ -320,7 +320,7 @@ def get_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITLE_TY
 
 
 
-def postprocess_bibliography(raw_rows):
+def xxx_postprocess_bibliography(raw_rows):
     # THIS SEEMS TO BE NO LONGER USED???
     title_id_to_titles = defaultdict(set)
     publication_dict = defaultdict(set)
@@ -360,6 +360,38 @@ def get_author_bibliography(conn, author_names, title_types=None):
     return bibliography
 
 
+def get_publication_year_range(bibliography, max_range=80):
+    """
+    Return a tuple of (min-year-a-pub-was-published, max-year-a-pub-was-published)
+    for an authors bibliography (a list of BookByAuthor objects)
+
+    If the year range exceeds max_range, instead return some default values
+    """
+    min_year, max_year = 7777, -7777
+    pub_dates = [z._publication_dates for z in bibliography]
+    flattened_pub_dates = chain(*pub_dates)
+    pub_years = [z.year for z in flattened_pub_dates if z and z.year and z.year not in (0, 8888)]
+    if pub_years:
+        min_year = min(pub_years)
+        max_year = max(pub_years)
+    if max_year - min_year > max_range:
+        min_year = MIN_PUB_YEAR
+        max_year = MAX_PUB_YEAR
+    return min_year, max_year
+
+
+def get_publisher_counts(bibliography):
+    """
+    Given a bibliography, return a Counter showing which publishers have most
+    frequently published an author's books.  Note that this counts titles
+    rather than publications.
+    """
+    publisher_counts = Counter()
+    for bk in bibliography:
+        publisher_counts.update(bk.publishers)
+    return publisher_counts
+
+
 if __name__ == '__main__':
     parser = create_parser(description="List an author's bibliography",
                       supported_args='anv')
@@ -371,17 +403,10 @@ if __name__ == '__main__':
     conn = get_connection()
 
     bibliography = get_author_bibliography(conn, args.exact_author, args.work_types)
-    publisher_counts = Counter()
-    min_year, max_year = 7777, -7777
-    pub_dates = [z._publication_dates for z in bibliography]
-    flattened_pub_dates = chain(*pub_dates)
-    pub_years = [z.year for z in flattened_pub_dates if z and z.year and z.year not in (0, 8888)]
-    if pub_years:
-        min_year = min(pub_years)
-        max_year = max(pub_years)
-    if max_year - min_year > 80:
-        min_year = MIN_PUB_YEAR
-        max_year = MAX_PUB_YEAR
+
+    min_year, max_year = get_publication_year_range(bibliography)
+
+    publisher_counts = get_publisher_counts(bibliography)
 
     year_bits = []
     for year in range(min_year, max_year+1):
