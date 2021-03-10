@@ -31,6 +31,7 @@ from author_aliases import get_author_alias_ids
 from deduplicate import (DuplicatedOrMergedRecordError,
                          make_list_excluding_duplicates)
 from publisher_variants import REVERSE_PUBLISHER_VARIANTS
+from author_bio import (get_author_bio, name_with_dates)
 
 # See language table, titles.title_language
 VALID_LANGUAGE_IDS = [17]
@@ -453,6 +454,8 @@ if __name__ == '__main__':
                       supported_args='anv')
     parser.add_argument('-p', dest='show_publishers', action='store_true',
                         help='Show stats on which publishers this author had')
+    parser.add_argument('-t', dest='output_title', action='store_true',
+                        help='Output a report title')
     args = parse_args(sys.argv[1:], parser=parser)
 
     conn = get_connection()
@@ -475,7 +478,13 @@ if __name__ == '__main__':
         digit += 1
         year_bits.append(year_chars.get(digit, '-'))
 
-    print('     ' + ''.join(year_bits))
+    INDENT = '     '
+
+    if args.output_title:
+
+        print(INDENT + name_with_dates(get_author_bio(conn, args.exact_author)) + '\n')
+
+    print(INDENT + ''.join(year_bits))
 
     for i, bk in enumerate(bibliography, 1):
         NOW_DONE_IN_TITLES_METHOD = """
