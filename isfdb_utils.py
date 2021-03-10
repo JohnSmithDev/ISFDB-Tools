@@ -59,6 +59,9 @@ def convert_dateish_to_date(txt, default=None):
     Set default to something if you need to sort the output (and can't be bothered
     to do something like https://stackoverflow.com/questions/12971631/sorting-list-by-an-attribute-that-can-be-none
     """
+    if txt is None:
+        return default
+
     bits = [int(z) for z in txt.split('-')]
     if not bits[0]: # probably '0000-00-00':
         return default
