@@ -71,12 +71,15 @@ FALLBACK_YEAR = 8888
 MIN_PUB_YEAR = 1990
 MAX_PUB_YEAR = 2021
 
-PubStuff = namedtuple('PubStuff', 'pub_id, date, format price')
+PubStuff = namedtuple('PubStuff', 'pub_id, date, format, price')
+
+Repackaging = namedtuple('Repackaging', 'title, ptype, publication_date')
 
 class BookByAuthor(object):
     """
-    Mainly a data class for all the books (and maybe other titles/pubs?) by an
-    author, but with some useful helper properties.
+    Originally a data class for all the books (and maybe other titles/pubs?) by an
+    author with some useful helper properties, but increasingly large amounts
+    of logic have been added.
     """
     # _tid_to_bba maps title_ids to BookByAuthor, and is used to merge duplicates
     # (as determined by common title_id)
@@ -107,13 +110,28 @@ class BookByAuthor(object):
         self.publication_date = convert_dateish_to_date(row['p_publication_date'])
         self._publication_dates = [self.publication_date]
         self.isbns = [row['pub_isbn']]
+        self.pub_ctype = row['pub_ctype'] # e.g. This could be COLLECTION/ANTHOLOGY for title=NOVEL
 
         pn = row['publisher_name']
         sanitised_publisher = REVERSE_PUBLISHER_VARIANTS.get(pn, pn)
         self.publishers = {sanitised_publisher}
 
         # Q: should this count twice if title and pub_title are the same?
-        valid_titles = [z for z in [self.title_title, self.pub_title] if z]
+        # A: It doesn't seem to make that much difference in the end, but it's
+        #    confusing for debugging, so now use a set comprehension to remove
+        #    dupes.
+        if self.title_ttype != self.pub_ctype:
+            logging.debug('REPACK ', self.title_title, self.title_ttype,
+                          self.pub_title, row['pub_ctype'])
+            self._repackagings = {Repackaging(self.pub_title, self.pub_ctype,
+                                              self.publication_date)}
+            valid_titles = {self.title_title}
+        else:
+            logging.debug('=', self.title_title, self.title_id, self.title_ttype,
+                  self.pub_title, row['pub_ctype'])
+            self._repackagings = set()
+            valid_titles = {z for z in [self.title_title, self.pub_title] if z}
+
         self._titles = Counter(valid_titles)
 
         self.author = author
@@ -146,6 +164,9 @@ class BookByAuthor(object):
         self.isbns.extend(other.isbns)
         self.publishers.update(other.publishers)
         self.all_pub_stuff.extend(other.all_pub_stuff)
+        if other._repackagings: # only log if something actually being added
+            logging.debug(f'Repacking {other._repackagings} into {self.title_title}/{self.title_id}')
+        self._repackagings.update(other._repackagings)
 
     @property
     def earliest_copyright_date(self):
@@ -170,20 +191,51 @@ class BookByAuthor(object):
         # in
         return ' aka '.join(self.prioritized_titles)
 
-    def titles(self, max_length=100):
+    def titles(self, include_year=True, include_type=False, max_length=100):
+        def formatted_title(txt, year=None, title_type=None):
+            extras = []
+            if include_type and title_type:
+                extras.append(title_type.lower())
+            if include_year and year:
+                extras.append(str(year))
+            if extras:
+                return '%s [%s]' % (txt, ', '.join(extras))
+            else:
+                return txt
+
+
         # The repeated string concatenation is a bit naive (as opposed to just
         # keeping a running total, and only joining at the end), but in the
         # overall scheme of things, I don't think it matters
         pts = self.prioritized_titles
-        ret = pts[0]
+        # only include year and type on first one
+        ret = formatted_title(pts[0], self.year, self.title_ttype)
         if len(ret) >= max_length:
             ret = ret[:max_length-3] + '...'
             return ret
         for i in range(1, len(pts)):
-            try_this = f'{ret} aka {pts[i]}'
+            # TODO: year should also be passed (but I don't think we have it
+            #       in an accessible way (yet).  We don't need the title_type,
+            #       because if it's different from the main one, the record
+            #       would instead be shoved into the repackagings.
+            fmt_t = formatted_title(pts[i])
+            try_this = f'{ret} aka {fmt_t}'
             if len(try_this) > max_length:
                 return ret
             ret = try_this
+
+        for repack in self._repackagings:
+            try:
+                year = repack.publication_date.year
+            except AttributeError:
+                year = None
+            fmt_t = formatted_title(repack.title, year=year,
+                                    title_type=repack.ptype)
+            try_this = f'{ret}, also in {fmt_t}'
+            if len(try_this) > max_length:
+                return ret
+            ret = try_this
+
         return ret
 
     @property
@@ -261,7 +313,7 @@ def get_raw_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITL
           t.series_id, t.title_seriesnum, t.title_seriesnum_2,
           t.title_ttype,
           p.pub_id, p.pub_title, CAST(p.pub_year as CHAR) p_publication_date,
-          p.pub_isbn, p.pub_price, p.pub_ptype,
+          p.pub_isbn, p.pub_price, p.pub_ptype, p.pub_ctype,
           p.publisher_id, pl.publisher_name
     FROM canonical_author ca
     LEFT OUTER JOIN titles t ON ca.title_id = t.title_id
@@ -386,6 +438,10 @@ def get_publisher_counts(bibliography):
     frequently published an author's books.  Note that this counts titles
     rather than publications.
     """
+    # Possible bug: Are novels in collections/omnibuses being multiply counted
+    # when they shouldn't be?  (This was definitely happening at one point, which
+    # I think was a copypaste error whilst refactoring, but I'm not 100%
+    # convinced is completely solved)
     publisher_counts = Counter()
     for bk in bibliography:
         publisher_counts.update(bk.publishers)
@@ -399,13 +455,10 @@ if __name__ == '__main__':
                         help='Show stats on which publishers this author had')
     args = parse_args(sys.argv[1:], parser=parser)
 
-
     conn = get_connection()
 
     bibliography = get_author_bibliography(conn, args.exact_author, args.work_types)
-
     min_year, max_year = get_publication_year_range(bibliography)
-
     publisher_counts = get_publisher_counts(bibliography)
 
     year_bits = []
@@ -425,13 +478,15 @@ if __name__ == '__main__':
     print('     ' + ''.join(year_bits))
 
     for i, bk in enumerate(bibliography, 1):
+        NOW_DONE_IN_TITLES_METHOD = """
         if len(args.work_types) > 1:
             year_bit = f'{bk.title_ttype.lower()}, {bk.year}'
         else:
             year_bit = f'{bk.year}'
-        print('%3d. %s %s [%s]' % (i, bk.pub_stuff_string(min_year, max_year),
-                                   bk.titles(), year_bit))
-        publisher_counts.update(bk.publishers)
+        """
+        titles = bk.titles(include_year=True, include_type=(len(args.work_types) > 1))
+        print('%3d. %s %s' % (i, bk.pub_stuff_string(min_year, max_year),
+                              titles))
 
     if args.show_publishers:
         output_publisher_stats(publisher_counts)
