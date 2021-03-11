@@ -266,14 +266,25 @@ class BookByAuthor(object):
                     year_to_stuff[year].append(stuff)
         counts = [len(v) for k, v in sorted(year_to_stuff.items())]
 
-        def num_rep(v):
-            if v >= 10:
-                return 'X'
-            elif v == 0:
-                return '.'
-            else:
-                return str(v)
-        return ''.join([num_rep(z) for z in counts])
+        NUMERICS = ['.', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'X']
+        # https://en.wikipedia.org/wiki/Geometric_Shapes_Extended
+        # These don't render properly
+        STARS = ['.', '\u1f7bb', '\u1f7bc', '\u1f7bd', '\u1f7be', '\u1f7bf']
+        # These render OK, but need more weights, and ensure they are ordered right
+        # Plus one looks hollow
+        CIRCLES = ['.', '\u2b2b', '\u2b24', '\u2bc4', '\u25cf', '\u26ab', '\u23fa' ]
+
+        def num_rep(year, v):
+            if v == 0:
+                if year % 10 == 0:
+                    return ':'
+                else:
+                    return '.'
+            try:
+                return NUMERICS[v]
+            except IndexError:
+                return NUMERICS[-1]
+        return ''.join([num_rep(year, z) for year, z in enumerate(counts, min_year)])
 
     def __repr__(self):
         return '%s [%d]' % (self.title, self.year)
