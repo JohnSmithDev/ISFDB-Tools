@@ -439,7 +439,7 @@ def get_publication_year_range(bibliography, max_range=80):
         min_year = min(pub_years)
         max_year = max(pub_years)
     if max_year - min_year > max_range:
-        min_year = MIN_PUB_YEAR
+        min_year = MAX_PUB_YEAR - max_range
         max_year = MAX_PUB_YEAR
     return min_year, max_year
 
@@ -467,12 +467,27 @@ if __name__ == '__main__':
                         help='Show stats on which publishers this author had')
     parser.add_argument('-t', dest='output_title', action='store_true',
                         help='Output a report title')
+    # Note that this is different from the usual year arg that create_parser
+    # et al provide
+    parser.add_argument('-y', dest='year_range', nargs='?',
+                        help='Specify an year range (either max number of years '
+                        '(default 80), or an explicit from-to range')
+
     args = parse_args(sys.argv[1:], parser=parser)
 
     conn = get_connection()
 
     bibliography = get_author_bibliography(conn, args.exact_author, args.work_types)
-    min_year, max_year = get_publication_year_range(bibliography)
+
+    if args.year_range:
+        if '-' in args.year_range:
+            min_year, max_year = [int(z) for z in args.year_range.split('-')]
+        else:
+            min_year, max_year = get_publication_year_range(bibliography,
+                                                            max_range=int(args.year_range))
+    else:
+            min_year, max_year = get_publication_year_range(bibliography)
+
     publisher_counts = get_publisher_counts(bibliography)
 
     year_bits = []
