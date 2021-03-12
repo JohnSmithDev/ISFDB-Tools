@@ -27,7 +27,8 @@ from sqlalchemy.sql import text
 from common import (get_connection, create_parser, parse_args,
                     AmbiguousArgumentsError)
 from isfdb_utils import (convert_dateish_to_date, merge_similar_titles)
-from author_aliases import get_author_alias_ids
+from author_aliases import (get_author_alias_ids,
+                            get_real_author_id_and_name_from_name)
 from deduplicate import (DuplicatedOrMergedRecordError,
                          make_list_excluding_duplicates)
 from publisher_variants import REVERSE_PUBLISHER_VARIANTS
@@ -122,14 +123,14 @@ class BookByAuthor(object):
         #    confusing for debugging, so now use a set comprehension to remove
         #    dupes.
         if self.title_ttype != self.pub_ctype:
-            logging.debug('REPACK ', self.title_title, self.title_ttype,
-                          self.pub_title, row['pub_ctype'])
+            logging.debug(f'REPACK {self.title_title} {self.title_ttype} '
+                          f'{self.pub_title} {row["pub_ctype"]}')
             self._repackagings = {Repackaging(self.pub_title, self.pub_ctype,
                                               self.publication_date)}
             valid_titles = {self.title_title}
         else:
-            logging.debug('=', self.title_title, self.title_id, self.title_ttype,
-                  self.pub_title, row['pub_ctype'])
+            logging.debug(f'= {self.title_title}, {self.title_id}, {self.title_ttype}, '
+                          f'{self.pub_title}, {row["pub_ctype"]}')
             self._repackagings = set()
             valid_titles = {z for z in [self.title_title, self.pub_title] if z}
 
@@ -209,8 +210,10 @@ class BookByAuthor(object):
         # keeping a running total, and only joining at the end), but in the
         # overall scheme of things, I don't think it matters
         pts = self.prioritized_titles
+        primary_title = pts[0]
+        primary_title_lower = pts[0].lower()
         # only include year and type on first one
-        ret = formatted_title(pts[0], self.year, self.title_ttype)
+        ret = formatted_title(primary_title, self.year, self.title_ttype)
         if len(ret) >= max_length:
             ret = ret[:max_length-3] + '...'
             return ret
@@ -219,11 +222,14 @@ class BookByAuthor(object):
             #       in an accessible way (yet).  We don't need the title_type,
             #       because if it's different from the main one, the record
             #       would instead be shoved into the repackagings.
-            fmt_t = formatted_title(pts[i])
-            try_this = f'{ret} aka {fmt_t}'
-            if len(try_this) > max_length:
-                return ret
-            ret = try_this
+            this_title = pts[i]
+            # TODO (maybe): ignore non-alphanumerics?
+            if this_title.lower() != primary_title_lower:
+                fmt_t = formatted_title(this_title)
+                try_this = f'{ret} aka {fmt_t}'
+                if len(try_this) > max_length:
+                    return ret
+                ret = try_this
 
         for repack in self._repackagings:
             try:
@@ -354,6 +360,7 @@ def get_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITLE_TY
     e.g. an author with variant names, that a book has been issued under both
     variants?)
     """
+
     rows = get_raw_bibliography(conn, author_ids, author_name, title_types)
 
     BookByAuthor.reset_duplicate_cache()
@@ -414,12 +421,28 @@ def output_publisher_stats(publisher_counts, output_function=print):
 
 
 def get_author_bibliography(conn, author_names, title_types=None):
-    # author_ids = get_author_alias_ids(conn, author_names)
-    author_name = author_names[0]
-    author_ids = get_author_alias_ids(conn, author_name)
-    if not author_ids:
-        raise AmbiguousArgumentsError('Do not know author "%s"' % (author_names))
-    # print(author_ids)
+    # I think there's some historical reason and/or the way args are handled
+    # for handling this as a list of strings, even though only the first is
+    # used.
+    if hasattr(author_names, 'lower'):
+        author_name = author_names
+    else:
+        # author_ids = get_author_alias_ids(conn, author_names)
+        author_name = author_names[0]
+
+    author_ids_and_names = get_real_author_id_and_name_from_name(conn, author_name)
+    if not author_ids_and_names:
+        raise AmbiguousArgumentsError('Do not know author "%s"' % (author_name))
+    if len(author_ids_and_names) > 1:
+        raise AmbiguousArgumentsError('Author "%s" has multiple real IDs (%s) - a gestalt?' %
+                                      (author_name, ','.join(author_ids_and_names)))
+    author_ids = [z.id for z in author_ids_and_names]
+
+    # Original code that picks up "Danger Planet" by "Brett Sterling" for Ray Bradbury
+    # which is a group alias, but in this case the real author is Edmond Hamilton
+    # author_ids = get_author_alias_ids(conn, author_name)
+
+    # print(f'DEBUG: author_ids={author_ids}')
     bibliography = get_bibliography(conn, author_ids, author_name, title_types)
     return bibliography
 
