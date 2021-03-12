@@ -282,17 +282,49 @@ def get_real_author_id_and_name(conn, pseudonym_id):
     """
     Given a numeric pseudonym_id - which is a author_id in any other context/table -
     return a list of the "real" author_ids, or None if this is the "real" ID.
+
     """
     query = text("""SELECT p.author_id, a.author_canonical name
     FROM pseudonyms p
     LEFT OUTER JOIN authors a ON (a.author_id = p.author_id)
-    WHERE pseudonym = :pseudonym_id
+    WHERE p.pseudonym = :pseudonym_id
     ORDER BY author_id;""") # The ORDER BY is just for consistency/ease of testing
     results = conn.execute(query, pseudonym_id=pseudonym_id).fetchall()
     if results:
         return [AuthorIdAndName(z.author_id, z.name) for z in results]
     else:
         return None
+
+
+def get_real_author_id_and_name_from_name(conn, pseudonym):
+    """
+    Same as get_real_author_id_and_name, but takes a name string rather than a
+    numeric ID
+    """
+    # r_details = details about the real/canonical entry
+    # p_pdetails = details about the real/canonical entry
+    query = text("""SELECT r_details.author_id, r_details.author_canonical name
+    FROM pseudonyms p
+    LEFT OUTER JOIN authors p_details ON (p_details.author_id = p.pseudonym)
+    LEFT OUTER JOIN authors r_details ON (r_details.author_id = p.author_id)
+    WHERE p_details.author_canonical = :pseudonym
+    ORDER BY author_id;""") # The ORDER BY is just for consistency/ease of testing
+    results = conn.execute(query, pseudonym=pseudonym).fetchall()
+    if results:
+        return [AuthorIdAndName(z.author_id, z.name) for z in results]
+    else:
+        # Maybe this is a real ID then?
+        # (This could probably be done as part of the query above, but I'm too
+        # lazy to try to get my head around it right now)
+        query2 = text("""SELECT author_id, author_canonical name
+        FROM authors
+        WHERE author_canonical = :pseudonym""")
+        results2 = conn.execute(query2, pseudonym=pseudonym).fetchone()
+        print(pseudonym, results2, results2.author_id, results2.name)
+        if results2:
+            return [AuthorIdAndName(results2.author_id, results2.name)]
+        else:
+            return None
 
 
 

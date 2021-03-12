@@ -9,7 +9,9 @@ import unittest
 from ..common import get_connection
 from ..author_aliases import (unlegalize, get_author_aliases,
                               get_author_alias_ids, get_real_author_id,
-                              get_real_author_id_and_name, get_gestalt_ids)
+                              get_real_author_id_and_name,
+                              get_real_author_id_and_name_from_name,
+                              get_gestalt_ids)
 
 class TestUnlegalize(unittest.TestCase):
     def test_none(self):
@@ -189,6 +191,17 @@ class TestGetAuthorAliasIds(unittest.TestCase):
                           256642, 2585, 2583, 2559, 114794],
                          get_author_alias_ids(self.conn, 'Robert Holdstock', 99))
 
+    def test_get_alias_ids_for_real_name_excluding_gestalts_bradbury(self):
+        # This one came about when I encountered a bug with Ray Bradbury searches
+        # picking up books by other authors who used the same gestalt alias -
+        # seems like the bug was in other code, but might as well leave this
+        # test here.
+        ret = get_author_alias_ids(self.conn, 'Ray Bradbury')
+        # There are lots of them, so just check for a few of interest
+        self.assertTrue(194 in ret) # Ray Bradbury
+        self.assertTrue(2498 in ret) # Brett Sterling, a gestalt
+        self.assertFalse(249 in ret) # Edmond Hamilton, also used Brett Sterling
+        self.assertFalse(1246 in ret) # William Morrison, also used Brett Sterling
 
 class TestGetRealAuthorId(unittest.TestCase):
 
@@ -212,7 +225,7 @@ class TestGetRealAuthorIdAndName(unittest.TestCase):
 
     def test_simple_real_name(self):
         self.assertEqual([(129348, 'Seanan McGuire')],
-                         get_real_author_id_and_name(self.conn, 133814)) #MG
+                         get_real_author_id_and_name(self.conn, 133814)) # Mira Grant
 
     def test_already_real_name(self):
         self.assertEqual(None,
@@ -221,3 +234,20 @@ class TestGetRealAuthorIdAndName(unittest.TestCase):
     def test_multiple_real_name(self):
         self.assertEqual([(10297, 'Daniel Abraham'), (123977, 'Ty Franck')],
                          get_real_author_id_and_name(self.conn, 155601)) # JSAC
+
+
+class TestGetRealAuthorIdAndNameFromName(unittest.TestCase):
+    conn = get_connection()
+
+    def test_simple_real_name(self):
+        self.assertEqual([(129348, 'Seanan McGuire')],
+                         get_real_author_id_and_name_from_name(self.conn, 'Mira Grant'))
+
+    def test_already_real_name(self):
+        self.assertEqual([(129348, 'Seanan McGuire')],
+                         get_real_author_id_and_name_from_name(self.conn, 'Seanan McGuire'))
+
+    def test_multiple_real_name(self):
+        self.assertEqual([(10297, 'Daniel Abraham'), (123977, 'Ty Franck')],
+                         get_real_author_id_and_name_from_name(
+                             self.conn, 'James S. A. Corey'))
