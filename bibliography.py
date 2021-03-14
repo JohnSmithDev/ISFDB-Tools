@@ -101,7 +101,9 @@ class BookByAuthor(object):
         """
         cls._tid_to_bba = {}
 
-    def __init__(self, row, author='Author', allow_duplicates=False):
+    def __init__(self, row,
+                 # author='Author', # I believe this is no longer needed (if it ever was?)
+                 allow_duplicates=False):
         # I'm not sure if author is needed - I've commented out the self.author
         # property further down, and it hasn't yet broken anything
         # It might be useful in other contexts (e.g. list of Hugo winners), but
@@ -309,7 +311,7 @@ class BookByAuthor(object):
         return '%s [%d]' % (self.title, self.year)
 
 
-def get_raw_bibliography(conn, author_ids, title_types=DEFAULT_TITLE_TYPES):
+def get_raw_bibliography(conn, filters, title_types=DEFAULT_TITLE_TYPES):
     """
     Pulled out of get_bibliography() when testing where a bug was occurring;
     probably not amazingly useful without the post-processing, but it's here
@@ -338,6 +340,12 @@ def get_raw_bibliography(conn, author_ids, title_types=DEFAULT_TITLE_TYPES):
             # Assume user knew what they were doing
             pub_types.update([tt])
 
+    value_map = {#'author_ids':author_ids,
+                 'title_types': title_types,
+                 'pub_types': list(pub_types), # Doesn't seem to like set?
+                 'title_languages': VALID_LANGUAGE_IDS}
+
+    value_map.update(filters)
 
     query = text("""SELECT t.title_id, t.title_parent, t.title_title,
           CAST(t.title_copyright AS CHAR) t_copyright,
@@ -356,15 +364,14 @@ def get_raw_bibliography(conn, author_ids, title_types=DEFAULT_TITLE_TYPES):
       AND p.pub_ctype IN :pub_types
       AND title_language IN :title_languages
     ORDER BY t.title_id, p.pub_year; """)
-    rows = conn.execute(query, {'author_ids':author_ids,
-                                'title_types': title_types,
-                                'pub_types': list(pub_types), # Doesn't seem to like set?
-                                'title_languages': VALID_LANGUAGE_IDS})
+    rows = conn.execute(query, value_map)
     # print(len(rows)) # This only works if you do a .fetchall() above
     return rows
 
 
-def get_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITLE_TYPES):
+def get_bibliography(conn, author_ids,
+                     # author_name, # No longer needed I believe
+                     title_types=DEFAULT_TITLE_TYPES):
     """
     Given a list of author_ids, return a sorted bibliography.
 
@@ -372,9 +379,14 @@ def get_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITLE_TY
     the authors table (which *might* have complications with multiple matches
     e.g. an author with variant names, that a book has been issued under both
     variants?)
+
+    Although it looks like we might not need it...
     """
 
-    rows = get_raw_bibliography(conn, author_ids, title_types)
+    filters = {'author_ids': author_ids}
+
+    # rows = get_raw_bibliography(conn, author_ids, title_types)
+    rows = get_raw_bibliography(conn, filters, title_types)
 
     BookByAuthor.reset_duplicate_cache()
 
@@ -383,7 +395,8 @@ def get_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITLE_TY
         Curried wrapper to BookByAuthor class.
         The use of author_names[0] is a bit of a hack - TODO: better
         """
-        bba =  BookByAuthor(stuff, author=author_name,
+        bba =  BookByAuthor(stuff,
+                            # author=author_name, # No longer needed/used
                             allow_duplicates=allow_duplicates)
         # if bba.year is None or bba.year == FALLBACK_YEAR:
         #    logging.warning('Year is None or %s for %s (possibly unpublished?' %
@@ -397,7 +410,8 @@ def get_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITLE_TY
     if not books:
         # Hack for 1975 Campbell New Writer winner P. J. Plauger, who seems to only
         # have 2 novels, both of which only ever printed as magazine serializations?
-        logging.warning('No books found for %s/%s' % (author_ids, author_name))
+        # logging.warning('No books found for %s/%s' % (author_ids, author_name))
+        logging.warning('No books found for author IDs %s' % (author_ids))
         return []
     # rows.close() # Doesn't fix the re-run failure
     return sorted(books, key=lambda z: z.year)
@@ -443,7 +457,9 @@ def get_author_bibliography(conn, author_names, title_types=None):
     author_ids = [z.id for z in author_ids_and_names]
 
     # print(f'DEBUG: author_ids={author_ids}')
-    bibliography = get_bibliography(conn, author_ids, author_name, title_types)
+    bibliography = get_bibliography(conn, author_ids,
+                                    # author_name, # No longer needed/used
+                                    title_types)
     return bibliography
 
 
