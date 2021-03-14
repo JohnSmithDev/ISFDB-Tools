@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
 Output an author's bibliography, similar to
-http://www.isfdb.org/cgi-bin/ch.cgi?503
+  http://www.isfdb.org/cgi-bin/ch.cgi?503
+but with a bunch more info
 
 Known bugs/issues:
 * Requires exact author name to be specified (although it can be any known
   alias/variant)
-* Doesn't distinguish between pseudonyms
-* Currently only outputs novels
-* Doesn't indicate collaborations
+* Doesn't distinguish between pseudonyms (debatable if this is an issue)
+* Doesn't indicate collaborations (nice to have, but not essential IMHO)
 * Hardcoded for English language editions only
 * Some issues with variant editions e.g. Peter F. Hamilton, Charles Stross
 """
@@ -35,7 +35,7 @@ from publisher_variants import REVERSE_PUBLISHER_VARIANTS
 from author_bio import (get_author_bio, name_with_dates)
 
 # See language table, titles.title_language
-VALID_LANGUAGE_IDS = [17]
+VALID_LANGUAGE_IDS = [17] # 17 = English
 
 DEFAULT_TITLE_TYPES = ['NOVEL']
 #DEFAULT_TITLE_TYPES = ['NOVEL', 'CHAPBOOK']
@@ -46,6 +46,10 @@ DEFAULT_TITLE_TYPES = ['NOVEL']
 DATES_TO_EXCLUDE = set()
 
 def safe_limit(values, func, values_to_exclude=None):
+    """
+    Core helper function for safe_min() and safe_max() - call them rather than
+    this.
+    """
     if not values_to_exclude:
         values_to_exclude = []
     valid_values = [z for z in values if z is not None and z not in values_to_exclude]
@@ -98,6 +102,11 @@ class BookByAuthor(object):
         cls._tid_to_bba = {}
 
     def __init__(self, row, author='Author', allow_duplicates=False):
+        # I'm not sure if author is needed - I've commented out the self.author
+        # property further down, and it hasn't yet broken anything
+        # It might be useful in other contexts (e.g. list of Hugo winners), but
+        # maybe that can be done via some generic properties in a dict?
+
         # Q: I don't see that allow_duplicates is ever used?
         self.title_id = row['title_id']
         self.parent_id = row['title_parent']
@@ -136,7 +145,8 @@ class BookByAuthor(object):
 
         self._titles = Counter(valid_titles)
 
-        self.author = author
+        # Is this actually used?  Let's find out...
+        # self.author = author
 
 
         self.pub_stuff = PubStuff(self.publication_date, self.publication_date,
@@ -260,6 +270,9 @@ class BookByAuthor(object):
             return dt.year
 
     def pub_stuff_string(self, min_year=MIN_PUB_YEAR, max_year=MAX_PUB_YEAR):
+        """
+        This is very much oriented towards ASCII (or theoretically Unicode) output
+        """
         with_dates = [z for z in self.all_pub_stuff
                       if z.date and 1800 <= z.date.year <= 2100]
         date_sorted = sorted(with_dates, key=lambda z: z.date)
@@ -301,6 +314,9 @@ def get_raw_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITL
     Pulled out of get_bibliography() when testing where a bug was occurring;
     probably not amazingly useful without the post-processing, but it's here
     if you want it...
+
+    author_name is unused!?!
+
     """
     # title_copyright is not reliably populated, hence the joining to pubs
     # for their date as well.
