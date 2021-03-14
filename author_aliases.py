@@ -320,7 +320,7 @@ def get_real_author_id_and_name_from_name(conn, pseudonym):
         FROM authors
         WHERE author_canonical = :pseudonym""")
         results2 = conn.execute(query2, pseudonym=pseudonym).fetchone()
-        print(pseudonym, results2, results2.author_id, results2.name)
+        # print(pseudonym, results2, results2.author_id, results2.name)
         if results2:
             return [AuthorIdAndName(results2.author_id, results2.name)]
         else:
