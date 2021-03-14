@@ -300,6 +300,8 @@ class BookByAuthor(object):
     def __repr__(self):
         return '%s [%d]' % (self.title, self.year)
 
+class BadFiltersError(Exception):
+    pass
 
 def get_raw_bibliography(conn, filters, title_types=DEFAULT_TITLE_TYPES):
     """
@@ -337,6 +339,16 @@ def get_raw_bibliography(conn, filters, title_types=DEFAULT_TITLE_TYPES):
 
     value_map.update(filters)
 
+    filter_bits = []
+    if 'author_ids' in filters:
+        filter_bits.append('author_id in :author_ids')
+    if 'title_ids' in filters:
+        filter_bits.append('t.title_id in :title_ids')
+
+    if not filter_bits:
+        raise BadFiltersError('No known filters passed')
+    filter_string = ' AND '.join(filter_bits)
+
     query = text("""SELECT t.title_id, t.title_parent, t.title_title,
           CAST(t.title_copyright AS CHAR) t_copyright,
           t.series_id, t.title_seriesnum, t.title_seriesnum_2,
@@ -349,30 +361,34 @@ def get_raw_bibliography(conn, filters, title_types=DEFAULT_TITLE_TYPES):
     LEFT OUTER JOIN pub_content pc ON t.title_id = pc.title_id
     LEFT OUTER JOIN pubs p ON pc.pub_id = p.pub_id
     LEFT OUTER JOIN publishers pl ON p.publisher_id = pl.publisher_id
-    WHERE author_id IN :author_ids
+    WHERE %s
       AND t.title_ttype IN :title_types
       AND p.pub_ctype IN :pub_types
       AND title_language IN :title_languages
-    ORDER BY t.title_id, p.pub_year; """)
+    ORDER BY t.title_id, p.pub_year; """ % (filter_string))
     rows = conn.execute(query, value_map)
     # print(len(rows)) # This only works if you do a .fetchall() above
     return rows
 
 
-def get_bibliography(conn, author_ids,
+
+def get_bibliography(conn, filters,
                      title_types=DEFAULT_TITLE_TYPES):
     """
-    Given a list of author_ids, return a sorted bibliography.
-
-    author_name is a bit of a hack to avoid having to do another lookup on
-    the authors table (which *might* have complications with multiple matches
-    e.g. an author with variant names, that a book has been issued under both
-    variants?)
-
-    Although it looks like we might not need it...
+    Given a dictionary of known filter values, return a sorted bibliography.
+    The filters argument can contain one or more of:
+    * author_ids: a list of numeric author IDs
+    * title_ids: a list of numeric title IDs
+    * maybe more to come...
     """
+    KNOWN_FILTERS = ['author_ids', 'title_ids']
+    if not filters:
+        raise BadFiltersException('No items found in filters dictionary')
+    for k in filters.keys():
+        if k not in KNOWN_FILTERS:
+            raise BadFiltersException(f'Do not know how to handle filter "{k}"')
 
-    filters = {'author_ids': author_ids}
+    # filters = {'author_ids': author_ids}
 
     # rows = get_raw_bibliography(conn, author_ids, title_types)
     rows = get_raw_bibliography(conn, filters, title_types)
@@ -414,6 +430,38 @@ def output_publisher_stats(publisher_counts, output_function=print):
         output_function('%-40s : %3d (%d%%)' % (publisher, book_count, pc))
 
 
+def get_hugo_winner_title_ids(conn):
+    """
+    Return a list of Hugo Best Novel (or whatever) title_ids
+
+    Quick and dirty hack for testing alternative filtering
+    """
+    query = text("""
+SELECT t.title_id
+FROM awards a
+LEFT OUTER JOIN title_awards ta ON a.award_id = ta.award_id
+LEFT OUTER JOIN titles t ON t.title_id = ta.title_id
+WHERE award_type_id = 31 AND award_cat_id = 413 AND award_level = 1;""")
+#  WHERE award_type_id = 23 AND award_cat_id = 261 AND award_level = 1;""")
+
+
+    rows = conn.execute(query)
+
+    ret = list(z['title_id'] for z in rows)
+    # But we also need the variants
+    # Assumption: the award IDs are the parent titles
+    # Hardcoding language 17 (English) is yet another hack
+    # print(ret)
+    query2 = text("""SELECT t.title_id
+    FROM titles t
+    WHERE t.title_parent in :title_ids
+    AND t.title_language = 17;""")
+    more_rows = conn.execute(query2, {'title_ids': ret})
+    more_ids = list(z['title_id'] for z in more_rows)
+    # print(more_ids)
+    merged = set(ret + more_ids)
+    return list(merged)
+
 def get_author_bibliography(conn, author_names, title_types=None):
     """
     Return a list of BookByAuthor objects for the specified author
@@ -422,6 +470,7 @@ def get_author_bibliography(conn, author_names, title_types=None):
     for handling this as a list of strings, even though only the first is
     used.
     """
+
     if hasattr(author_names, 'lower'):
         author_name = author_names
     else:
@@ -444,8 +493,14 @@ def get_author_bibliography(conn, author_names, title_types=None):
     author_ids = [z.id for z in author_ids_and_names]
 
     # print(f'DEBUG: author_ids={author_ids}')
-    bibliography = get_bibliography(conn, author_ids,
-                                    title_types)
+    filters = {'author_ids': author_ids}
+
+    # Crude hack for testing
+    # title_ids = get_hugo_winner_title_ids(conn)
+    # filters = {'title_ids': title_ids}
+
+    bibliography = get_bibliography(conn, filters, title_types)
+
     return bibliography
 
 
