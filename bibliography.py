@@ -102,13 +102,7 @@ class BookByAuthor(object):
         cls._tid_to_bba = {}
 
     def __init__(self, row,
-                 # author='Author', # I believe this is no longer needed (if it ever was?)
                  allow_duplicates=False):
-        # I'm not sure if author is needed - I've commented out the self.author
-        # property further down, and it hasn't yet broken anything
-        # It might be useful in other contexts (e.g. list of Hugo winners), but
-        # maybe that can be done via some generic properties in a dict?
-
         # Q: I don't see that allow_duplicates is ever used?
         self.title_id = row['title_id']
         self.parent_id = row['title_parent']
@@ -146,10 +140,6 @@ class BookByAuthor(object):
             valid_titles = {z for z in [self.title_title, self.pub_title] if z}
 
         self._titles = Counter(valid_titles)
-
-        # Is this actually used?  Let's find out...
-        # self.author = author
-
 
         self.pub_stuff = PubStuff(self.publication_date, self.publication_date,
                                   row['pub_ptype'], row['pub_price'])
@@ -370,7 +360,6 @@ def get_raw_bibliography(conn, filters, title_types=DEFAULT_TITLE_TYPES):
 
 
 def get_bibliography(conn, author_ids,
-                     # author_name, # No longer needed I believe
                      title_types=DEFAULT_TITLE_TYPES):
     """
     Given a list of author_ids, return a sorted bibliography.
@@ -393,10 +382,8 @@ def get_bibliography(conn, author_ids,
     def make_bba(stuff, allow_duplicates):
         """
         Curried wrapper to BookByAuthor class.
-        The use of author_names[0] is a bit of a hack - TODO: better
         """
         bba =  BookByAuthor(stuff,
-                            # author=author_name, # No longer needed/used
                             allow_duplicates=allow_duplicates)
         # if bba.year is None or bba.year == FALLBACK_YEAR:
         #    logging.warning('Year is None or %s for %s (possibly unpublished?' %
@@ -458,7 +445,6 @@ def get_author_bibliography(conn, author_names, title_types=None):
 
     # print(f'DEBUG: author_ids={author_ids}')
     bibliography = get_bibliography(conn, author_ids,
-                                    # author_name, # No longer needed/used
                                     title_types)
     return bibliography
 
