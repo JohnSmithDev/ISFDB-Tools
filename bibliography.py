@@ -309,14 +309,11 @@ class BookByAuthor(object):
         return '%s [%d]' % (self.title, self.year)
 
 
-def get_raw_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITLE_TYPES):
+def get_raw_bibliography(conn, author_ids, title_types=DEFAULT_TITLE_TYPES):
     """
     Pulled out of get_bibliography() when testing where a bug was occurring;
     probably not amazingly useful without the post-processing, but it's here
     if you want it...
-
-    author_name is unused!?!
-
     """
     # title_copyright is not reliably populated, hence the joining to pubs
     # for their date as well.
@@ -377,7 +374,7 @@ def get_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITLE_TY
     variants?)
     """
 
-    rows = get_raw_bibliography(conn, author_ids, author_name, title_types)
+    rows = get_raw_bibliography(conn, author_ids, title_types)
 
     BookByAuthor.reset_duplicate_cache()
 
