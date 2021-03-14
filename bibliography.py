@@ -390,26 +390,6 @@ def get_bibliography(conn, author_ids, author_name, title_types=DEFAULT_TITLE_TY
     return sorted(books, key=lambda z: z.year)
 
 
-
-def xxx_postprocess_bibliography(raw_rows):
-    # THIS SEEMS TO BE NO LONGER USED???
-    title_id_to_titles = defaultdict(set)
-    publication_dict = defaultdict(set)
-    # TODO: might be nice to order the titles by most popular first?
-    # TODO: better to call merge_similar_titles() here?
-    for row in raw_rows:
-        key = row['title_parent'] or row['title_id']
-        title_id_to_titles[key].update([row['title_title'], row['pub_title']])
-        publication_dict[key].update([convert_dateish_to_date(row['t_copyright']),
-                                   convert_dateish_to_date(row['p_publication_date'])])
-
-    titles_to_first_pub = {}
-    for tid, titles in title_id_to_titles.items():
-        pubdates = [z for z in publication_dict[tid] if z is not None]
-        titles_to_first_pub[tuple(titles)] = min(pubdates)
-    return sorted(titles_to_first_pub.items(), key=lambda z: z[1])
-
-
 def output_publisher_stats(publisher_counts, output_function=print):
     output_function(f'\n= This author has been published by the following =')
     for i, (publisher, book_count) in enumerate(publisher_counts.most_common()):
@@ -421,15 +401,26 @@ def output_publisher_stats(publisher_counts, output_function=print):
 
 
 def get_author_bibliography(conn, author_names, title_types=None):
-    # I think there's some historical reason and/or the way args are handled
-    # for handling this as a list of strings, even though only the first is
-    # used.
+    """
+    Return a list of BookByAuthor objects for the specified author
+
+    I think there's some historical reason and/or the way args are handled
+    for handling this as a list of strings, even though only the first is
+    used.
+    """
     if hasattr(author_names, 'lower'):
         author_name = author_names
     else:
         # author_ids = get_author_alias_ids(conn, author_names)
         author_name = author_names[0]
 
+    # Original code that picks up "Danger Planet" by "Brett Sterling" for Ray Bradbury
+    # which is a group alias, but in this case the real author is Edmond Hamilton
+    # author_ids = get_author_alias_ids(conn, author_name)
+
+    # Instead just get the real/canonical author, and presume that entries exist
+    # for them for all the books that were only ever published under aliases
+    # (which AIUI is how the ISFDB data model works)
     author_ids_and_names = get_real_author_id_and_name_from_name(conn, author_name)
     if not author_ids_and_names:
         raise AmbiguousArgumentsError('Do not know author "%s"' % (author_name))
@@ -437,10 +428,6 @@ def get_author_bibliography(conn, author_names, title_types=None):
         raise AmbiguousArgumentsError('Author "%s" has multiple real IDs (%s) - a gestalt?' %
                                       (author_name, ','.join(author_ids_and_names)))
     author_ids = [z.id for z in author_ids_and_names]
-
-    # Original code that picks up "Danger Planet" by "Brett Sterling" for Ray Bradbury
-    # which is a group alias, but in this case the real author is Edmond Hamilton
-    # author_ids = get_author_alias_ids(conn, author_name)
 
     # print(f'DEBUG: author_ids={author_ids}')
     bibliography = get_bibliography(conn, author_ids, author_name, title_types)
@@ -483,6 +470,43 @@ def get_publisher_counts(bibliography):
     return publisher_counts
 
 
+
+
+def output_ascii_stats(bibliography, min_year, max_year,
+                       output_title=False, output_function=print):
+    year_bits = []
+    for year in range(min_year, max_year+1):
+        year_string = str(year)
+        digit = year % 10
+        year_chars = {0: '\u2193', # https://unicode-table.com/en/sets/arrow-symbols/#down-arrows
+                      1: year_string[0],
+                      2: year_string[1],
+                      3: year_string[2],
+                      4: '0'}
+        year_bits.append(year_chars.get(digit, '-'))
+    while 1 <= digit <= 3:
+        digit += 1
+        year_bits.append(year_chars.get(digit, '-'))
+
+    INDENT = '     ' # 3 digit number plus dot plus space
+
+    if output_title:
+        output_function(INDENT + name_with_dates(get_author_bio(conn, args.exact_author)) + '\n')
+
+    output_function(INDENT + ''.join(year_bits))
+
+    for i, bk in enumerate(bibliography, 1):
+        NOW_DONE_IN_TITLES_METHOD = """
+        if len(args.work_types) > 1:
+            year_bit = f'{bk.title_ttype.lower()}, {bk.year}'
+        else:
+            year_bit = f'{bk.year}'
+        """
+        titles = bk.titles(include_year=True, include_type=(len(args.work_types) > 1))
+        output_function('%3d. %s %s' % (i, bk.pub_stuff_string(min_year, max_year),
+                              titles))
+
+
 if __name__ == '__main__':
     parser = create_parser(description="List an author's bibliography",
                       supported_args='anv')
@@ -511,40 +535,9 @@ if __name__ == '__main__':
     else:
             min_year, max_year = get_publication_year_range(bibliography)
 
-    publisher_counts = get_publisher_counts(bibliography)
-
-    year_bits = []
-    for year in range(min_year, max_year+1):
-        year_string = str(year)
-        digit = year % 10
-        year_chars = {0: '\u2193', # https://unicode-table.com/en/sets/arrow-symbols/#down-arrows
-                      1: year_string[0],
-                      2: year_string[1],
-                      3: year_string[2],
-                      4: '0'}
-        year_bits.append(year_chars.get(digit, '-'))
-    while 1 <= digit <= 3:
-        digit += 1
-        year_bits.append(year_chars.get(digit, '-'))
-
-    INDENT = '     '
-
-    if args.output_title:
-
-        print(INDENT + name_with_dates(get_author_bio(conn, args.exact_author)) + '\n')
-
-    print(INDENT + ''.join(year_bits))
-
-    for i, bk in enumerate(bibliography, 1):
-        NOW_DONE_IN_TITLES_METHOD = """
-        if len(args.work_types) > 1:
-            year_bit = f'{bk.title_ttype.lower()}, {bk.year}'
-        else:
-            year_bit = f'{bk.year}'
-        """
-        titles = bk.titles(include_year=True, include_type=(len(args.work_types) > 1))
-        print('%3d. %s %s' % (i, bk.pub_stuff_string(min_year, max_year),
-                              titles))
+    output_ascii_stats(bibliography, min_year, max_year,
+                       output_title=args.output_title)
 
     if args.show_publishers:
+        publisher_counts = get_publisher_counts(bibliography)
         output_publisher_stats(publisher_counts)
