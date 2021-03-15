@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 """
-Note: These tests rely on the database,
+Note: These tests rely on the database, and as such are prone to breakage if
+the data being tested changes.
 """
 
-# from datetime import date
+import datetime
 from collections import namedtuple
+
 import unittest
 
 from sqlalchemy.exc import OperationalError
@@ -14,7 +16,7 @@ from ..publication_history import (get_publications_by_country,
                                    PublicationDetails)
 
 # TODO: there are other functions (probably more easily testable) in that module
-from ..bibliography import (get_author_bibliography)
+from ..bibliography import (get_author_bibliography, PubStuff)
 
 
 CoreBookInfo = namedtuple('CoreBookInfo', 'id, title, year')
@@ -30,6 +32,14 @@ def extract_core_bits(books):
     included and the wrong ones excluded
     """
     return [CoreBookInfo(z.title_id, z.title, z.year) for z in books]
+
+def make_title_id_to_details_map(books):
+    """
+    A more detailed alternative to extract_core_bits(), if you want to
+    delve deeper
+    """
+    return {z.title_id: z for z in books}
+
 
 class TestBibliography(unittest.TestCase):
     # There's a *lot* more should be tested...
@@ -74,3 +84,38 @@ class TestBibliography(unittest.TestCase):
         # Bradbury, but in this case the real author is Edmond Hamilton
         # http://www.isfdb.org/cgi-bin/title.cgi?935565
         self.assertFalse((935565, 'Danger Planet', 1968) in rb_core)
+
+    def test_get_bibliography_neal_asher_mindgames_1992(self):
+        """
+        "Mindgames: Fool's Mate" was first published in 1992 under the name
+        "Neal L. Asher"
+        http://www.isfdb.org/cgi-bin/title.cgi?864454 (parent title ID as Neal Asher)
+        http://www.isfdb.org/cgi-bin/title.cgi?17670 (variant title ID as Neal L. Asher)
+        At one point, this was only showing as a later 2009 pub by
+        "Neal Asher", omitting the earlier "Neil L Asher" pub.
+
+        There are - or rather were - similar issues with "Paul J. McAuley" and "Paul
+        McAuley"; any pubs not belonging to the parent author ID were
+        missing, and if all were assigned to the variant author ID - like
+        all recent McAuley books I believe - then they were missing altogether.
+        This is now fixed, albeit at the expense of 2 DB queries.
+        """
+        na_raw = get_author_bibliography(self.conn, 'Neal Asher',
+                                         MAIN_TYPES_OF_INTEREST)
+        na_dict = make_title_id_to_details_map(na_raw)
+        # Because the Neil L Asher pub of Mindgames (17670) came out before the
+        # parent title (864454)'s pub, the former ID will have been picked up
+        # as the primary ID.  Not sure if this will be a problem, or at least
+        # confusing...
+        self.assertIn(17670, na_dict) # Sanity check
+        mindgames = na_dict[17670]
+        # And verify that both pubs are known:
+        self.assertEqual([PubStuff(pub_id=datetime.date(1992, 1, 1),
+                                   date=datetime.date(1992, 1, 1),
+                                   format='tp',
+                                   price='£1.99'),
+                          PubStuff(pub_id=datetime.date(2018, 6, 6),
+                                   date=datetime.date(2018, 6, 6),
+                                   format='tp',
+                                   price='$7.99')], mindgames.all_pub_stuff)
+

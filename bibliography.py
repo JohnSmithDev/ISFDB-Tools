@@ -303,11 +303,69 @@ class BookByAuthor(object):
 class BadFiltersError(Exception):
     pass
 
+def get_raw_title_ids(conn, filters):
+    """
+    Return a set of title_ids that match the provided filters.
+    This does not check if the titles have any associated publications.
+    It is intended to find a list of titles that a 'real' author has written,
+    excluding any written by a house/gestalt pen name.
+
+    This can then be used in conjunction with the output from get_raw_bibliography()
+    to filter out the aforementioned gestalt works, whilst still including
+    variant titles that only have pubs attributed to a variant name
+    e.g. the later "Paul J. McAuley" books that only have pubs by "Paul
+    McAuley".
+
+    Note that this doesn't care about title or pub types; it's assumed that
+    get_raw_bibliography will take care of that.
+    """
+
+    # Much of this is copypasted from get_raw_bibliography - TODO tidy up
+
+    value_map = {'title_languages': VALID_LANGUAGE_IDS}
+    value_map.update(filters)
+
+    filter_bits = []
+    if 'author_ids' in filters:
+        filter_bits.append('author_id in :author_ids')
+    if 'title_ids' in filters:
+        filter_bits.append('t.title_id in :title_ids')
+
+    if not filter_bits:
+        raise BadFiltersError('No known filters passed')
+    filter_string = ' AND '.join(filter_bits)
+
+    query = text("""SELECT t.title_id, t.title_parent
+    FROM canonical_author ca
+    LEFT OUTER JOIN titles t ON ca.title_id = t.title_id
+    WHERE %s
+      AND title_language IN :title_languages; """ % (filter_string))
+    rows = conn.execute(query, value_map)
+    interim = [(z['title_id'], z['title_parent']) for z in rows]
+    title_ids = set(chain(*interim))
+    try:
+        title_ids.remove(None)
+    except KeyError:
+        pass
+    return title_ids
+
+
+
+
 def get_raw_bibliography(conn, filters, title_types=DEFAULT_TITLE_TYPES):
     """
-    Pulled out of get_bibliography() when testing where a bug was occurring;
-    probably not amazingly useful without the post-processing, but it's here
-    if you want it...
+    Return a bunch of rows of all the publications matching the filters map
+    (typically either a list of author IDs or title IDs).
+
+    IMPORTANT: Titles that have no associated publications will not be in the
+               returned rows. e.g. on an author like "Paul J. McAuley" where
+               his later pubs are all using the variant "Paul McAuley".
+               However, be careful of passing in multiple author_ids to try to
+               fix that problem; whilst you will get the missing titles/pubs,
+               you also run the risk of picking up anything attributed to a
+               gestalt/group ID that was really written by a different author.
+               Use this function in conjunction with get_raw_title_ids() to
+               extract just what you want.
     """
     # title_copyright is not reliably populated, hence the joining to pubs
     # for their date as well.
@@ -355,7 +413,8 @@ def get_raw_bibliography(conn, filters, title_types=DEFAULT_TITLE_TYPES):
           t.title_ttype,
           p.pub_id, p.pub_title, CAST(p.pub_year as CHAR) p_publication_date,
           p.pub_isbn, p.pub_price, p.pub_ptype, p.pub_ctype,
-          p.publisher_id, pl.publisher_name
+          p.publisher_id, pl.publisher_name,
+          ca.author_id
     FROM canonical_author ca
     LEFT OUTER JOIN titles t ON ca.title_id = t.title_id
     LEFT OUTER JOIN pub_content pc ON t.title_id = pc.title_id
@@ -462,6 +521,7 @@ WHERE award_type_id = 31 AND award_cat_id = 413 AND award_level = 1;""")
     merged = set(ret + more_ids)
     return list(merged)
 
+
 def get_author_bibliography(conn, author_names, title_types=None):
     """
     Return a list of BookByAuthor objects for the specified author
@@ -478,8 +538,11 @@ def get_author_bibliography(conn, author_names, title_types=None):
         author_name = author_names[0]
 
     # Original code that picks up "Danger Planet" by "Brett Sterling" for Ray Bradbury
-    # which is a group alias, but in this case the real author is Edmond Hamilton
+    # which is a group alias, but in this case the real author is Edmond Hamilton.
     # author_ids = get_author_alias_ids(conn, author_name)
+    # However it turns out we need these to find all pubs, but we have to be
+    # careful...
+    all_author_ids = get_author_alias_ids(conn, author_name)
 
     # Instead just get the real/canonical author, and presume that entries exist
     # for them for all the books that were only ever published under aliases
@@ -490,16 +553,28 @@ def get_author_bibliography(conn, author_names, title_types=None):
     if len(author_ids_and_names) > 1:
         raise AmbiguousArgumentsError('Author "%s" has multiple real IDs (%s) - a gestalt?' %
                                       (author_name, ','.join(author_ids_and_names)))
-    author_ids = [z.id for z in author_ids_and_names]
+    real_author_ids = [z.id for z in author_ids_and_names]
 
-    # print(f'DEBUG: author_ids={author_ids}')
-    filters = {'author_ids': author_ids}
 
-    # Crude hack for testing
+    filters = {'author_ids': real_author_ids}
+
+
+    # Crude hack for testing alternative filters
     # title_ids = get_hugo_winner_title_ids(conn)
     # filters = {'title_ids': title_ids}
 
-    bibliography = get_bibliography(conn, filters, title_types)
+    canonical_title_ids = get_raw_title_ids(conn, filters)
+
+    filters = {'author_ids': all_author_ids}
+    all_bibliography = list(get_bibliography(conn, filters, title_types))
+
+    # logging.debug(f'canonical_title_ids={canonical_title_ids}')
+    bibliography = []
+    for bk in all_bibliography:
+        if bk.title_id in canonical_title_ids or bk.parent_id in canonical_title_ids:
+            bibliography.append(bk)
+        else:
+            logging.warning(f'Not including {bk} {bk.title_id}/{bk.parent_id} in bibliography')
 
     return bibliography
 
@@ -543,7 +618,7 @@ def get_publisher_counts(bibliography):
 
 
 def output_ascii_stats(bibliography, min_year, max_year,
-                       output_title=False, output_function=print):
+                       chart_title=False, output_function=print):
     year_bits = []
     for year in range(min_year, max_year+1):
         year_string = str(year)
@@ -560,8 +635,8 @@ def output_ascii_stats(bibliography, min_year, max_year,
 
     INDENT = '     ' # 3 digit number plus dot plus space
 
-    if output_title:
-        output_function(INDENT + name_with_dates(get_author_bio(conn, args.exact_author)) + '\n')
+    if chart_title:
+        output_function(INDENT + chart_title + '\n')
 
     output_function(INDENT + ''.join(year_bits))
 
@@ -577,37 +652,58 @@ def output_ascii_stats(bibliography, min_year, max_year,
                               titles))
 
 
-if __name__ == '__main__':
-    parser = create_parser(description="List an author's bibliography",
+def create_bibliography_parser(description="List an author's bibliography"):
+    parser = create_parser(description=description,
                       supported_args='anv')
     parser.add_argument('-p', dest='show_publishers', action='store_true',
                         help='Show stats on which publishers this author had')
     parser.add_argument('-t', dest='output_title', action='store_true',
-                        help='Output a report title')
+                        help='Output an auto-generated report title')
+    parser.add_argument('-T', dest='output_title_string', nargs='?',
+                        help='Output specified report title')
     # Note that this is different from the usual year arg that create_parser
     # et al provide
     parser.add_argument('-y', dest='year_range', nargs='?',
                         help='Specify an year range (either max number of years '
                         '(default 80), or an explicit from-to range')
+    return parser
 
-    args = parse_args(sys.argv[1:], parser=parser)
+def get_year_range(bibliography, year_range_string):
+    """
+    Return a tuple of (min_year, max_year), depending on any specified range
+    (e.g. from a CLI argument) and the date range of publications in the
+    bibliography.
+    """
 
-    conn = get_connection()
-
-    bibliography = get_author_bibliography(conn, args.exact_author, args.work_types)
-
-    if args.year_range:
+    if year_range_string:
         if '-' in args.year_range:
-            min_year, max_year = [int(z) for z in args.year_range.split('-')]
+            min_year, max_year = [int(z) for z in year_range_string.split('-')]
         else:
             min_year, max_year = get_publication_year_range(bibliography,
-                                                            max_range=int(args.year_range))
+                                                            max_range=int(year_range_string))
     else:
-            min_year, max_year = get_publication_year_range(bibliography)
+        min_year, max_year = get_publication_year_range(bibliography)
+    return min_year, max_year
 
+if __name__ == '__main__':
+    # Phase 1: argument handling
+    parser = create_bibliography_parser()
+    args = parse_args(sys.argv[1:], parser=parser)
+    if args.output_title_string:
+        title = args.output_title_string
+    elif args.output_title:
+        title = name_with_dates(get_author_bio(conn, args.exact_author))
+    else:
+        title = None
+
+    # Phase 2: Data processing
+    conn = get_connection()
+    bibliography = get_author_bibliography(conn, args.exact_author, args.work_types)
+    min_year, max_year = get_year_range(bibliography, args.year_range)
+
+    # Phase 3: Output
     output_ascii_stats(bibliography, min_year, max_year,
-                       output_title=args.output_title)
-
+                       chart_title=title)
     if args.show_publishers:
         publisher_counts = get_publisher_counts(bibliography)
         output_publisher_stats(publisher_counts)
