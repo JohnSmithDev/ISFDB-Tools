@@ -686,6 +686,8 @@ def get_year_range(bibliography, year_range_string):
     return min_year, max_year
 
 if __name__ == '__main__':
+    conn = get_connection()
+
     # Phase 1: argument handling
     parser = create_bibliography_parser()
     args = parse_args(sys.argv[1:], parser=parser)
@@ -697,7 +699,6 @@ if __name__ == '__main__':
         title = None
 
     # Phase 2: Data processing
-    conn = get_connection()
     bibliography = get_author_bibliography(conn, args.exact_author, args.work_types)
     min_year, max_year = get_year_range(bibliography, args.year_range)
 
