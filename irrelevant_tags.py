@@ -21,9 +21,13 @@ ISFDB_IRRELEVANT_TAGS = {
     "biography & autobiography / entertainment & performing arts",
     "biography & autobiography / general",
     "biography & autobiography / music",
+    "biography & autobiography / military",
     "biography & autobiography / political",
     "biography & autobiography / presidents & heads of state",
-    "biography & autobiography / science & technology",
+    "biography & autobiography / political",
+    "biography & autobiography / rich & famous",
+    "biography & autobiography/science & technology",
+    "biography & autobiography / survival",
     "science, technology & medicine biographies",
     "science, technology & medicine autobiographies",
     "biography and true stories / true stories / true crime",
@@ -32,14 +36,25 @@ ISFDB_IRRELEVANT_TAGS = {
     "business/economics", "economic history", "economics: professional & general",
     "business & ecomomics / entrepreneurship",
     "business & ecomomics / knowledge capital", "business & economics",
+    "business & economics / decision-making & problem solving",
 
     "car racing", "automobile racing", "motor sports", "formula 1 & grand prix",
+
+    "children's general non-fiction",
+    "reference works (children's / teenage)",
+    "child: non-fiction 5+",
 
     "computing: professional & programming", "computers / information technology",
     "anf: computers and it", "computers / internet / general",
     "technology / general issues", "internet: general works",
+    "computers / software development & engineering / quality assurance & testing",
+    "computers / programming / open source",
+    "computers / intelligence (ai) & semantics",
+    "business & economics / industries / computers & information technology",
 
     "conjuring & magic",
+
+    "emergency services", "accident & emergency nursing",
 
     "general cookery & recipes", "alcoholic drinks", "food & drink",
 
@@ -66,14 +81,20 @@ ISFDB_IRRELEVANT_TAGS = {
     "fiction / historical / general", "fiction / historical / world war ii",
     "fiction: general & literary",
 
+
+    "individual film directors", "film-makers",
+    "performing arts / film /general",
+
     "great britain/british isles",
 
     "health & fitness / healthy living", "health & fitness / longetivity",
+    "health & fitness / women's health", "health & fitness / pregnancy & childbirth",
     "health care issues",
     "medical / general", "medical / infectious diseases",
     "medical / clinical medicine", "health & fitness",
     "medicine: general issues",
     "popular medicine & health",
+    "technology & medicine",
 
 
     "history", "historical events & topics", "general & world history",
@@ -109,8 +130,12 @@ ISFDB_IRRELEVANT_TAGS = {
     "history / modern / 20th century",
     "history & theory",
 
+    "housing & homelessness",
+
     "humor / form / essays",
     "humor / topic / internet & social media",
+    "humor / topic / politics",
+    "humor/topic - politics",
     "sport and leisure / humour",
     "humor / form / comic strips & cartoons", "humor / form / trivia",
 
@@ -122,12 +147,16 @@ ISFDB_IRRELEVANT_TAGS = {
     "microcomputers - history",
     "computers / natural language processing",
     "computing and information technology / computer science / artifical intelligence",
+    "science & technology",
 
     "international human rights law", "law / general", "legal history"
 
     "language arts & disciplines / grammar",
+    "language arts & disciplines / vocabulary",
     "language / language: reference and general / writing and editing guides",
     "language: history & general works", "english language - etymology",
+    "reference / word lists", "reference / language",
+    "language / reference & general",
 
     "greater london",
 
@@ -151,42 +180,54 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "police in mass media", "police & security services",
 
+    "topic - politics",
+    "government & constitution",
     "politics/intl relations", "political leaders & leadership",
-    "political science", "government & constitution",
-    "political science/comparative politics", "political science / general",
     "politics & government", "political corruption",
-    "international relations", "political science & theory",
-    "anf: politics and government", "political science / world / european",
+    "international relations",
+    "anf: politics and government",
     "society and social sciences / politics and government",
+    "political science & theory",
+    "political science",
+    "political science/comparative politics",
+    "political science / essays",
+    "political science / general",
+    "political science / history & theory",
+    "political science / intelligence & espionage",
+    "political science / political process / elections",
+    "political science / political political economy",
+    "political science / political process / political parties",
     "political science / political process / political parties",
     "political science / political ideologies / nationalism & patriotism",
     "political science / political freedom",
-    "political control & freedoms",
-    "anf: society", "social discrimination & equal treatment",
-    "political science / history & theory",
-    "political science / political process / elections",
-    "political science / political process / political parties",
-    "social science / social work", "social work",
-    "political science / intelligence & espionage",
-    "espionage & secret services",
     "political science / terrorism",
     "political science / world / middle eastern",
+    "political science / world / european",
+    "social science / social work", "social work",
+    "political control & freedoms",
+    "anf: society", "social discrimination & equal treatment",
+    "espionage & secret services",
+    "political consultants - humor", "political science - humor",
+    "political satire",
+    "political activism",
 
     "great britain/politics and government",
     "american government", "government & constitution",
 
     "press & journalism", "media studies", "anf: media studies",
-    "social science / media studies", "social science / social classes",
-    "social & cultural history", "social & cultural studies",
+    "social science / media studies",
 
     "psychology", "sociology", "philosophy", "social psychology",
     "psychological testing & measurement", "popular psychology",
     "group or collective psychology", "sociology - general",
     "psychology / creative ability", "science / cognitive science",
     "philosophy: free will & determinism",
+    "psychology / mental health",
+    "psychology / cognitive psychology & cognition",
 
     "privacy & data protection",
     "social science / privacy & surveillance",
+    "social science / criminology",
 
     "religion / religion", "religion: comparative",
     "history of religion",
@@ -210,15 +251,21 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "anf: skills for life",
 
-    "social activists",
+    "social activists", "social movements",
 
     "society & culture", "cultural studies",
     "social science / anthropology / cultural & social",
+    "social science / social classes",
+    "social science / women's studies", "social science / feminism & feminist theory",
+    "social science / sociology / general",
+    "social & ethical issues",
     "society & culture: general",
-    "social science / sociology / general", "social & ethical issues",
     "corruption in society",
     "social & ethical issues", "social issues & processes",
     "social classes & economic disparity",
+    "social & cultural history", "social & cultural studies",
+    "social discrimination & inequality",
+    "social mobility",
 
     "spiritualism", "self-help",
     "mind & spirit: mindfulness & meditation",
@@ -229,7 +276,7 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "anf: transport", "transport industries",
 
-    "true crime / espionage",
+    "true crime / espionage", "true crime / organized crime",
 
     "virus / corona virus",
 
