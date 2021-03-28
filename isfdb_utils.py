@@ -50,11 +50,11 @@ def pretty_list(lst, max_items=3, others_label='items'):
             second_bit = '%d other %s' % (lenl - max_items + 1, label)
         return '%s and %s' % (first_bit, second_bit)
 
-def convert_dateish_to_date(txt, default=None):
+def convert_dateish_to_date(txt, default=None, strict_month=False, strict_day=False):
     """
     0 days of month (and I suspect month) are possible in the database, but
     convert to None-ish by SQLAlchemy.  Here we fake them as 1st of month or
-    January.
+    January, unless the relevant strict_* flag is set to True
 
     Set default to something if you need to sort the output (and can't be bothered
     to do something like https://stackoverflow.com/questions/12971631/sorting-list-by-an-attribute-that-can-be-none
@@ -65,10 +65,10 @@ def convert_dateish_to_date(txt, default=None):
     bits = [int(z) for z in txt.split('-')]
     if not bits[0]: # probably '0000-00-00':
         return default
-    if bits[1] == 0:
-        bits[1] = 1
-    if bits[2] == 0:
-        bits[2] = 1
+    if bits[1] == 0 and not strict_month:
+        bits[1] = 1 # Fake to January
+    if bits[2] == 0 and not strict_day:
+        bits[2] = 1 # Fake to 1st of month
     return date(*bits)
 
 def safe_year_from_date(dt, default=None):
