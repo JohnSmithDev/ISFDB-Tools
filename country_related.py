@@ -74,6 +74,8 @@ def derive_country_from_price(raw_price, ref=None):
         return 'CA'
     elif price.startswith('AU$'):
         return 'AU'
+    elif price.startswith('NZ$'):
+        return 'NZ'
     elif (price[0] == '\xa3' or # pound sterling symbol
           re.match('\d+P', price)): # pence
         return 'GB'
@@ -140,6 +142,8 @@ def derive_country_from_price(raw_price, ref=None):
         return 'CN'
     elif price.startswith('&#8377;'): # HTML entity for rupee - http://www.isfdb.org/cgi-bin/pl.cgi?643560
         return 'IN'
+    elif price.startswith('PKR'): # Pakistani Rupee
+        return 'PK'
     elif price.startswith('&#3647;'): # Thai baht
         return 'TH' # Used on an edition of Lock In
     # Single ASCII character prefixes - put these at the end to minimize the risk
