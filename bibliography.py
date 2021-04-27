@@ -261,9 +261,10 @@ class BookByAuthor(object):
         else:
             return dt.year
 
-    def pub_stuff_string(self, min_year=MIN_PUB_YEAR, max_year=MAX_PUB_YEAR):
+
+    def year_to_stuff(self, min_year, max_year):
         """
-        This is very much oriented towards ASCII (or theoretically Unicode) output
+        Return a dict mapping publication year to a list of publication stuff
         """
         with_dates = [z for z in self.all_pub_stuff
                       if z.date and 1800 <= z.date.year <= 2100]
@@ -275,6 +276,13 @@ class BookByAuthor(object):
             for stuff in date_sorted:
                 if stuff.date.year == year:
                     year_to_stuff[year].append(stuff)
+        return year_to_stuff
+
+    def pub_stuff_string(self, min_year=MIN_PUB_YEAR, max_year=MAX_PUB_YEAR):
+        """
+        This is very much oriented towards ASCII (or theoretically Unicode) output
+        """
+        year_to_stuff = self.year_to_stuff(min_year, max_year)
         counts = [len(v) for k, v in sorted(year_to_stuff.items())]
 
         NUMERICS = ['.', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'X']
