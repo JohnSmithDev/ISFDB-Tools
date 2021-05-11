@@ -207,23 +207,27 @@ def get_author_gender(conn, author_names):
         # Q: Would having multiple names muck up any logic dependent on the
         #    ordering of the IDs that get_author_aliases_ids() returns?
         author_ids.extend(get_author_alias_ids(conn, name))
-    try:
-        if not author_ids:
-            raise UnableToDeriveGenderError('Author "%s" does not have a proper ISFDB entry' %
-                                            (author_names))
-        return get_author_gender_from_ids(conn, author_ids, reference=author_names)
-    except UnableToDeriveGenderError as err:
-        # raise AmbiguousArgumentsError('Do not know author "%s"' % (author_names))
-        logging.warning('%s - will try to get gender from name instead' % (err))
-        all_author_names = author_names[:] # copy
-        for author_id in author_ids:
-            all_author_names.extend(get_author_aliases(conn, author_id))
-
+    if author_ids:
         try:
-            return get_gender_from_names(None, all_author_names, look_up_all_names=False)
-        except UnableToDeriveGenderError:
-            return GenderAndSource(None,
-                                   'No ISFDB author entry, and could not derive gender from name')
+            return get_author_gender_from_ids(conn, author_ids, reference=author_names)
+        except UnableToDeriveGenderError as err:
+            logging.warning(f'Author "{author_names}" in database, but unable to '
+                            'derive gender - falling back to name based approaches')
+    else:
+        logging.warning(f'Author "{author_names}" does not have an ISFDB '
+                        'entry - falling back to name based approaches')
+    all_author_names = author_names[:] # copy
+    for author_id in author_ids:
+        all_author_names.extend(get_author_aliases(conn, author_id))
+
+    try:
+        return get_gender_from_names(None, all_author_names, look_up_all_names=False)
+    except UnableToDeriveGenderError:
+        if author_ids:
+            msg = 'Could not derive gender from name, and other data sources were no use'
+        else:
+            msg = 'No ISFDB author entry, and could not derive gender from name'
+        return GenderAndSource(None, msg)
 
 
 gag_cache = {}
