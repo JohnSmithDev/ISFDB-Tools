@@ -20,23 +20,32 @@ ISFDB_IRRELEVANT_TAGS = {
     "biography: sport",
     "biography & autobiography / entertainment & performing arts",
     "biography & autobiography / general",
+    "biography & autobiography / historical",
     "biography & autobiography / music",
     "biography & autobiography / military",
     "biography & autobiography / political",
     "biography & autobiography / presidents & heads of state",
-    "biography & autobiography / political",
+    "biography & autobiography / personal memoirs",
+    "biography & autobiography / mediacal (incl. patients)",
     "biography & autobiography / rich & famous",
     "biography & autobiography/science & technology",
     "biography & autobiography / survival",
     "science, technology & medicine biographies",
     "science, technology & medicine autobiographies",
     "biography and true stories / true stories / true crime",
+    "biography and true stories / biography: general / biography: historical",
+    "autobiography: science",
 
     "business strategy", "business & management", "business",
     "business/economics", "economic history", "economics: professional & general",
     "business & ecomomics / entrepreneurship",
-    "business & ecomomics / knowledge capital", "business & economics",
+    "business & ecomomics / knowledge capital",
+    "business & ecomomics / public finance",
+    "business & economics",
     "business & economics / decision-making & problem solving",
+    "business innovation",
+    "management: innovation",
+    "anf: business and management",
 
     "car racing", "automobile racing", "motor sports", "formula 1 & grand prix",
 
@@ -50,15 +59,27 @@ ISFDB_IRRELEVANT_TAGS = {
     "computers / software development & engineering / quality assurance & testing",
     "computers / programming / open source",
     "computers / intelligence (ai) & semantics",
+    "computers / machine theory",
     "business & economics / industries / computers & information technology",
+    "computers - languages / programming",
+    "computer programming / software development",
+    "computer programming",
 
     "conjuring & magic",
 
     "emergency services", "accident & emergency nursing",
 
     "general cookery & recipes", "alcoholic drinks", "food & drink",
+    "social science / agriculture & food", "cooking / health & healing / general",
+    "cooking / essays & narratives",
 
     "crime & mystery", "crime & mystery fiction", "crime",
+    "fiction/mystery & detective - traditional",
+    "fiction/mystery & detective - general",
+    "fiction/mystery & detective - international mystery & crime",
+    "fiction / mystery & detective - hard-boiled",
+
+    "dictionaries (single language)", "reference / dictionaries",
 
     "historical geology", "natural history",
 
@@ -71,16 +92,20 @@ ISFDB_IRRELEVANT_TAGS = {
     "science / life sciences / biophysics",
     "science / life sciences / biology",
     "science / life sciences / developmental biology",
+    "science / physics / quantum theory",
 
     "entertainment & performing arts", "other performing arts",
 
     "family & relationships / death",
+    "family & relationships / general",
 
     "fiction / romance / historical / 20th century",
     "fiction and related items / historical fiction",
     "fiction / historical / general", "fiction / historical / world war ii",
     "fiction: general & literary",
-
+    "fiction / general",
+    "general & literary fiction",
+    "modern & contemporary fiction",
 
     "individual film directors", "film-makers",
     "performing arts / film /general",
@@ -128,7 +153,11 @@ ISFDB_IRRELEVANT_TAGS = {
     "history / middle east / arabian peninsular",
     "history / asia / japan",
     "history / modern / 20th century",
+    "history / modern / 21st century",
     "history & theory",
+
+    "history / military / world war ii",
+    "history / military / naval",
 
     "housing & homelessness",
 
@@ -138,6 +167,7 @@ ISFDB_IRRELEVANT_TAGS = {
     "humor/topic - politics",
     "sport and leisure / humour",
     "humor / form / comic strips & cartoons", "humor / form / trivia",
+    "humor / general",
 
     "information technology industries", "social networking", "social network",
     "internet advertising", "e-commerce", "internet - general",
@@ -157,6 +187,11 @@ ISFDB_IRRELEVANT_TAGS = {
     "language: history & general works", "english language - etymology",
     "reference / word lists", "reference / language",
     "language / reference & general",
+    "language learning: self study", "language learning: grammar",
+    "language learning: reading skills",
+    "grammar & vocabulary",
+    "language / language teaching and learning (other than ELT) / " # note continuation
+    "language teaching and learning material and coursework / grammar and vocabulary",
 
     "greater london",
 
@@ -175,6 +210,9 @@ ISFDB_IRRELEVANT_TAGS = {
     "music / history & criticism", "music / discography & buyer's guides",
 
     "new south wales",
+
+    "philosophy", "philosophy & social aspects", "philosophy: logic",
+    "ancient philosophy", "anf: philosophy",
 
     "poetry, drama & criticism",
 
@@ -199,7 +237,9 @@ ISFDB_IRRELEVANT_TAGS = {
     "political science / political process / political parties",
     "political science / political process / political parties",
     "political science / political ideologies / nationalism & patriotism",
+    "political science / political economy",
     "political science / political freedom",
+    "political science / public affairs & administration",
     "political science / terrorism",
     "political science / world / middle eastern",
     "political science / world / european",
@@ -217,7 +257,8 @@ ISFDB_IRRELEVANT_TAGS = {
     "press & journalism", "media studies", "anf: media studies",
     "social science / media studies",
 
-    "psychology", "sociology", "philosophy", "social psychology",
+    "psychology", "sociology",
+    "social psychology",
     "psychological testing & measurement", "popular psychology",
     "group or collective psychology", "sociology - general",
     "psychology / creative ability", "science / cognitive science",
@@ -270,6 +311,10 @@ ISFDB_IRRELEVANT_TAGS = {
     "spiritualism", "self-help",
     "mind & spirit: mindfulness & meditation",
 
+    "television - history & criticism",
+    "stage & screen / television",
+    "performing arts / television / history & criticism",
+
     "thriller & adventure",
 
     "travel / general", "travel & holiday",
@@ -277,6 +322,7 @@ ISFDB_IRRELEVANT_TAGS = {
     "anf: transport", "transport industries",
 
     "true crime / espionage", "true crime / organized crime",
+    "true crime",
 
     "virus / corona virus",
 
