@@ -13,7 +13,9 @@ import re
 
 
 PubTitleAuthorStuff = namedtuple('PubTitleAuthorStuff',
-                                 'pub_id, pub_title, title_id, title, format, authors, identifiers')
+                                 'pub_id, pub_title, title_id, title, '
+                                 'format, pub_type, '
+                                 'authors, identifiers')
 
 ASIN_POSSIBLE_INITIAL_CHARACTERS = 'B' # presumably C etc will be added eventually?
 
@@ -68,12 +70,8 @@ def check_isbn(conn, raw_isbn, check_only_this_isbn=False):
 def _get_authors_and_title_for_identifiers(conn, identifiers,
                                            filters, extra_joins=None):
     """
-    Return a tuple/list of the following for the given identifiers:
-    * pub_id    } Only the first one found, if there's more than one pub
-    * pub_title } for this ISBN
-    * title_id
-    * title_title
-    * A list of (author_id, author name)
+    Return a PubTitleAuthorStuff for the given identifiers:
+    If multiple pub_id/pub_titles match, only the first one found is used.
 
     filters should be a list of strings of the form
     "table.column_name IN :identifiers"
@@ -99,7 +97,7 @@ def _get_authors_and_title_for_identifiers(conn, identifiers,
         filter = ' AND '.join(filters)
 
     query = text(f"""SELECT p.pub_id, pub_title, t.title_id, t.title_title,
-      p.pub_isbn, p.pub_ptype format
+      p.pub_isbn, p.pub_ptype format, p.pub_ctype pub_type
     FROM pubs p
     LEFT OUTER JOIN pub_content pc ON pc.pub_id = p.pub_id
     LEFT OUTER JOIN titles t ON pc.title_id = t.title_id
@@ -111,7 +109,7 @@ def _get_authors_and_title_for_identifiers(conn, identifiers,
         return None
 
     r = results[0]
-    ret = [r.pub_id, r.pub_title, r.title_id, r.title_title, r.format]
+    ret = [r.pub_id, r.pub_title, r.title_id, r.title_title, r.format, r.pub_type]
 
     query = text("""SELECT a.author_id, author_canonical
     FROM canonical_author ca
