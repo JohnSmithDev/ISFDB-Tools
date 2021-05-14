@@ -46,6 +46,13 @@ AuthorAndTitleStuff = namedtuple('AuthorAndTitleStuff', 'author_id, author, '
 NthAverages = namedtuple('NthAverages', 'mean_nth, weighted_mean_nth, ' + \
                          'median_nth, weighted_median_nth')
 
+# This should be controlled by CLI arg (-n is now supported in the common arg
+# handling code, but may need some more massaging/testing before being workable
+# here)
+# VALID_BOOK_TYPES = ['NOVEL', 'CHAPBOOK']
+VALID_BOOK_TYPES = ['NOVEL']
+
+
 def collate_title_ids(bk):
     bk_ids = set()
     # Yay for inconsistent attribute names :-(
@@ -65,8 +72,11 @@ def is_same_book(bk1, bk2):
 
 
 class DebutStats(PublisherBooks):
-    def __init__(self, books, conn, original_books_only=True):
+    def __init__(self, books, conn, original_books_only=True,
+                 title_types=VALID_BOOK_TYPES):
         super().__init__(books, conn, original_books_only)
+        self.title_types = title_types
+        self.bookstring = '/'.join([z.lower() for z in self.title_types])
         self._process()
 
     def _process(self):
@@ -95,9 +105,11 @@ class DebutStats(PublisherBooks):
                 try:
                     bib = bibliographies[author_id]
                 except KeyError:
+                    filters = {'author_ids': author_ids}
                     bib = get_bibliography(self.conn,
-                                           author_ids,
-                                           author_name)
+                                           filters,
+                                           # author_name, # what was this needed for?
+                                           title_types=self.title_types)
                     for aid in author_ids:
                         bibliographies[aid] = bib
                 if len(bib) == 0:
@@ -201,20 +213,21 @@ class DebutStats(PublisherBooks):
             weighted_nth = weighted_nth_book(nth, bk.book)
             pretty_nth = pretty_ordinal(nth)
             nth_string = f'{pretty_nth} [weighted={weighted_nth}]'
-            output_function('%25s\'s %3s book: "%s"' % (bk.author,
-                                                            nth_string,
-                                                            bk.title))
+            output_function('%25s\'s %3s %s: "%s"' %
+                            (bk.author, nth_string, self.bookstring, bk.title))
+
+
 
     def __repr__(self):
         if self.debut_authors:
             debut_author_list = ', '.join(sorted(self.debut_authors))
         else:
             debut_author_list = 'N/A'
-        all_books_bit = '%d new novels' % (len(self.books))
+        all_books_bit = '%d new %ss' % (len(self.books), self.bookstring)
         all_authors_bit = '%d distinct authors' % (len(self.distinct_authors))
         #  100 * self.debut_count / len(self.books))
 
-        return 'Of %s by %s, %d books had a debut author | %s' % (
+        return 'Of %s by %s, %d had a debut author | %s' % (
             all_books_bit, all_authors_bit, self.debut_count,
             debut_author_list)
 
@@ -267,11 +280,6 @@ def split_books_by_year(books):
         logging.warning(f'Found {len(bad_years)} books with no year defined, which will be ignored')
     return sorted(year_to_books.items())
 
-# This should be controlled by CLI arg (-n is now supported in the common arg
-# handling code, but may need some more massaging/testing before being workable
-# here)
-# VALID_BOOK_TYPES = ['NOVEL', 'CHAPBOOK']
-VALID_BOOK_TYPES = ['NOVEL']
 
 def debut_report(conn, args, output_function=print):
     """
@@ -280,24 +288,31 @@ def debut_report(conn, args, output_function=print):
     returned value, but this may include years where there were no debut novels.)
     """
 
+    work_types = args.work_types or VALID_BOOK_TYPES
+
     ret = []
     results = get_publisher_books(conn, args,
                                   countries=[z.upper() for z in args.countries],
-                                  book_types=VALID_BOOK_TYPES)
+                                  # book_types=VALID_BOOK_TYPES)
+                                  book_types=work_types)
 
     yearly_results = split_books_by_year(results)
     for year, all_published_books in sorted(yearly_results):
-        new_novels = get_original_novels(all_published_books, valid_pub_types=VALID_BOOK_TYPES)
+        new_novels = get_original_novels(all_published_books, valid_pub_types=work_types)
         non_backlist_novels = get_original_novels(all_published_books,
-                                                  valid_pub_types=VALID_BOOK_TYPES,
+                                                  valid_pub_types=work_types,
                                                   year_difference_threshold=5)
         num_backlist_novels = len(all_published_books) - len(non_backlist_novels)
-        output_function('Of %d novels published in %d, %d (%d%%) were brand new novels and %d classic' %
-                        (len(all_published_books), year,
+        ds = DebutStats(new_novels, conn, original_books_only=False,
+                        title_types=work_types)
+        output_function('Of %d %ss published in %d, %d (%d%%) were brand new %ss and %d classic %ss' %
+                        (len(all_published_books),
+                         ds.bookstring,
+                         year,
                          len(new_novels), 100 * len(new_novels) / len(all_published_books),
-                         num_backlist_novels
+                         ds.bookstring,
+                         num_backlist_novels, ds.bookstring
                         ))
-        ds = DebutStats(new_novels, conn, original_books_only=False)
 
         if ds.book_author_count:
             mean, weighted_mean, median, weighted_median= ds.average_nth_book
@@ -321,13 +336,12 @@ def debut_report(conn, args, output_function=print):
 if __name__ == '__main__':
     # TODO: add -n for title type support
     parser = create_parser(description='Report on debut novels published by a publisher',
-                           supported_args='kpy')
+                           supported_args='knpy')
     parser.add_argument('-d', dest='show_nth_detail', action='store_true',
                         help='Enable detailed output re. debut/nth novel')
     parser.add_argument('-D', dest='show_pub_detail', action='store_true',
                         help='Enable detailed output re. titles and publications')
     args = parse_args(sys.argv[1:], parser=parser)
-
 
     conn = get_connection()
     debut_report(conn, args)
