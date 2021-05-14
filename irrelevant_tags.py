@@ -38,14 +38,18 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "business strategy", "business & management", "business",
     "business/economics", "economic history", "economics: professional & general",
-    "business & ecomomics / entrepreneurship",
-    "business & ecomomics / knowledge capital",
-    "business & ecomomics / public finance",
     "business & economics",
     "business & economics / decision-making & problem solving",
+    "business & ecomomics / entrepreneurship",
+    "business & ecomomics / foreign exchange",
+    "business & ecomomics / knowledge capital",
+    "business & ecomomics / public finance",
+    "business & ecomomics / research & development",
     "business innovation",
     "management: innovation",
     "anf: business and management",
+    "popular economics",
+    "macroeconomics",
 
     "car racing", "automobile racing", "motor sports", "formula 1 & grand prix",
 
@@ -330,3 +334,35 @@ ISFDB_IRRELEVANT_TAGS = {
     "usage & writing guides"
     }
 
+
+# The 'relevant' tags are (probably) only going to be used when there are
+# authors/works with both types; some TBD algorithm will determine which side
+# wins out.
+# Again, keep these in (roughly) alphabetic order
+ISFDB_RELEVANT_TAGS = {
+    "alternative history fiction",
+
+    "fantasy",
+    "af: fantasy",
+    "fiction / fantasy / historical",
+    "historical fantasy"
+
+    "fairy tales",
+    "fiction / fairy tales",
+
+    "legends & mythology",
+    "myths and legends",
+    "myths & legends",
+
+    "science fiction",
+
+    "science fiction, fantasy & horror",
+    "science fiction & fantasy",
+    "sf, fantasy & horror",
+
+    "speculative fiction",
+
+    "urban fantasy",
+    "fiction / fantasy / contemporary",
+    "fiction / fantasy / urban"
+    }
