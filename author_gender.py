@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Use Wikipedia categories if possible to determine an author's gender.
+Use various sources such as Wikipedia categories to determine an author's
+gender.
 """
 
 
