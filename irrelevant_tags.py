@@ -29,7 +29,9 @@ ISFDB_IRRELEVANT_TAGS = {
     "biography & autobiography / mediacal (incl. patients)",
     "biography & autobiography / rich & famous",
     "biography & autobiography/science & technology",
+    "biography & autobiography / sports",
     "biography & autobiography / survival",
+    "biography & autobiography / women",
     "science, technology & medicine biographies",
     "science, technology & medicine autobiographies",
     "biography and true stories / true stories / true crime",
@@ -39,7 +41,9 @@ ISFDB_IRRELEVANT_TAGS = {
     "business strategy", "business & management", "business",
     "business/economics", "economic history", "economics: professional & general",
     "business & economics",
+    "business & economics/business mathematics",
     "business & economics / decision-making & problem solving",
+    "business & ecomomics / economics / general",
     "business & ecomomics / entrepreneurship",
     "business & ecomomics / foreign exchange",
     "business & ecomomics / knowledge capital",
@@ -59,23 +63,32 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "computing: professional & programming", "computers / information technology",
     "anf: computers and it", "computers / internet / general",
-    "technology / general issues", "internet: general works",
+    "technology / general issues",
+    "technology & engineering",
+    "technology & engineering/general",
+
+    "internet: general works",
     "computers / software development & engineering / quality assurance & testing",
     "computers / programming / open source",
     "computers / intelligence (ai) & semantics",
     "computers / machine theory",
     "business & economics / industries / computers & information technology",
+
     "computers - languages / programming",
     "computer programming / software development",
     "computer programming",
 
     "conjuring & magic",
 
+    "design / industrial",
+
     "emergency services", "accident & emergency nursing",
 
     "general cookery & recipes", "alcoholic drinks", "food & drink",
     "social science / agriculture & food", "cooking / health & healing / general",
     "cooking / essays & narratives",
+    "cooking / methods / special appliances",
+    "cooking / courses & dishes / soups & stews",
 
     "crime & mystery", "crime & mystery fiction", "crime",
     "fiction/mystery & detective - traditional",
@@ -93,10 +106,9 @@ ISFDB_IRRELEVANT_TAGS = {
     "nature / plants / flowers", "nature / plants / trees",
     "nature / ecology", "applied ecology", "nature / animals / mammals",
     "life sciences / zoology and animal sciences / animal behaviour",
-    "science / life sciences / biophysics",
-    "science / life sciences / biology",
-    "science / life sciences / developmental biology",
-    "science / physics / quantum theory",
+    "ecosystems & habitats",
+    "nature / ecosystems & habitats / mountains",
+    "nature / ecosystems & habitats / rivers",
 
     "entertainment & performing arts", "other performing arts",
 
@@ -114,11 +126,18 @@ ISFDB_IRRELEVANT_TAGS = {
     "individual film directors", "film-makers",
     "performing arts / film /general",
 
+    "games & activities / quizzes",
+    "games & activities / trivia",
+    "games & activities/trivia",
+    "games / trivia",
+    "sport and leisure / hobbies",
+
     "great britain/british isles",
 
     "health & fitness / healthy living", "health & fitness / longetivity",
     "health & fitness / women's health", "health & fitness / pregnancy & childbirth",
     "health care issues",
+    "health & well being",
     "medical / general", "medical / infectious diseases",
     "medical / clinical medicine", "health & fitness",
     "medicine: general issues",
@@ -152,13 +171,17 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "biography & autobiography / historical", "autobiography: historical",
 
+    "history / asia / japan",
+
     "history / africa / north", "history / africa / east",
+    "history / modern / 20th century",
     "history / middle east / iraq",
     "history / middle east / arabian peninsular",
+    "history / middle east / turkey & ottoman empire",
     "history / asia / japan",
-    "history / modern / 20th century",
     "history / modern / 21st century",
     "history & theory",
+    "literary collections / middle eastern",
 
     "history / military / world war ii",
     "history / military / naval",
@@ -217,6 +240,7 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "philosophy", "philosophy & social aspects", "philosophy: logic",
     "ancient philosophy", "anf: philosophy",
+    "science / philosophy & social aspects",
 
     "poetry, drama & criticism",
 
@@ -248,6 +272,7 @@ ISFDB_IRRELEVANT_TAGS = {
     "political science / world / middle eastern",
     "political science / world / european",
     "social science / social work", "social work",
+    "social science / developing & emerging countries",
     "political control & freedoms",
     "anf: society", "social discrimination & equal treatment",
     "espionage & secret services",
@@ -285,12 +310,22 @@ ISFDB_IRRELEVANT_TAGS = {
     "testing & measurement", "science / history", "science / ethics",
     "mathematics / general",
 
-    "science / life sciences / evolution", "popular science",
-    "science / general", "life sciences",
+    "science / general",
+    "science / life sciences / evolution",
+    "science / life sciences / biophysics",
+    "science / life sciences / biology",
+    "science / life sciences / developmental biology",
+    "science/math",
+    "science - miscellanea",
     "science / physics / quantum theory",
     "science / physics / general",
+    "science/research & methodology",
+
+    "life sciences",
     "life sciences - general",
-    "science - miscellanea",
+    "natural history: general",
+    "popular science",
+
 
     "self-help / general",
 
@@ -314,6 +349,10 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "spiritualism", "self-help",
     "mind & spirit: mindfulness & meditation",
+
+    "teaching staff", "secondary schools", "classroom management",
+    "teaching skills & techniques", "study & teaching",
+
 
     "television - history & criticism",
     "stage & screen / television",
