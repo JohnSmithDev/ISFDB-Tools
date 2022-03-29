@@ -29,7 +29,7 @@ The copyright details from the header of library.py:
 import re
 
 def toISBN10(isbn13):
-    if len(isbn13) != 13:
+    if len(isbn13) != 13 or not isbn13.startswith('978'):
         return isbn13
     isbn = isbn13[3:12]
     counter = 0
