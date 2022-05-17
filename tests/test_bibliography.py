@@ -55,7 +55,11 @@ class TestBibliography(unittest.TestCase):
             (12314, 'The Touch', 1968),
             (12315, 'The Fifth Sally', 1980),
             (102957, 'The Minds of Billy Milligan', 1981), # non genre
-            (102959, 'Unveiling Claudia: A True Story of Serial Murder', 1986), # non genre
+            # Unveiling Claudia is non-fiction, not sure if this is something
+            # that was changed in the database after this test was written, or
+            # if functionality was changed?  (The call to get_author_bibliography()
+            # above explicitly states NOVEL
+            # (102959, 'Unveiling Claudia: A True Story of Serial Murder', 1986), # non genre
             (1232927, 'The Asylum Prophecies', 2009)], core_bits)
         # There's also a novel which was only published in Japanese translation:
         # http://www.isfdb.org/cgi-bin/title.cgi?1973995
