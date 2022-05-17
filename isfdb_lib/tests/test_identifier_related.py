@@ -21,8 +21,9 @@ from ..identifier_related import (PubTitleAuthorStuff,
 class TestGetAuthorsAndTitleForISBN(unittest.TestCase):
     conn = get_connection()
 
-    def test_simple_match(self):
-        ret = get_authors_and_title_for_isbn(self.conn, '9781473233058')
+    def test_simple_match_for_isbn(self):
+        ret = get_authors_and_title_for_isbn(self.conn, '9781473233058',
+                                             both_isbn10_and_isbn13=False)
         self.assertEqual(PubTitleAuthorStuff(pub_id=834078,
                                              pub_title='The Separation',
                                              title_id=23363,
@@ -46,7 +47,8 @@ class TestGetAuthorsAndTitleForASIN(unittest.TestCase):
         # arguably sub-optimal/counter-intuitive: the identifiers property is
         # a list that currently only returns the ISBN, it should really include
         # the ASIN (and any other identifiers)
-        ret = get_authors_and_title_for_asin(self.conn, 'B005LWQCJ0')
+        ret = get_authors_and_title_for_asin(self.conn, 'B005LWQCJ0',
+                                             both_isbn10_and_isbn13=False)
         self.assertEqual(PubTitleAuthorStuff(pub_id=447773,
                                              pub_title='The Separation',
                                              title_id=23363,

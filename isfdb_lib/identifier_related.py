@@ -68,7 +68,8 @@ def check_isbn(conn, raw_isbn, check_only_this_isbn=False):
 
 
 def _get_authors_and_title_for_identifiers(conn, identifiers,
-                                           filters, extra_joins=None):
+                                           filters, extra_joins=None,
+                                           both_isbn10_and_isbn13=True):
     """
     Return a PubTitleAuthorStuff for the given identifiers:
     If multiple pub_id/pub_titles match, only the first one found is used.
@@ -119,11 +120,15 @@ def _get_authors_and_title_for_identifiers(conn, identifiers,
     author_stuff = [(z.author_id, z.author_canonical) for z in results]
 
     ret.append(author_stuff)
-    ret.append([r.pub_isbn]) # A list, because TODO we need to add any ASIN as well
+    isbns = [r.pub_isbn] # A list, because TODO we need to add any ASIN as well
+    if r.pub_isbn and both_isbn10_and_isbn13:
+        isbns = list(set(isbn10and13(r.pub_isbn)))
+    ret.append(isbns)
     return PubTitleAuthorStuff(*ret)
 
 
-def get_authors_and_title_for_isbn(conn, raw_isbn, check_only_this_isbn=False):
+def get_authors_and_title_for_isbn(conn, raw_isbn, check_only_this_isbn=False,
+                                   both_isbn10_and_isbn13=True):
     """
     Return a tuple/list of the following for the given ISBN:
     * pub_id    } Only the first one found, if there's more than one pub
@@ -143,11 +148,14 @@ def get_authors_and_title_for_isbn(conn, raw_isbn, check_only_this_isbn=False):
     if not isbns:
         return None
 
-    return _get_authors_and_title_for_identifiers(conn, isbns,
-                                                  'p.pub_isbn IN :identifiers')
+    return _get_authors_and_title_for_identifiers(
+        conn, isbns,
+        'p.pub_isbn IN :identifiers',
+        both_isbn10_and_isbn13=both_isbn10_and_isbn13)
 
 
-def get_authors_and_title_for_asin(conn, raw_asin):
+def get_authors_and_title_for_asin(conn, raw_asin,
+                                   both_isbn10_and_isbn13=True):
     """
     Return a tuple/list of the following for the given ASIN:
     * pub_id    } Only the first one found, if there's more than one pub
@@ -168,7 +176,8 @@ def get_authors_and_title_for_asin(conn, raw_asin):
         ['i.identifier_value IN :identifiers',
          "it.identifier_type_name IN ('ASIN', 'Audible-ASIN')"],
         ['LEFT OUTER JOIN identifiers i ON i.pub_id = p.pub_id',
-         'LEFT OUTER JOIN identifier_types it ON i.identifier_type_id = it.identifier_type_id'])
+         'LEFT OUTER JOIN identifier_types it ON i.identifier_type_id = it.identifier_type_id'],
+        both_isbn10_and_isbn13=both_isbn10_and_isbn13)
 
 
 
