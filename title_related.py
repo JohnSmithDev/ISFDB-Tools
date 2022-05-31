@@ -232,34 +232,102 @@ def get_title_id(conn, filter_args, extra_columns=None, title_types=None):
     return ret
 
 
-def get_all_related_title_ids(conn, title_id, only_same_types=True):
+def get_all_related_title_ids_BAD(conn, title_id, only_same_types=True,
+                              only_same_languages=False):
     """
+    FIRST IMPLEMENTATION THAT DOESN'T DO THE RIGHT THING WITH CHILD IDS
+    Possibly worth getting to work, as it only does one query (vs two in the
+    implementation below) but not a priority I think....
+
     Given a title_id, return all parents and children.
     only_same_types avoids for example matching OMNIBUS to NOVELs, set to
     False if you want anything to be OK.
+    Similar story for only_same_languages
 
     NB: A cursory check of the DB as of mid April 2019 indicates there are no
     grandparents or grandchildren
     """
 
-    if only_same_types:
-        type_check1 = ' AND t1.title_ttype = t2.title_ttype '
-        type_check2 = ' AND t1.title_ttype = t3.title_ttype '
-    else:
-        type_check1 = type_check2 = ''
+    type_checks1 = []
+    type_checks2 = []
 
-    query = text("""SELECT t1.title_id, t1.title_parent,
-                           t2.title_id, t2.title_parent,
-                           t3.title_id, t3.title_parent
+    if only_same_types:
+        type_checks1.append(' t1.title_ttype = t2.title_ttype ')
+        type_checks2.append(' t1.title_ttype = t3.title_ttype ')
+    if only_same_languages:
+        type_checks1.append(' t1.title_language = t2.title_language ')
+        type_checks2.append(' t1.title_language = t3.title_language ')
+
+    type_check1 = type_check2 = ''
+    if type_checks1:
+        type_check1 = ' AND ' + (' AND '.join(type_checks1))
+    if type_checks2:
+        type_check2 = ' AND ' + (' AND '.join(type_checks2))
+
+    query = text("""SELECT t1.title_id, -- t1.title_parent,
+                           t2.title_id, -- t2.title_parent,
+                           t3.title_id -- , -- t3.title_parent
       FROM titles t1
       LEFT OUTER JOIN titles t2 ON t1.title_id = t2.title_parent %s
-      LEFT OUTER JOIN titles t3 ON t1.title_parent = t2.title_id %s
+      LEFT OUTER JOIN titles t3 ON t1.title_parent = t3.title_id %s
       WHERE t1.title_id = :title_id;""" % (type_check1, type_check2))
     results = conn.execute(query, {'title_id': title_id}).fetchall()
-    id_set = set()
+    id_set = {title_id}
     for row in results:
         id_set.update(row)
     # print(id_set)
+    for ignorable in (0, None):
+        try:
+            id_set.remove(ignorable)
+        except KeyError:
+            pass
+    return sorted(id_set)
+
+
+def get_all_related_title_ids(conn, title_id, only_same_types=True,
+                              only_same_languages=False):
+    """
+    Given a title_id, return all parents and children.
+    only_same_types avoids for example matching OMNIBUS to NOVELs, set to
+    False if you want anything to be OK.
+    Similar story for only_same_languages
+
+    NB: A cursory check of the DB as of mid April 2019 indicates there are no
+    grandparents or grandchildren
+    """
+    extra_checks = []
+    query_params = {'title_ids': [title_id]}
+    query = text("""SELECT title_language, title_ttype, title_parent
+    FROM titles
+    WHERE title_id IN :title_ids;""")
+    results = conn.execute(query, query_params).fetchone()
+    if results['title_parent']:
+        query_params['title_ids'] = [title_id, results['title_parent']]
+    if only_same_types:
+        extra_checks.append('title_ttype = :t_type')
+        query_params['t_type'] = results['title_ttype']
+    if only_same_languages:
+        extra_checks.append('title_language = :t_language')
+        query_params['t_language'] = results['title_language']
+
+    if extra_checks:
+        checks = ' AND '+ (' AND '.join(extra_checks))
+    else:
+        checks = ''
+
+    query = text("""SELECT title_id
+    FROM titles
+    WHERE (title_id in :title_ids OR title_parent in :title_ids)
+    %s;""" % (checks))
+    results = conn.execute(query, query_params).fetchall()
+    ORIG = """
+    id_set = set()
+    for row in results:
+        id_set.update(row)
+    """
+    id_set = {row['title_id'] for row in results}
+    # I don't think this cleanup is needed for this implementation, but won't
+    # hurt (much) to keep it, for now at least.
     for ignorable in (0, None):
         try:
             id_set.remove(ignorable)

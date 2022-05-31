@@ -125,13 +125,37 @@ class TestGetTitleIds(unittest.TestCase):
 class TestGetAllRelatedTitleIds(unittest.TestCase):
     conn = get_connection()
 
-    def test_wdd_child(self):
-        wdd_ids = [WAYDOWNDARK_CHILD_DETAILS[0], WAYDOWNDARK_PARENT_DETAILS[0]]
-        self.assertEqual(wdd_ids, get_all_related_title_ids(self.conn, wdd_ids[0]))
+    wdd_ids = [WAYDOWNDARK_CHILD_DETAILS[0], WAYDOWNDARK_PARENT_DETAILS[0]]
 
-    def test_wdd_child(self):
-        wdd_ids = [WAYDOWNDARK_CHILD_DETAILS[0], WAYDOWNDARK_PARENT_DETAILS[0]]
-        self.assertEqual(wdd_ids, get_all_related_title_ids(self.conn, wdd_ids[1]))
+    def test_wdd_child_from_child(self):
+        self.assertEqual(self.wdd_ids,
+                         get_all_related_title_ids(self.conn, self.wdd_ids[0]))
+
+    def test_wdd_child_from_parent(self):
+        self.assertEqual(self.wdd_ids,
+                         get_all_related_title_ids(self.conn, self.wdd_ids[1]))
+
+
+    # Following tests use T. J. Bass - Half Past Human
+    def test_all_languages_from_english_parent(self):
+        self.assertEqual([1823, 1471985, 1499455],
+                         sorted(get_all_related_title_ids(self.conn, 1823,
+                                                   only_same_languages=False)))
+
+    def test_same_language_only_from_english_parent(self):
+        self.assertEqual([1823],
+                         get_all_related_title_ids(self.conn, 1823,
+                                                   only_same_languages=True))
+
+    def test_all_languages_from_translated_child(self):
+        self.assertEqual([1823, 1471985, 1499455],
+                         sorted(get_all_related_title_ids(self.conn, 1499455,
+                                                   only_same_languages=False)))
+
+    def test_same_language_only_from_translated_child(self):
+        self.assertEqual([1499455],
+                         get_all_related_title_ids(self.conn, 1499455,
+                                                   only_same_languages=True))
 
 
 
