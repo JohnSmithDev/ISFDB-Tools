@@ -305,6 +305,10 @@ class BookByAuthor(object):
                 return NUMERICS[-1]
         return ''.join([num_rep(year, z) for year, z in enumerate(counts, min_year)])
 
+    @property
+    def number_of_publications(self):
+        return len(self.all_pub_stuff)
+
     def __repr__(self):
         return '%s [%d]' % (self.title, self.year)
 
@@ -657,8 +661,11 @@ def output_ascii_stats(bibliography, min_year, max_year,
             year_bit = f'{bk.year}'
         """
         titles = bk.titles(include_year=True, include_type=(len(args.work_types) > 1))
-        output_function('%3d. %s %s' % (i, bk.pub_stuff_string(min_year, max_year),
-                              titles))
+        output_function('%3d. %s %s (%d pubs)' % (i,
+                                                  bk.pub_stuff_string(min_year, max_year),
+                                                  titles,
+                                                  bk.number_of_publications
+                                                  ))
 
 
 def create_bibliography_parser(description="List an author's bibliography"):
