@@ -487,11 +487,12 @@ def get_bibliography(conn, filters,
     return sorted(books, key=lambda z: z.year)
 
 
-def output_publisher_stats(publisher_counts, output_function=print):
+def output_publisher_stats(publisher_counts, output_function=print,
+                           min_percent=5, max_publishers=10):
     output_function(f'\n= This author has been published by the following =')
     for i, (publisher, book_count) in enumerate(publisher_counts.most_common()):
         pc = 100 * book_count / len(bibliography)
-        if pc < 5 or i > 10:
+        if pc < min_percent or i > max_publishers:
             output_function('...and %d other publishers' % (len(publisher_counts) - i))
             break
         output_function('%-40s : %3d (%d%%)' % (publisher, book_count, pc))
@@ -567,7 +568,7 @@ def get_author_bibliography(conn, author_names, title_types=None):
     filters = {'author_ids': real_author_ids}
 
 
-    # Crude hack for testing alternative filters
+    # Crude hack for testing alternative filters - doesn't seem to work now?
     # title_ids = get_hugo_winner_title_ids(conn)
     # filters = {'title_ids': title_ids}
 
