@@ -307,7 +307,18 @@ class BookByAuthor(object):
 
     @property
     def number_of_publications(self):
-        return len(self.all_pub_stuff)
+        def is_includable(bk):
+            """
+            This helper func ensures the numbers match the 'timeline'
+            """
+            if not bk.date:
+                return False
+            if bk.date.year in (0, 8888, 9999):
+                return False
+            return True
+
+        dated_pubs = [z for z in self.all_pub_stuff if is_includable(z)]
+        return len(dated_pubs)
 
     def __repr__(self):
         return '%s [%d]' % (self.title, self.year)
