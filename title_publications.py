@@ -13,6 +13,7 @@ import sys
 from sqlalchemy.sql import text
 
 from common import get_connection
+from country_related import derive_country_from_price
 
 class UnexpectedDataError(Exception):
     pass
@@ -78,22 +79,39 @@ def get_publications_for_title_ids(conn, title_ids):
     return results
 
 
-def extract_earliest_pub(pub_stuff):
-    sorted_clean_data = sorted([z for z in pub_stuff if z['pub_date'] != '0000-00-00'],
+def extract_earliest_pub(pub_stuff, only_from_country=None):
+    def has_known_date(pub_info):
+        return pub_info['pub_date'] not in ('0000-00-00', '8888-00-00')
+
+    def has_known_date_and_from_specific_country(pub_info):
+        return has_known_date(pub_info) and \
+            derive_country_from_price(pub_info['pub_price']) == only_from_country
+
+    if only_from_country:
+        filter_func = has_known_date_and_from_specific_country
+    else:
+        filter_func = has_known_date
+
+
+    sorted_clean_data = sorted([z for z in pub_stuff if filter_func(z)],
                                key=lambda z: z['pub_date'])
     if sorted_clean_data:
         return sorted_clean_data[0]
     else:
-        # Shouldn't ever happen, but make a best effort...
-        return sorted(pub_stuff, key=lambda z: z['pub_date'])[0]
+        if only_from_country:
+            # Try again with any country
+            return extract_earliest_pub(pub_stuff)
+        else:
+            # Shouldn't ever happen, but make a best effort...
+            return sorted(pub_stuff, key=lambda z: z['pub_date'])[0]
 
 
-def get_earliest_pub(conn, title_ids):
+def get_earliest_pub(conn, title_ids, only_from_country=None):
     raw_results = get_publications_for_title_ids(conn, title_ids)
     if not raw_results:
         raise NoPublicationsFoundError('No publications for for title_ids %s' %
                                        (title_ids))
-    return extract_earliest_pub(raw_results)
+    return extract_earliest_pub(raw_results, only_from_country)
 
 if __name__ == '__main__':
     # This is just for quick hacks/tests, not intended for "real" use
