@@ -2,6 +2,14 @@
 """
 Note: These tests rely on the database, as some of the tested functions are
 essentially SQL queries with a bit of tweaking in Python.
+
+
+*** NOTE THIS NEXT BIT - KEEP THIS UPDATED TO BE SURE IF TEST FAILURES ARE DUE ***
+*** TO ADDITIONS TO THE DATABASE (rather than new bugs) ***
+
+These tests are based on data as of 2022-08-15, max author_id = 349670
+
+
 """
 
 import unittest
@@ -70,16 +78,23 @@ class TestGetAuthorAliases(unittest.TestCase):
 
     conn = get_connection()
 
+    ALL_SMG = ['Seanan McGuire', 'Mira Grant', 'A. Deborah Baker',
+               # Hebrew? #347973
+               '&#1513;&#1493;&#1504;&#1503; &#1502;&#1490;&#1493;&#1493;&#1497;&#1497;&#1512;']
+
+
     # Tip: As this depends on the database, prefer to use deceased authors who
     # are (relatively)  unlikely to acquire new aliases.  (Although as yet
     # I'm not doing that, instead using examples that are well known and thus
     # easy to see what the expected result should be.)
     def test_get_aliases_for_real_name(self):
-        self.assertEqual(['Seanan McGuire', 'Mira Grant', 'A. Deborah Baker'],
+        self.assertEqual(self.ALL_SMG,
                          get_author_aliases(self.conn, 'Seanan McGuire'))
 
     def test_get_aliases_for_pseudonym_default_behaviour(self):
-        self.assertEqual(['Mira Grant', 'Seanan McGuire', 'A. Deborah Baker'],
+        # Note that these are in a different order
+        self.assertEqual(['Mira Grant', 'Seanan McGuire', 'A. Deborah Baker',
+                          '&#1513;&#1493;&#1504;&#1503; &#1502;&#1490;&#1493;&#1493;&#1497;&#1497;&#1512;'],
                          get_author_aliases(self.conn, 'Mira Grant'))
 
     def test_get_aliases_for_pseudonym_no_extra_lookup(self):
@@ -92,6 +107,7 @@ class TestGetAuthorAliases(unittest.TestCase):
     # an issue (it's been an issue for the Seanan McGuire aliases)
     def test_get_aliases_for_joint_pseudonym(self):
         self.assertEqual(['James S. A. Corey',
+                          'Daniel James Abraham', # legal name?
                           'Tyler Corey Franck',
                           'Daniel Abraham',
                           'Ty Franck'],
@@ -103,6 +119,7 @@ class TestGetAuthorAliases(unittest.TestCase):
         # The returned list is ordered by "similarity", although this is a
         # somewhat nebulous concept and shouldn't be relied on in production code
         self.assertEqual(['Daniel Abraham',
+                          'Daniel James Abraham', # legal name?
                           'Daniel Hanover',
                           'James Corey',
                           'James S. A. Corey',
@@ -142,7 +159,7 @@ class TestGetAuthorAliasIds(unittest.TestCase):
     conn = get_connection()
 
     def test_get_alias_ids_for_real_name(self):
-        self.assertEqual([129348, 133814, 317644],
+        self.assertEqual([129348, 133814, 317644, 347973],
                          get_author_alias_ids(self.conn, 'Seanan McGuire'))
 
     def test_get_alias_ids_for_pseudonym1_default_behaviour(self):
@@ -152,7 +169,8 @@ class TestGetAuthorAliasIds(unittest.TestCase):
         # this test
         self.assertEqual([133814,
                           129348,
-                          317644],
+                          317644,
+                          347973],
                          get_author_alias_ids(self.conn, 'Mira Grant'))
 
     def test_get_alias_ids_for_pseudonym2_default_behaviour(self):
@@ -162,7 +180,8 @@ class TestGetAuthorAliasIds(unittest.TestCase):
         # this test
         self.assertEqual([317644,
                           133814,
-                          129348],
+                          129348,
+                          347973],
                          get_author_alias_ids(self.conn, 'A. Deborah Baker'))
 
     def test_get_alias_ids_for_pseudonym1_no_extra_lookup(self):
