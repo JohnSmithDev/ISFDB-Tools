@@ -96,6 +96,9 @@ ISFDB_IRRELEVANT_TAGS = {
     "fiction/mystery & detective - international mystery & crime",
     "fiction / mystery & detective - hard-boiled",
 
+    "crime & criminology", "crime investigation & detection",
+    "forensic science",
+
     "dictionaries (single language)", "reference / dictionaries",
 
     "historical geology", "natural history",
@@ -196,6 +199,10 @@ ISFDB_IRRELEVANT_TAGS = {
     "humor / form / comic strips & cartoons", "humor / form / trivia",
     "humor / general",
 
+    "industry & industrial studies",
+    "mining industry", "mining technology & engineering",
+    "energy industries & utilities",
+
     "information technology industries", "social networking", "social network",
     "internet advertising", "e-commerce", "internet - general",
     "business & economics / industries / computers & information technology",
@@ -279,6 +286,8 @@ ISFDB_IRRELEVANT_TAGS = {
     "political consultants - humor", "political science - humor",
     "political satire",
     "political activism",
+    "comparative politics",
+    "politics, society & education",
 
     "great britain/politics and government",
     "american government", "government & constitution",
