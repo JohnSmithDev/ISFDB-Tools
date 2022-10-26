@@ -4,21 +4,16 @@ Output stats regard who are the publishers of the finalists/nominees of an award
 category
 """
 
-from collections import namedtuple, Counter
-import json
-from os.path import basename, dirname
-import os
+from collections import Counter
 import pdb
 import sys
 
-from sqlalchemy.sql import text
-
 from common import (get_connection, parse_args, get_filters_and_params_from_args,
                     create_parser)
-from isfdb_utils import pretty_nth
-from award_related import (BOGUS_AUTHOR_NAMES, DODGY_TITLES_AND_PSEUDO_AUTHORS,
-                           EXCLUDED_AUTHORS,
-                           load_category_groupings)
+# from isfdb_utils import pretty_nth
+# from award_related import (BOGUS_AUTHOR_NAMES, DODGY_TITLES_AND_PSEUDO_AUTHORS,
+#                            EXCLUDED_AUTHORS,
+#                           load_category_groupings)
 from finalists import (get_finalists, get_type_and_filter)
 from title_publications import (get_earliest_pub, NoPublicationsFoundError)
 from title_related import get_all_related_title_ids # This doesn't handle language
@@ -27,6 +22,9 @@ from publisher_variants import REVERSE_PUBLISHER_VARIANTS
 
 def process_finalists(conn, award_results, only_from_country=None,
                       output_function=print):
+    """
+    Process and output stats from a raw list/iterable of award finalists
+    """
     venue_counts = Counter()
     sanitised_publisher_counts = Counter()
     format_counts = Counter()
@@ -43,7 +41,7 @@ def process_finalists(conn, award_results, only_from_country=None,
                                             only_from_country=only_from_country)
             venue = earliest_pub['publisher_name']
             fmt = earliest_pub['pub_ctype'].lower()
-        except NoPublicationsFoundError as err:
+        except NoPublicationsFoundError:
             venue = 'unknown'
             fmt = 'unknown'
         publisher = REVERSE_PUBLISHER_VARIANTS.get(venue, venue)
@@ -66,19 +64,17 @@ def process_finalists(conn, award_results, only_from_country=None,
 if __name__ == '__main__':
     typestring, level_filter = get_type_and_filter('finalists')
 
-
     parser = create_parser(description='Show %s for an award' % (typestring),
                            supported_args='ckwy')
 
     args = parse_args(sys.argv[1:], parser=parser)
 
-    conn = get_connection()
+    mconn = get_connection()
     level_filter = ''
-    award_results = get_finalists(conn, args, level_filter)
+    results = get_finalists(mconn, args, level_filter)
 
     if args.countries:
         country = args.countries[0]
     else:
         country = None
-    process_finalists(conn, award_results, only_from_country=country)
-
+    process_finalists(mconn, results, only_from_country=country)
