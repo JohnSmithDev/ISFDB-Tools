@@ -53,9 +53,9 @@ def get_author_aliases(conn, author, search_for_additional_pseudonyms=True):
     """
 
     if isinstance(author, int):
-        filter = 'a1.author_id = :author'
+        fltr = 'a1.author_id = :author'
     else:
-        filter = 'a1.author_canonical = :author OR a1.author_legalname = :author'
+        fltr = 'a1.author_canonical = :author OR a1.author_legalname = :author'
 
     primary_name = None
 
@@ -73,7 +73,7 @@ def get_author_aliases(conn, author, search_for_additional_pseudonyms=True):
   left outer join authors a2 on p1.pseudonym = a2.author_id
   left outer join pseudonyms p2 on p2.pseudonym = a1.author_id
   left outer join authors a3 on p2.author_id = a3.author_id
-    where %s;""" % (filter))
+    where %s;""" % (fltr))
     results = conn.execute(query, author=author).fetchall()
     ret = set()
     for row in results:
@@ -116,7 +116,7 @@ def order_aliases_by_name_resemblance(author, aliases):
     # terms of efficiency (e.g. use caching) or effectiveness (have some logic
     # for initials matching names), but this may be good enough for now.
     def name_words(name):
-        return set([z.lower() for z in re.split('\W', name) if z])
+        return set([z.lower() for z in re.split(r'\W', name) if z])
     author_name_words = name_words(author)
     def word_difference(name):
         # The second value in the returned tuple is just to ensure consistency
@@ -344,16 +344,14 @@ def get_author_name(conn, author_id):
     return result[0]
 
 if __name__ == '__main__':
-    conn = get_connection()
-
-
+    mconn = get_connection()
     """
     for i, name in enumerate(sys.argv[1:]):
         try: # Convert to int if it is numeric
             name = int(name)
         except ValueError: # otherwise leave as-is
             pass
-        aliases = get_author_aliases(conn, name)
+        aliases = get_author_aliases(mconn, name)
         if len(sys.argv) > 2:
             print('= %s =' % (name))
         if aliases:
@@ -364,9 +362,10 @@ if __name__ == '__main__':
         if len(sys.argv) > 2 and i < len(sys.argv) - 1:
             print('\n')
     """
-    author_id = int(sys.argv[1])
-    author_name = get_author_name(conn, author_id)
+    a_id = int(sys.argv[1])
+    author_name = get_author_name(mconn, a_id)
     print('%s' % (author_name))
+    print('%s' % (type(author_name)))
     print('-'.join([str(ord(z)) for z in author_name]))
     print([(z, ord(z)) for z in author_name])
 
