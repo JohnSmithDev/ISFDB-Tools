@@ -327,10 +327,27 @@ def get_real_author_id_and_name_from_name(conn, pseudonym):
             return None
 
 
+def get_author_name(conn, author_id):
+    """
+    Return the author name for the given author_id
 
+    This isn't intended as a function that's useful in production; rather, it
+    has been created as a testbed for understanding differences in returned values
+    for non-ASCII names that I'm seeing on different machines (with different
+    versions of Python, MariaDB, etc).
+    """
+    query = text("""SELECT author_canonical
+    FROM authors
+    WHERE author_id = :author_id;""")
+    result_thing = conn.execute(query, author_id=author_id)
+    result = result_thing.fetchone()
+    return result[0]
 
 if __name__ == '__main__':
     conn = get_connection()
+
+
+    """
     for i, name in enumerate(sys.argv[1:]):
         try: # Convert to int if it is numeric
             name = int(name)
@@ -346,4 +363,11 @@ if __name__ == '__main__':
             print('<No known aliases/variant names>')
         if len(sys.argv) > 2 and i < len(sys.argv) - 1:
             print('\n')
+    """
+    author_id = int(sys.argv[1])
+    author_name = get_author_name(conn, author_id)
+    print('%s' % (author_name))
+    print('-'.join([str(ord(z)) for z in author_name]))
+    print([(z, ord(z)) for z in author_name])
+
 

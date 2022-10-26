@@ -19,7 +19,8 @@ from ..author_aliases import (unlegalize, get_author_aliases,
                               get_author_alias_ids, get_real_author_id,
                               get_real_author_id_and_name,
                               get_real_author_id_and_name_from_name,
-                              get_gestalt_ids)
+                              get_gestalt_ids,
+                              get_author_name)
 
 class TestUnlegalize(unittest.TestCase):
     def test_none(self):
@@ -270,3 +271,11 @@ class TestGetRealAuthorIdAndNameFromName(unittest.TestCase):
         self.assertEqual([(10297, 'Daniel Abraham'), (123977, 'Ty Franck')],
                          get_real_author_id_and_name_from_name(
                              self.conn, 'James S. A. Corey'))
+
+
+class TestGetAuthorName(unittest.TestCase):
+    conn = get_connection()
+
+    def test_non_ascii_name(self):
+        ret = get_author_name(self.conn, 319366)
+        self.assertEqual('D\x9eejms S. A. Kori', ret)
