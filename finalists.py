@@ -7,11 +7,8 @@ Also functions that can be used as a library call for more in-depth award-
 related reports.
 """
 
-from collections import namedtuple
-import json
-from os.path import basename, dirname
-import os
-import pdb
+from os.path import basename
+# import pdb
 import sys
 
 from sqlalchemy.sql import text
@@ -19,15 +16,19 @@ from sqlalchemy.sql import text
 from common import (get_connection, parse_args, get_filters_and_params_from_args,
                     create_parser)
 from isfdb_utils import pretty_nth
-from award_related import (BOGUS_AUTHOR_NAMES, DODGY_TITLES_AND_PSEUDO_AUTHORS,
+from award_related import (# BOGUS_AUTHOR_NAMES,
+                           DODGY_TITLES_AND_PSEUDO_AUTHORS,
                            EXCLUDED_AUTHORS,
                            load_category_groupings)
 
-
-XXX_AwardFinalist = namedtuple('XXX_AwardFinalist',
-                           'title, author, rank, year, award, category, award_id, title_id')
+class UnknownScriptNameError(Exception):
+    pass
 
 class AwardFinalist(object):
+    """
+    Dataclass-ish storage of award winner/finalist/nominee/whatever
+    """
+
     def __init__(self, title, author, rank, year, award, category,
                  award_id, title_id):
         self.title = title
@@ -64,6 +65,7 @@ with open(CATEGORY_CONFIG) as inputstream:
 
 CATEGORY_GROUPINGS = load_category_groupings()
 
+
 def get_type_and_filter(txt):
     # TODO (probably): would be better/safer to return the award level number,
     # and only inject it into the query via SQLAlchemy
@@ -79,7 +81,7 @@ def get_type_and_filter(txt):
         typestring = 'long list'
         level_filter = 'award_level < 100'
     else:
-        raise Exception('Dunno how to handle script called %s' % (script_name))
+        raise UnknownScriptNameError('Dunno how to handle script called %s' % (script_name))
     return typestring, level_filter
 
 
@@ -138,6 +140,10 @@ def get_finalists(conn, args, level_filter, ignore_no_award=True):
     """
 
 
+def output_results(results, output_function=print):
+    for row in results:
+        output_function(row)
+
 if __name__ == '__main__':
     script_name = basename(sys.argv[0])
     typestring, level_filter = get_type_and_filter(script_name)
@@ -152,21 +158,18 @@ if __name__ == '__main__':
                         help='Output as CSV to named file, with header row'
                         '(default is human-readable output)')
 
-    args = parse_args(sys.argv[1:], parser=parser)
+    margs = parse_args(sys.argv[1:], parser=parser)
 
-    conn = get_connection()
-    award_results = get_finalists(conn, args, level_filter)
-    if args.csv_file or args.csv_file_with_header:
+    mconn = get_connection()
+    award_results = get_finalists(mconn, margs, level_filter)
+    if margs.csv_file or margs.csv_file_with_header:
         from csv import DictWriter
-        with open(args.csv_file or args.csv_file_with_header, 'w') as outputstream:
+        with open(margs.csv_file or margs.csv_file_with_header, 'w') as outputstream:
             writer = DictWriter(outputstream, ['year', 'award', 'category',
                                                'rank', 'author', 'title'])
-            if args.csv_file_with_header:
+            if margs.csv_file_with_header:
                 writer.writeheader()
             for finalist in award_results:
                 writer.writerow(finalist.dict_for_csv_output)
     else:
-        for row in award_results:
-            print(row)
-
-
+        output_results(award_results)
