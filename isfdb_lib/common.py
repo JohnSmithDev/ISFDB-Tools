@@ -22,11 +22,25 @@ class AmbiguousArgumentsError(Exception):
     pass
 
 
-def get_connection(connection_string=None):
+# This is to force consistent behaviour between different versions of Python/
+# MariaDB/some other factor.  Without this I was seeing Latin-1 results from
+# my older install, and Latin Extended-A/UTF on the newer one.  Given that (as
+# of Oct 2022) ISFDB seems to default to Latin-1, that might be a better one
+# to explicitly set to, but right now I just want consistency, and UTF-8 feels
+# like it's the better bet in the long run.
+FORCE_UTF8 = True
+
+
+def get_connection(connection_string=None, force_utf8=FORCE_UTF8):
     # https://docs.sqlalchemy.org/en/latest/core/engines.html#database-urls
     # https://docs.sqlalchemy.org/en/latest/core/engines.html#mysql
     if not connection_string:
         connection_string = os.environ.get('ISFDB_CONNECTION_DETAILS')
+    if force_utf8:
+        # https://stackoverflow.com/questions/45279863/how-to-use-charset-and-encoding-in-create-engine-of-sqlalchemy-to-create
+        # Passing encoding='utf8' to create_engine() doesn't make any difference
+        # (Passing 'utf8mb4' gives "LookupError: unknown encoding: utf8mb4")
+        connection_string += "?charset=utf8mb4"
     engine = create_engine(connection_string)
     conn = engine.connect()
     return conn

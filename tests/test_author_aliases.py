@@ -123,11 +123,12 @@ class TestGetAuthorAliases(unittest.TestCase):
                           'Daniel James Abraham', # legal name?
                           'Daniel Hanover',
                           'James Corey',
+                          'D\u017eejms S. A. Kori', # 319366 - Latin-A/UTF version
                           'James S. A. Corey',
                           'M. L. N. Hanover',
                           # The following were added to the DB whilst I was
                           # being too idle to run & update the tests :-(
-                          'D\x9eejms S. A. Kori', # 319366
+                          # 'D\x9eejms S. A. Kori', # 319366 - Latin-1 version
                           # Note next string is split over 2 lines
                           '&#1044;&#1078;&#1077;&#1081;&#1084;&#1089; '
                           '&#1050;&#1086;&#1088;&#1080;',
@@ -278,4 +279,5 @@ class TestGetAuthorName(unittest.TestCase):
 
     def test_non_ascii_name(self):
         ret = get_author_name(self.conn, 319366)
-        self.assertEqual('D\x9eejms S. A. Kori', ret)
+        # self.assertEqual('D\x9eejms S. A. Kori', ret) # Latin-1 version
+        self.assertEqual(u'D\u017eejms S. A. Kori', ret) # Latin-A/UTF version
