@@ -1,0 +1,31 @@
+{
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "isfdb_checker_common.js",
+        "isfdb_checker_content.js"
+      ]
+    }
+  ],
+  "description": "Checks IDs in links to see if ISFDB knows about them",
+  "icons": {
+    "48": "icons/grey_32.png"
+  },
+  "name": "ISFDB Checker",
+  "version": "0.56",
+  "manifest_version": 2,
+  "browser_action": {
+    "default_icon": "icons/grey_32.png",
+    "default_title": "ISFDB Checker"
+  },
+  "permissions": [
+    "<all_urls>",
+    "contextMenus",
+    "downloads",
+    "storage",
+    "tabs"
+  ]
+}
