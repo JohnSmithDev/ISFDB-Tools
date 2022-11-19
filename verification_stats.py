@@ -4,6 +4,7 @@ Query and output stats based on primary verification of titles
 
 """
 
+import pdb
 import sys
 
 from sqlalchemy.sql import text
@@ -14,22 +15,28 @@ from common import (get_connection, create_parser, parse_args,
 
 
 def get_verification_stats(conn, filters):
-    fltr, params = get_filters_and_params_from_args(args)
+    cnm = {'year': 'title_copyright'}
+
+    fltr, params = get_filters_and_params_from_args(args,
+                                                    column_name_mappings=cnm)
+    if fltr:
+        fltr = f' AND {fltr}'
 
     query = text("""
     SELECT * FROM (
       SELECT pc.title_id, t.title_title, t.title_ttype,
-        COUNT(1) num_verifications, COUNT(DISTINCT p.pub_id) num_pubs
+        COUNT(1) num_verifications,
+        COUNT(DISTINCT p.pub_id) num_pubs,
+        COUNT(DISTINCT pv.user_id) num_verifiers
       FROM primary_verifications pv
       NATURAL JOIN pubs p
       NATURAL JOIN pub_content pc
       LEFT OUTER JOIN titles t ON t.title_id = pc.title_id
-      WHERE p.pub_ctype = t.title_ttype
+      WHERE p.pub_ctype = t.title_ttype %s
       GROUP BY title_id
     ) foo
-    ORDER BY num_verifications
-    DESC LIMIT 100;""") #  % (fltr)) # TODO: restore filtering when properly configured
-
+    ORDER BY num_verifiers DESC, num_verifications DESC, num_pubs DESC
+    LIMIT 100;"""  % (fltr))
     results = conn.execute(query, **params).fetchall()
     return results
 
