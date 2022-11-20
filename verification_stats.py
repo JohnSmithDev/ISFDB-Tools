@@ -23,10 +23,14 @@ def get_verification_stats(conn, filters):
         fltr = f' AND {fltr}'
 
     query = text("""
-    SELECT * FROM (
+    SELECT *,
+      RANK() OVER (ORDER BY num_verifications DESC) num_verifications_rank,
+      RANK() OVER (ORDER BY num_verified_pubs DESC) num_verified_pubs_rank,
+      RANK() OVER (ORDER BY num_verifiers DESC) num_verifiers_rank
+    FROM (
       SELECT pc.title_id, t.title_title, t.title_ttype,
         COUNT(1) num_verifications,
-        COUNT(DISTINCT p.pub_id) num_pubs,
+        COUNT(DISTINCT p.pub_id) num_verified_pubs,
         COUNT(DISTINCT pv.user_id) num_verifiers
       FROM primary_verifications pv
       NATURAL JOIN pubs p
@@ -35,7 +39,7 @@ def get_verification_stats(conn, filters):
       WHERE p.pub_ctype = t.title_ttype %s
       GROUP BY title_id
     ) foo
-    ORDER BY num_verifiers DESC, num_verifications DESC, num_pubs DESC
+    ORDER BY num_verifiers DESC, num_verifications DESC, num_verified_pubs DESC
     LIMIT 100;"""  % (fltr))
     results = conn.execute(query, **params).fetchall()
     return results
