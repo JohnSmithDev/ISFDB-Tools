@@ -26,7 +26,7 @@ def get_verification_stats(conn, args, limit=100):
     if fltr:
         fltr = f' WHERE {fltr}'
 
-    if 'limit' not in params:
+    if 'limit' not in params or not params['limit']:
         params['limit'] = limit
 
     query = text("""
