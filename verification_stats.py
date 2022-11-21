@@ -14,7 +14,7 @@ from common import (get_connection, create_parser, parse_args,
                     get_filters_and_params_from_args)
 
 
-def get_verification_stats(conn, args):
+def get_verification_stats(conn, args, limit=100):
     """
     Return a list/iterable of the most verified titles
     """
@@ -26,7 +26,8 @@ def get_verification_stats(conn, args):
     if fltr:
         fltr = f' WHERE {fltr}'
 
-    params['limit'] = 100 # TODO: make this configurable
+    if 'limit' not in params:
+        params['limit'] = limit
 
     query = text("""
     WITH root_query AS (
@@ -65,7 +66,7 @@ def output_report(data, output_function=print):
 if __name__ == '__main__':
     mconn = get_connection()
     parser = create_parser(description='Report on most frequently (primary) verified titles',
-                           supported_args='y')
+                           supported_args='ly')
     margs = parse_args(sys.argv[1:], parser=parser)
 
     data = get_verification_stats(mconn, margs)
