@@ -55,6 +55,7 @@ def create_parser(description, supported_args):
     * c : award category (e.g. "Best Novel", "Best Novella")
     * g : tag
     * k : country (2 character codes, e.g. "us", "ca")
+    * l : limit (output to N items)
     * n : work types (e.g. novel, anthology, chapbook - i.e. title_ttype not pub_ctype)
     * p : publisher
     * t : book title
@@ -62,9 +63,10 @@ def create_parser(description, supported_args):
     * w : award (e.g. "Hugo Award", "Nebula Award"
     * y : year(s) (e.g. "2001", "1970-2020")
 
-    With the exception of v/verbose and y/year, two argument variants are supported:
+    For many arguments, two argument variants are supported:
     * -x foo : case insensitive pattern match
     * -X "Exact Match" : exact match, but can be passed multiple times for an OR check
+    Notable exceptions: k/country,  l/limit, v/verbose and y/year,
 
     Publisher support also supports a -PP additional argument to use a manually
     maintained (and likely very incomplete) list of publisher aliases.
@@ -127,6 +129,8 @@ def create_parser(description, supported_args):
                             help='Year to search on (publication year for books, '
                             'ceremony year for awards; from-to ranges are acceptable')
 
+    # Note that -k/countries is not supposed by get_filters_and_params_from_args - it's
+    # something that your code must handle outside of SQL queries.
     if not supported_args or 'k' in low_args:
         parser.add_argument('-k', dest='countries', action='append', default=[],
                             help='2-character code for country/countries to filter/report on')
@@ -136,6 +140,10 @@ def create_parser(description, supported_args):
                             help='Tag to search on (pattern match, case insensitive)')
         parser.add_argument('-G', action='append', dest='exact_tag', default=[],
                             help='Tag to search on (exact match, case sensitive)')
+
+    if not supported_args or 'l' in low_args:
+        parser.add_argument('-l', nargs='?', dest='limit', type=int,
+                            help='Limit to N (or less) results returned/displayed')
 
     parser.add_argument('-v', action='store_true', dest='verbose',
                         help='Log verbosely')
@@ -152,7 +160,7 @@ def parse_args(cli_args, description='No description provided',
     return args
 
 # TODO: The callers that rely on this should be updated to pass a dict with
-# this in, and then we can make this generic.
+# this in, and then we can make this generic.  (UPDATE: ? I think that's been the case for ages?)
 # If the value ends in underscore, then it is a prefix rather than a renaming
 DEFAULT_COLUMN_MAPPINGS = {
     'year': 'award_'
@@ -192,12 +200,16 @@ def get_filters_and_params_from_args(filter_args, column_name_mappings=None):
     filters = []
     params = {}
 
-    arg_dict = filter_args.__dict__ # Q: Is there another way to do []/.get() style access?
+    if isinstance(filter_args, dict):
+        arg_dict = filter_args
+    else: # an argparse.Namespace
+        arg_dict = filter_args.__dict__ # Q: Is there another way to do []/.get() style access?
 
     # What the characters in the second tuple element mean:
     # e: exact match
     # g: group exact match
     # p: pattern
+    # t: pass through (kev/value will be in params, but nothing added to filters
     # y: year
     param2column_names = {
         'author': ('author_canonical', 'pe'),
@@ -212,6 +224,9 @@ def get_filters_and_params_from_args(filter_args, column_name_mappings=None):
 
         # 'year': ('%s_year' % (column_name_prefixes.get('year', 'award')), 'y'),
         'year': (_generate_prefixed_column_name('year', column_name_mappings), 'y'),
+
+        'countries': ('xxx', 't'),
+        'limit': ('xxx', 't')
     }
     # pdb.set_trace()
     for prm, (col, variants) in param2column_names.items():
@@ -286,6 +301,8 @@ def get_filters_and_params_from_args(filter_args, column_name_mappings=None):
             else:
                 params[prm] = int(val)
                 filters.append('YEAR(%s) = :%s' % (col, prm))
+        elif variants == 't': # pass through to params, but do nothing with fltr
+            params[prm] = val
 
     fltr = ' AND '.join(filters)
 
