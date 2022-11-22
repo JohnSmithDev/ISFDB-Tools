@@ -16,7 +16,7 @@ from common import (get_connection, create_parser, parse_args,
                     get_filters_and_params_from_args)
 
 
-def get_verification_stats(conn, args, limit=100):
+def get_verification_stats(conn, args, limit=100, author_separator=' and '):
     """
     Return a list/iterable of the most verified titles
     """
@@ -30,6 +30,8 @@ def get_verification_stats(conn, args, limit=100):
 
     if 'limit' not in params or not params['limit']:
         params['limit'] = limit
+
+    params['author_separator'] = author_separator
 
     query = text("""
     WITH root_query AS (
@@ -45,7 +47,7 @@ def get_verification_stats(conn, args, limit=100):
       GROUP BY root_title_id
     )
     SELECT t.title_id, t.title_title, YEAR(t.title_copyright) year, t.title_ttype,
-      GROUP_CONCAT(author_canonical ORDER BY author_canonical SEPARATOR ' and ') authors,
+      GROUP_CONCAT(author_canonical ORDER BY author_canonical SEPARATOR :author_separator) authors,
       rq.num_verifications,  RANK() OVER (ORDER BY num_verifications DESC) num_verifications_rank,
       rq.num_verified_pubs, RANK() OVER (ORDER BY num_verified_pubs DESC) num_verified_pubs_rank,
       rq.num_verifiers, RANK() OVER (ORDER BY num_verifiers DESC) num_verifiers_rank
@@ -87,6 +89,7 @@ def extra_stats(data, output_function=print):
 
     decade_stats = Counter([decade(z.year) for z in data])
     output_counter('Top decades by number of top verified titles', decade_stats)
+
 
 if __name__ == '__main__':
     mconn = get_connection()
