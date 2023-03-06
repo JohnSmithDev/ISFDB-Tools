@@ -15,6 +15,7 @@ from sqlalchemy.sql import text
 from common import get_connection
 from country_related import derive_country_from_price
 
+
 class UnexpectedDataError(Exception):
     pass
 class NoPublicationsFoundError(Exception):
@@ -26,10 +27,12 @@ def get_raw_publications_for_title_ids(conn, title_ids):
     """
     query = text("""SELECT p.pub_id, pub_title, CAST(pub_year AS CHAR) pub_date,
     pub_ptype, pub_ctype, pub_price, pubc_page,
-    p.publisher_id, pb.publisher_name
+    p.publisher_id, pb.publisher_name,
+    p.pub_series_id, pub_series_name
     FROM pubs p
     LEFT OUTER JOIN publishers pb ON p.publisher_id = pb.publisher_id
     LEFT OUTER JOIN pub_content pc ON pc.pub_id = p.pub_id
+    LEFT OUTER JOIN pub_series ps ON ps.pub_series_id = p.pub_series_id
     WHERE pc.title_id IN :title_ids
     ORDER by pub_year, p.pub_id, pubc_page, pub_title;""")
 
@@ -37,10 +40,26 @@ def get_raw_publications_for_title_ids(conn, title_ids):
     return results
 
 
+def get_title_editor_for_title_id(conn, title_id):
+    # This may help with the odd case in the function below - pass the title_parent into this
+    query = text("""SELECT t.title_id, t.title_title, t.title_parent,
+    t.series_id, s.series_title
+FROM titles t
+LEFT OUTER JOIN series s ON t.series_id = s.series_id
+WHERE t.title_id = :title_id AND t.title_ttype = 'EDITOR';""")
+    results = conn.execute(query, {'title_id': title_id}).fetchall()
+    if len(results) != 1:
+        raise UnexpectedDataError(f'Found %d EDITOR titles for title_id %d' %
+                                  (len(results), title_id))
+    return results[0]
+
 def get_title_editor_for_pub_id(conn, pub_id):
     # I think this needs to be made cleverer w.r.t. variant titles
-    # (Some tor.com with author/editor variant name IIRC)
-    query = text("""SELECT t.title_id, t.title_title,  t.series_id, s.series_title
+    # (Some tor.com with author/editor variant name IIRC
+    # F&SF title_id 2108266 vs title_id 2108298 is similar I think?
+
+    query = text("""SELECT t.title_id, t.title_title, t.title_parent,
+    t.series_id, s.series_title
 FROM pub_content pc
 LEFT OUTER JOIN titles t ON pc.title_id = t.title_id
 LEFT OUTER JOIN series s ON t.series_id = s.series_id
