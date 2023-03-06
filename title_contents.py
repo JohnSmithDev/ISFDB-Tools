@@ -2,6 +2,9 @@
 """
 Tools for reporting/analysing the contents of a title - specifically in the
 context of anthologies and collections, but potentially also magazines.
+
+Coming back to this several months after it was originally written, I'm not sure why this
+wasn't done as an enhancement to anthology_contents.py, which seems to cover similar ground...
 """
 
 
@@ -15,6 +18,9 @@ from sqlalchemy.sql import text
 from common import get_connection
 from title_publications import get_publications_for_title_ids
 from author_aliases import AuthorIdAndName
+
+class NoContentsFoundError(Exception):
+    pass
 
 # Generally you want to exclude these from the return value of get_pub_contents
 # TODO: add MAGAZINE and EDITOR?
@@ -44,6 +50,10 @@ def get_pub_contents(conn, pub_ids, exclude_container_types=True):
         if not (exclude_container_types and \
            t_type in CONTAINER_TITLE_TYPES):
             ret[row['pub_id']].append(dict(row))
+
+    if len(ret) == 0:
+        raise NoContentsFoundError('No contents found in pubs (%s)' %
+                                   (', '.join((str(z) for z in pub_ids))))
 
     # And now get the authors.  We could do this as part of the previous query,
     # but it could get messy when you have multiple authors.  This way also
