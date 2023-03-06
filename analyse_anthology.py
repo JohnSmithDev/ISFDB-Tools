@@ -8,6 +8,7 @@ Example usages and useful examples:
   ./analyze_anthology.py 2013507 (this one one reprint and the rest original)
   ./analyze_anthology.py 2305932 (a 2018 year's best)
   ./analyze_anthology.py 2267599 (single author collection)
+  ./analyze_anthology.py 1655765 (this has a Tor.com chapbook vs magazine entry)
 
 """
 
@@ -18,11 +19,12 @@ import sys
 
 from sqlalchemy.sql import text
 
-from common import get_connection
-from title_publications import get_earliest_pub
 from author_aliases import AuthorIdAndName
-
-from title_contents import get_title_contents, analyse_pub_contents
+from common import get_connection
+from magazine_canonicalization import CANONICAL_MAGAZINE_NAME, SHORT_MAGAZINE_NAME
+from title_publications import (get_earliest_pub, get_title_editor_for_pub_id,
+                                get_title_editor_for_title_id)
+from title_contents import (get_title_contents, analyse_pub_contents, NoContentsFoundError)
 
 
 def do_nothing(*args, **kwargs):
@@ -39,18 +41,73 @@ def get_filtered_title_contents(conn, title_id):
             if z['title_ttype'] not in {'ESSAY', 'COVERART', 'INTERIORART'}]
 
 
+
+def postprocess_publication_details(conn, pub_details):
+    """
+    Return a dictionary with processed publication details e.g. normalized magazine name,
+    sanitisation of weird edge cases
+    """
+
+    ret = pub_details.copy()
+    ret['processed_title'] = ret['pub_title']
+    if pub_details['pub_series_name'] == 'A Tor.com Original':
+        ret['pub_ctype'] = 'MAGAZINE'
+        ret['publisher_name'] = 'Tor.com'
+        ret['processed_title'] = 'Tor.com'
+    elif pub_details['pub_ctype'] == 'MAGAZINE':
+        magazine_details = get_title_editor_for_pub_id(conn, pub_details['pub_id'])
+        if not magazine_details['series_id'] and magazine_details['title_parent']:
+            magazine_details = get_title_editor_for_title_id(conn, magazine_details['title_parent'])
+
+        ret['processed_title'] = magazine_details['series_title']
+
+    canon_title = CANONICAL_MAGAZINE_NAME.get(ret['processed_title'], ret['processed_title'])
+    short_canon_title = SHORT_MAGAZINE_NAME.get(canon_title, canon_title)
+
+    ret['short_title'] = short_canon_title
+
+    return ret
+
+
+def sanitized_title_type(t_dict):
+    """
+    Given a dictionary derived from the titles table, return the shortfiction type or the more
+    general type as appropriate.
+    """
+    if t_dict['title_ttype'] == 'SHORTFICTION' and t_dict['title_storylen']:
+        return t_dict['title_storylen']
+    else:
+        return t_dict['title_ttype']
+
+def analyse_title(conn, title_id, output_function=print):
+    """
+    Return (and optionally output) details about the contents of the specified title
+    """
+
+    ret = []
+
+    try:
+        contents = get_filtered_title_contents(conn, title_id)
+
+        for content_stuff in contents:
+            earliest = get_earliest_pub(conn, [content_stuff['title_id']])
+            details = postprocess_publication_details(conn, earliest)
+            # print(content_stuff, details)
+            output_function('%-15s %40s was first published in %10s %s' % (sanitized_title_type(content_stuff),
+                                                              content_stuff['title_title'],
+                                                              details['pub_ctype'],
+                                                              # earliest['pub_title']
+                                                              details['short_title']
+                                                              ))
+            ret.append((content_stuff, details))
+    except NoContentsFoundError as err:
+        output_function(f'<<{err}>>')
+    return ret
+
+
 if __name__ == '__main__':
     conn = get_connection()
 
     for t in sys.argv[1:]:
-        t_id = int(t)
+        analyse_title(conn, int(t))
 
-        contents = get_filtered_title_contents(conn, t_id)
-
-        for content_stuff in contents:
-            earliest = get_earliest_pub(conn, [content_stuff['title_id']])
-            # print(content_stuff, earliest)
-            print('%s %40s was first published in %10s %s' % (content_stuff['title_ttype'],
-                                                              content_stuff['title_title'],
-                                                              earliest['pub_ctype'],
-                                                              earliest['pub_title']))
