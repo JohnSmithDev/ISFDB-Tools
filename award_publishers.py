@@ -74,7 +74,7 @@ if __name__ == '__main__':
     args = parse_args(sys.argv[1:], parser=parser)
 
     mconn = get_connection()
-    level_filter = ''
+    # level_filter = '' # This includes all the nominations outside threshold, declined, etc
     results = get_finalists(mconn, args, level_filter)
 
     if args.countries:
