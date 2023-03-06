@@ -30,20 +30,24 @@ def process_finalists(conn, award_results, only_from_country=None,
     format_counts = Counter()
 
     for row in award_results:
-        # We specify only_same_types=False to catch stuff published in serial
-        # form only e.g. title_id=1243403
-        # However we don't want translations
-        all_title_ids = get_all_related_title_ids(conn, row.title_id,
-                                                  only_same_types=False,
-                                                  only_same_languages=True)
-        try:
-            earliest_pub = get_earliest_pub(conn, all_title_ids,
-                                            only_from_country=only_from_country)
-            venue = earliest_pub['publisher_name']
-            fmt = earliest_pub['pub_ctype'].lower()
-        except NoPublicationsFoundError:
-            venue = 'unknown'
-            fmt = 'unknown'
+        # Defaults for either (a) untitled awards, or (b) ones with no publications found
+        venue = 'unknown'
+        fmt = 'unknown'
+
+        if row.title_id: # not an untitled award
+            # We specify only_same_types=False to catch stuff published in serial
+            # form only e.g. title_id=1243403
+            # However we don't want translations
+            all_title_ids = get_all_related_title_ids(conn, row.title_id,
+                                                      only_same_types=False,
+                                                      only_same_languages=True)
+            try:
+                earliest_pub = get_earliest_pub(conn, all_title_ids,
+                                                only_from_country=only_from_country)
+                venue = earliest_pub['publisher_name']
+                fmt = earliest_pub['pub_ctype'].lower()
+            except NoPublicationsFoundError:
+                pass # keep default venue and fmt
         publisher = REVERSE_PUBLISHER_VARIANTS.get(venue, venue)
         output_function('%s / %s (%s)' % (row, venue, fmt))
 
