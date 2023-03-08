@@ -126,6 +126,11 @@ def extract_earliest_pub(pub_stuff, only_from_country=None):
 
 
 def get_earliest_pub(conn, title_ids, only_from_country=None):
+    """
+    Return a dict with various pub properties for the earliest publication of any of the given
+    title_ids.  (It is assumed that the caller has done any lookups on the title_id to find
+    all the relevant variants it might have been published as)
+    """
     raw_results = get_publications_for_title_ids(conn, title_ids)
     if not raw_results:
         raise NoPublicationsFoundError('No publications for for title_ids %s' %
