@@ -8,8 +8,9 @@ Example usages and useful examples:
   ./analyze_anthology.py 2013507 (this one one reprint and the rest original)
   ./analyze_anthology.py 2305932 (a 2018 year's best)
   ./analyze_anthology.py 2267599 (single author collection)
-  ./analyze_anthology.py 1655765 (this has a Tor.com chapbook vs magazine entry)
-
+  ./analyze_anthology.py 1655765 (this has a Tor.com chapbook vs magazine entry; two stories
+         are title variant; one is an author name variant; one was first published in an online
+         venue not tracked by ISFDB as of 2023-03-08)
 """
 
 from collections import defaultdict, Counter
@@ -25,7 +26,7 @@ from magazine_canonicalization import CANONICAL_MAGAZINE_NAME, SHORT_MAGAZINE_NA
 from title_publications import (get_earliest_pub, get_title_editor_for_pub_id,
                                 get_title_editor_for_title_id)
 from title_contents import (get_title_contents, analyse_pub_contents, NoContentsFoundError)
-
+from title_related import get_all_related_title_ids
 
 def do_nothing(*args, **kwargs):
     """Stub for output_function argument override"""
@@ -90,7 +91,9 @@ def analyse_title(conn, title_id, output_function=print):
         contents = get_filtered_title_contents(conn, title_id)
 
         for content_stuff in contents:
-            earliest = get_earliest_pub(conn, [content_stuff['title_id']])
+            relevant_title_ids = get_all_related_title_ids(conn, content_stuff['title_id'],
+                                                           only_same_languages=True)
+            earliest = get_earliest_pub(conn, relevant_title_ids)
             details = postprocess_publication_details(conn, earliest)
             # print(content_stuff, details)
             output_function('%-15s %40s was first published in %10s %s' % (sanitized_title_type(content_stuff),
