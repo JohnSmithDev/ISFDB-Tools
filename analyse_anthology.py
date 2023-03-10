@@ -78,9 +78,9 @@ def sanitized_title_type(t_dict):
     if t_dict['title_ttype'] == 'SHORTFICTION' and t_dict['title_storylen']:
         return t_dict['title_storylen']
     else:
-        return t_dict['title_ttype']
+        return t_dict['title_ttype'].lower()
 
-def analyse_title(conn, title_id, output_function=print):
+def analyse_title(conn, title_id, output_function=print, sort_by_type_and_source=True):
     """
     Return (and optionally output) details about the contents of the specified title
     """
@@ -95,14 +95,20 @@ def analyse_title(conn, title_id, output_function=print):
                                                            only_same_languages=True)
             earliest = get_earliest_pub(conn, relevant_title_ids)
             details = postprocess_publication_details(conn, earliest)
+            ret.append((content_stuff, details))
+
             # print(content_stuff, details)
+        if sort_by_type_and_source:
+            ret.sort(key=lambda z: (z[1]['pub_ctype'], z[1]['short_title'], z[0]['title_title']))
+        for (content_stuff, details) in ret:
             output_function('%-15s %40s was first published in %10s %s' % (sanitized_title_type(content_stuff),
-                                                              content_stuff['title_title'],
+                                                              content_stuff['title_title'][:40],
                                                               details['pub_ctype'],
                                                               # earliest['pub_title']
                                                               details['short_title']
                                                               ))
-            ret.append((content_stuff, details))
+
+
     except NoContentsFoundError as err:
         output_function(f'<<{err}>>')
     return ret
