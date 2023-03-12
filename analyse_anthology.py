@@ -4,11 +4,11 @@ Given a title ID of an anthology or collection, generate data about the contents
 
 Example usages and useful examples:
 
-  ./analyze_anthology.py 33629 (this one has all original content)
-  ./analyze_anthology.py 2013507 (this one one reprint and the rest original)
-  ./analyze_anthology.py 2305932 (a 2018 year's best)
-  ./analyze_anthology.py 2267599 (single author collection)
-  ./analyze_anthology.py 1655765 (this has a Tor.com chapbook vs magazine entry; two stories
+  ./analyse_anthology.py 33629 (this one has all original content)
+  ./analyse_anthology.py 2013507 (this one one reprint and the rest original)
+  ./analyse_anthology.py 2305932 (a 2018 year's best)
+  ./analyse_anthology.py 2267599 (single author collection)
+  ./analyse_anthology.py 1655765 (this has a Tor.com chapbook vs magazine entry; two stories
          are title variant; one is an author name variant; one was first published in an online
          venue not tracked by ISFDB as of 2023-03-08)
 """
@@ -27,6 +27,8 @@ from title_publications import (get_earliest_pub, get_title_editor_for_pub_id,
                                 get_title_editor_for_title_id)
 from title_contents import (get_title_contents, analyse_pub_contents, NoContentsFoundError)
 from title_related import get_all_related_title_ids
+from custom_exceptions import (UnexpectedTypeError, UnexpectedNumberOfRowsError)
+
 
 def do_nothing(*args, **kwargs):
     """Stub for output_function argument override"""
@@ -43,14 +45,42 @@ def get_filtered_title_contents(conn, title_id):
 
 
 
-def postprocess_publication_details(conn, pub_details):
+def get_container_title_id_for_pub(conn, pub_details):
+    if pub_details['pub_ctype'] not in ('ANTHOLOGY', 'COLLECTION', 'CHAPBOOK', 'MAGAZINE',
+                                        'NOVEL'):
+        raise UnexpectedTypeError('Cannot get container title id for non container pub %d/%s' %
+                                  (pub_details['pub_id'], pub_details['pub_ctype']))
+    # Removed 'NOVEL' from the list of title_ttypes, as it breaks things when an anthology
+    # contains a novel e.g. https://www.isfdb.org/cgi-bin/pl.cgi?774892
+    # Perhaps there's a better/safer way to handle this situation?
+    query = text("""SELECT title_id
+    FROM pub_content pc
+    NATURAL JOIN titles t
+    WHERE pub_id = :pub_id
+      AND title_ttype IN ('ANTHOLOGY', 'COLLECTION', 'EDITOR', 'CHAPBOOK');""")
+    results = conn.execute(query, pub_details).fetchall()
+
+    if len(results) != 1:
+        raise UnexpectedNumberOfRowsError('Got %d titles (%s), returned for pub_id %d, expected 1' %
+                        (len(results), [z['title_id'] for z in results],
+                         pub_details['pub_id']))
+    return results[0]['title_id']
+
+def postprocess_publication_details(conn, pub_details, original_container_title=None):
     """
     Return a dictionary with processed publication details e.g. normalized magazine name,
     sanitisation of weird edge cases
     """
 
+    # print(pub_details)
+
     ret = pub_details.copy()
     ret['processed_title'] = ret['pub_title']
+
+    if original_container_title:
+        # Get the title_id associated with this pub, so we can compare them
+        ret['title_id'] = get_container_title_id_for_pub(conn, pub_details)
+
     if pub_details['pub_series_name'] == 'A Tor.com Original':
         ret['pub_ctype'] = 'MAGAZINE'
         ret['publisher_name'] = 'Tor.com'
@@ -61,6 +91,9 @@ def postprocess_publication_details(conn, pub_details):
             magazine_details = get_title_editor_for_title_id(conn, magazine_details['title_parent'])
 
         ret['processed_title'] = magazine_details['series_title']
+    elif original_container_title and \
+         original_container_title == ret['title_id']: # TODO (?) check variants
+        ret['processed_title'] += '*' # TODO something more exciting e.g. check title note
 
     canon_title = CANONICAL_MAGAZINE_NAME.get(ret['processed_title'], ret['processed_title'])
     short_canon_title = SHORT_MAGAZINE_NAME.get(canon_title, canon_title)
@@ -94,7 +127,8 @@ def analyse_title(conn, title_id, output_function=print, sort_by_type_and_source
             relevant_title_ids = get_all_related_title_ids(conn, content_stuff['title_id'],
                                                            only_same_languages=True)
             earliest = get_earliest_pub(conn, relevant_title_ids)
-            details = postprocess_publication_details(conn, earliest)
+            details = postprocess_publication_details(conn, earliest,
+                                                      original_container_title=title_id)
             ret.append((content_stuff, details))
 
             # print(content_stuff, details)
