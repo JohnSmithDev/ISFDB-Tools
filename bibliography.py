@@ -77,7 +77,7 @@ FALLBACK_YEAR = 8888
 MIN_PUB_YEAR = 1990
 MAX_PUB_YEAR = 2021
 
-PubStuff = namedtuple('PubStuff', 'pub_id, date, format, price')
+PubStuff = namedtuple('PubStuff', 'pub_id, date, format, price, publisher')
 
 Repackaging = namedtuple('Repackaging', 'title, ptype, publication_date')
 
@@ -141,8 +141,8 @@ class BookByAuthor(object):
 
         self._titles = Counter(valid_titles)
 
-        self.pub_stuff = PubStuff(self.publication_date, self.publication_date,
-                                  row['pub_ptype'], row['pub_price'])
+        self.pub_stuff = PubStuff(self.pub_id, self.publication_date,
+                                  row['pub_ptype'], row['pub_price'], sanitised_publisher)
         self.all_pub_stuff = [self.pub_stuff]
 
 
@@ -623,19 +623,28 @@ def get_publication_year_range(bibliography, max_range=80):
     return min_year, max_year
 
 
-def get_publisher_counts(bibliography):
+def get_publisher_counts(bibliography, min_year, max_year):
     """
     Given a bibliography, return a Counter showing which publishers have most
     frequently published an author's books.  Note that this counts titles
     rather than publications.
+
+    Assumption: min_year and max_year are valid years, either manually supplied ones, or
+    the start/end of the author's pubs
     """
     # Possible bug: Are novels in collections/omnibuses being multiply counted
     # when they shouldn't be?  (This was definitely happening at one point, which
     # I think was a copypaste error whilst refactoring, but I'm not 100%
     # convinced is completely solved)
+
+
     publisher_counts = Counter()
     for bk in bibliography:
-        publisher_counts.update(bk.publishers)
+        these_publishers = set()
+        for pub in bk.all_pub_stuff:
+            if pub.date and min_year <= pub.date.year <= max_year:
+                these_publishers.add(pub.publisher)
+        publisher_counts.update(these_publishers)
     return publisher_counts
 
 
@@ -744,5 +753,5 @@ if __name__ == '__main__':
     output_ascii_stats(bibliography, min_year, max_year,
                        chart_title=title)
     if args.show_publishers:
-        publisher_counts = get_publisher_counts(bibliography)
+        publisher_counts = get_publisher_counts(bibliography, min_year, max_year)
         output_publisher_stats(publisher_counts)
