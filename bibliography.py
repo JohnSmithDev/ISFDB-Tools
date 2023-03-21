@@ -700,16 +700,27 @@ def get_year_range(bibliography, year_range_string):
     Return a tuple of (min_year, max_year), depending on any specified range
     (e.g. from a CLI argument) and the date range of publications in the
     bibliography.
+
+    If year_range_string is a single number, it's a maximum range to cover e.g.
+    the most recent N years.
     """
+
+    def safe_cast_to_int(number_string, default=None):
+        if number_string:
+            return int(number_string)
+        else:
+            return default
+
+    min_year, max_year = get_publication_year_range(bibliography)
 
     if year_range_string:
         if '-' in args.year_range:
-            min_year, max_year = [int(z) for z in year_range_string.split('-')]
+            min_y, max_y = [safe_cast_to_int(z) for z in year_range_string.split('-')]
+            min_year = min_y or min_year
+            max_year = max_y or max_year
         else:
             min_year, max_year = get_publication_year_range(bibliography,
                                                             max_range=int(year_range_string))
-    else:
-        min_year, max_year = get_publication_year_range(bibliography)
     return min_year, max_year
 
 if __name__ == '__main__':
