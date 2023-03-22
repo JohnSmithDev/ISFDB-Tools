@@ -496,7 +496,7 @@ def get_bibliography(conn, filters,
         # Hack for 1975 Campbell New Writer winner P. J. Plauger, who seems to only
         # have 2 novels, both of which only ever printed as magazine serializations?
         # logging.warning('No books found for %s/%s' % (author_ids, author_name))
-        logging.warning('No books found for author IDs %s' % (author_ids))
+        logging.warning('No books found for author/title filters %s' % (filters))
         return []
     # rows.close() # Doesn't fix the re-run failure
     return sorted(books, key=lambda z: z.year)
@@ -648,11 +648,10 @@ def get_publisher_counts(bibliography, min_year, max_year):
     return publisher_counts
 
 
-
-
 def output_ascii_stats(bibliography, min_year, max_year,
                        chart_title=False, output_function=print):
     year_bits = []
+    digit = 0
     for year in range(min_year, max_year+1):
         year_string = str(year)
         digit = year % 10
