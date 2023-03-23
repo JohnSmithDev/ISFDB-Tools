@@ -130,15 +130,19 @@ def render_pub(pub_id, contents, output_function=print):
     for content_number, c in enumerate(contents, 1):
         print(f'* {content_number}. {c}')
 
-def get_title_contents(conn, title_ids):
+def get_title_contents(conn, title_ids, excluded_pub_types=None):
     # Note: this next function will return empty if you have a title ID for
     # a parent author (e.g. "Brian W. Aldiss") where the pubs only exist for
     # a title associated with variant author (e.g. "Brian Aldiss").
     # (See get_all_related_title_ids() for a way to work around that)
 
+    if not excluded_pub_types:
+        excluded_pub_types = set()
+
     publications = get_publications_for_title_ids(conn, title_ids)
     # print(publications)
-    pub_to_stuff = {z['pub_id']: z for z in publications}
+    pub_to_stuff = {z['pub_id']: z for z in publications
+                    if z['pub_ctype'] not in excluded_pub_types}
     # print(pub_to_stuff)
     pub_ids = list(pub_to_stuff.keys())
     # print(pub_ids)
