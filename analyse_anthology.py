@@ -38,7 +38,10 @@ def get_filtered_title_contents(conn, title_id):
     """
     Get the contents, excluding stuff that isn't of interest such as artwork and introductions
     """
-    pub_contents = get_title_contents(conn, [title_id])
+    # TODO: we should allow OMNIBUSES if title_id is itself an omnibus - although perhaps we
+    # should be careful if this is an omnibus of say vols 1-3, and then there's a bigger
+    # omnibus?  In practice, I don't think you'd use this code for omnibuses?
+    pub_contents = get_title_contents(conn, [title_id], excluded_pub_types={'OMNIBUS'})
     best_pub_id, best_contents = analyse_pub_contents(pub_contents, output_function=do_nothing)
     return [z for z in best_contents
             if z['title_ttype'] not in {'ESSAY', 'COVERART', 'INTERIORART'}]
@@ -122,6 +125,7 @@ def analyse_title(conn, title_id, output_function=print, sort_by_type_and_source
 
     try:
         contents = get_filtered_title_contents(conn, title_id)
+        # print(contents)
 
         for content_stuff in contents:
             relevant_title_ids = get_all_related_title_ids(conn, content_stuff['title_id'],
