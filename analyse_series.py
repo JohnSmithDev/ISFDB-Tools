@@ -10,6 +10,7 @@ Useful series IDs:
 * 27939 - Horton Best SF & F 2010-2022
 * 40163 - Best American SF & F 2015-2022
 * 42005 - Clarke Best SF 2016-2023
+* 8383 - Hartwell Year's Best SF 1996-2013
 """
 
 
@@ -39,6 +40,21 @@ def get_series_entries(conn, series_id, exclude_children=True):
     return results
 
 
+def title_heading(t):
+    """
+    Given a dict with values derived from the titles table, return a readable string of
+    them (__repr__ style)
+    """
+    bits = []
+    if t['title_seriesnum'] is not None:
+        bits.append('#' + t['title_seriesnum'])
+    bits.extend((t['title_title'],
+                 '[%d]' % t['year'],
+                 '(title_id=%d)' %  t['title_id']
+                 ))
+    return ' '.join(bits)
+
+
 if __name__ == '__main__':
     conn = get_connection()
 
@@ -47,7 +63,5 @@ if __name__ == '__main__':
     for i, t in enumerate(get_series_entries(conn, series_id)):
         if i > 0:
             print()
-        print('= #%s %s [%s] =' % (t['title_seriesnum'] or 'N/A',
-                                   t['title_title'],
-                                   t['year']))
+        print('= %s =\n' % title_heading(t))
         analyse_title(conn, t['title_id'])
