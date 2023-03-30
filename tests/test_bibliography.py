@@ -44,6 +44,8 @@ def make_title_id_to_details_map(books):
 class TestBibliography(unittest.TestCase):
     # There's a *lot* more should be tested...
     conn = get_connection()
+    maxDiff = None
+
 
     def test_get_bibliography_novels_simple(self):
         # Keyes only wrote novels (the Flowers... novella seems to have never
@@ -114,12 +116,14 @@ class TestBibliography(unittest.TestCase):
         self.assertIn(17670, na_dict) # Sanity check
         mindgames = na_dict[17670]
         # And verify that both pubs are known:
-        self.assertEqual([PubStuff(pub_id=datetime.date(1992, 1, 1),
+        self.assertEqual([PubStuff(pub_id=22266,
                                    date=datetime.date(1992, 1, 1),
                                    format='tp',
-                                   price='£1.99'),
-                          PubStuff(pub_id=datetime.date(2018, 6, 6),
+                                   price='£1.99',
+                                   publisher='Club 199'),
+                          PubStuff(pub_id=671664,
                                    date=datetime.date(2018, 6, 6),
                                    format='tp',
-                                   price='$7.99')], mindgames.all_pub_stuff)
+                                   price='$7.99',
+                                   publisher='Neal Asher')], mindgames.all_pub_stuff)
 
