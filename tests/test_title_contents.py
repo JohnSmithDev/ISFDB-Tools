@@ -13,9 +13,6 @@ from ..common import (get_connection, parse_args)
 from ..title_contents import (get_pub_contents, NoContentsFoundError)
 
 
-REVENGER_DETAILS = (2034339, 'Alastair Reynolds', 'Revenger', 0)
-WAYDOWNDARK_CHILD_DETAILS = (1866037, 'J. P. Smythe', 'Way Down Dark', 1866038)
-WAYDOWNDARK_PARENT_DETAILS = (1866038, 'James Smythe', 'Way Down Dark', 0)
 
 
 
@@ -23,9 +20,10 @@ class TestGetPublications(unittest.TestCase):
     conn = get_connection()
 
     def test_exception_when_no_contents(self):
-        # !!! THIS TEST WILL BREAK WHEN THE CONTENTS ARE ENTERED INTO THE DB !!!
-        # Best American SF & F 2022, has 2 pubs as of 2023-03-06
-        # https://www.isfdb.org/cgi-bin/title.cgi?3086477
+        # !!! THIS TEST WILL BREAK IF/WHEN THE CONTENTS ARE ENTERED INTO THE DB !!!
+        # Death on the Pitch: Extra Time
+        # https://www.isfdb.org/cgi-bin/title.cgi?2797319
+        # 2020 Blood Bowl anthology with no contents as of March 2023, so may be safe for a while?
 
         with self.assertRaises(NoContentsFoundError):
-            whatever = get_pub_contents(self.conn, (916967, 918280))
+            whatever = get_pub_contents(self.conn, (806864,))
