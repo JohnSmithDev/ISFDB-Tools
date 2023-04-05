@@ -47,7 +47,7 @@ def title_heading(t):
     """
     bits = []
     if t['title_seriesnum'] is not None:
-        bits.append('#' + t['title_seriesnum'])
+        bits.append(f"#{t['title_seriesnum']}")
     bits.extend((t['title_title'],
                  '[%d]' % t['year'],
                  '(title_id=%d)' %  t['title_id']
