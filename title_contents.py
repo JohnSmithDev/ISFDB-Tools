@@ -37,9 +37,10 @@ def get_pub_contents(conn, pub_ids, exclude_container_types=True):
 
     query = text("""SELECT pc.pub_id, pc.pubc_page,
            t.title_id, t.title_title, CAST(t.title_copyright AS CHAR) title_date,
-           t.title_ttype, t.title_storylen, t.title_parent
+           t.title_ttype, t.title_storylen, t.title_parent, n.note_note
     FROM pub_content pc
     LEFT OUTER JOIN titles t ON pc.title_id = t.title_id
+    NATURAL LEFT OUTER JOIN notes n
     WHERE pc.pub_id in :pub_ids
     ORDER BY pc.pub_id, pc.pubc_page, t.title_title;""")
 
@@ -97,7 +98,8 @@ def get_title_authors(conn, title_ids):
 
 def analyse_pub_contents(pub_contents, output_function=print):
     """
-    Optionally render summaries of the content of each pub,
+    Given a dict mapping pub_ids to a list of contents of each pub,
+    optionally render summaries of the content of each pub,
     and return the one which looks the most complete.
     """
     best_metric = 0
