@@ -251,7 +251,13 @@ function extractIdFromURL(urlArg) {
     }
 
     const url = new URL(urlArg);
-    const pathBits = url.pathname.split('/');
+    /* Originally the next bit just split on / , but (as of early 2022?) this is missing
+       ASINs in Audible links of the form
+       https://www.audible.co.uk/pd/Doctor-Who-The-Power-of-the-Daleks-Audiobook/B0B3PRC63S?qid=16....
+       Similar ISBN-10 based links did work, presumably due to a check a bit further down
+       */
+
+    const pathBits = url.pathname.split( /[\/\?]/ );
     for (let i=0; i<pathBits.length; i++) {
         let val = pathBits[i];
         if (val.endsWith(".html")) { // Penguin does this
@@ -275,6 +281,15 @@ function extractIdFromURL(urlArg) {
              * https://www.amazon.co.uk/Mercedes-Lackey/e/B000APZNR0/
              */
             clog(pathBits[i+2] + " is an ASIN (/gp/product/)");
+            return pathBits[i+2];
+        }
+        if (url.host === "www.audible.co.uk" &&
+            val == "pd" && i < pathBits.length-2 &&
+            (pathBits[i+2].length == 10)) {
+            /*
+             * /pd/whatever/{ASIN} URLs are used on Audible (possibly new as of early 2023?
+             */
+            clog(pathBits[i+2] + " is an ASIN (/pd/whatever/))");
             return pathBits[i+2];
         }
         if (val.search( /[\d \-]{13,}/ ) === 0) {
