@@ -11,10 +11,16 @@ Example usages and useful examples:
   ./analyse_anthology.py 1655765 (this has a Tor.com chapbook vs magazine entry; two stories
          are title variant; one is an author name variant; one was first published in an online
          venue not tracked by ISFDB as of 2023-03-08)
+
+BUG (possibly in code from elsewhere called from here): does not pick up prior serializations
+e.g. https://www.isfdb.org/cgi-bin/title.cgi?2132040
+
 """
 
 from collections import defaultdict, Counter
+from lxml import html
 import pdb
+import re
 import sys
 
 
@@ -29,6 +35,7 @@ from title_contents import (get_title_contents, analyse_pub_contents, NoContents
 from title_related import get_all_related_title_ids
 from custom_exceptions import (UnexpectedTypeError, UnexpectedNumberOfRowsError)
 
+ORIGIN_NOT_FOUND_MARKER = '*'
 
 def do_nothing(*args, **kwargs):
     """Stub for output_function argument override"""
@@ -79,6 +86,7 @@ def postprocess_publication_details(conn, pub_details, original_container_title=
 
     ret = pub_details.copy()
     ret['processed_title'] = ret['pub_title']
+    ret['original_pub_not_found'] = False
 
     if original_container_title:
         # Get the title_id associated with this pub, so we can compare them
@@ -96,7 +104,8 @@ def postprocess_publication_details(conn, pub_details, original_container_title=
         ret['processed_title'] = magazine_details['series_title']
     elif original_container_title and \
          original_container_title == ret['title_id']: # TODO (?) check variants
-        ret['processed_title'] += '*' # TODO something more exciting e.g. check title note
+        ret['processed_title'] += ORIGIN_NOT_FOUND_MARKER
+        ret['original_pub_not_found'] = True
 
     canon_title = CANONICAL_MAGAZINE_NAME.get(ret['processed_title'], ret['processed_title'])
     short_canon_title = SHORT_MAGAZINE_NAME.get(canon_title, canon_title)
@@ -115,6 +124,52 @@ def sanitized_title_type(t_dict):
         return t_dict['title_storylen']
     else:
         return t_dict['title_ttype'].lower()
+
+
+def clean_up_extracted_pub(content):
+    """
+    Postprocess the extracted publication name from extracted_org_pub_from_note()
+    """
+    for zappable in ('^the web.zine,? *',):
+        content = re.sub(zappable, '', content)
+
+    # TODO: tidy this up as-and-when more examples of what needs doing have been found
+    if content.lower().startswith('<i>'):
+        # https://www.isfdb.org/cgi-bin/title.cgi?1871149
+        bits = content[3:].split('<')
+        txt = bits[0]
+    else:
+        txt = str(html.fromstring(content).text_content())
+
+    for ch in ('.', '"'):
+        if txt.endswith(ch):
+            txt = txt[:-1]
+    return txt
+
+
+def extract_orig_pub_from_note(txt):
+    """
+    Given some note text, extract any details about original publication (of a short story),
+    or return None.
+
+    This will be an ongoing whac-a-mole to catch all the variants that people have used...
+    """
+
+    if not txt:
+        return None
+
+    # TODO more patterns (as and when I find them
+    for pattern in ('(First|Originally) (appeared|published) (online at|in) (?P<this>.*)',
+                    # 'First published in (?P<this>.*)',
+                    '.*Originally published in (?P<this>.*)',
+                    # 'Originally published in (?P<this>.*)',
+                    'Originally published as a (?P<this>.*)'):
+        if result := re.match(pattern, txt, re.IGNORECASE):
+            # https://stackoverflow.com/questions/753052/strip-html-from-strings-in-python
+            return clean_up_extracted_pub(result.group('this'))
+    return None
+
+
 
 def analyse_title(conn, title_id, output_function=print, sort_by_type_and_source=True):
     """
@@ -139,12 +194,19 @@ def analyse_title(conn, title_id, output_function=print, sort_by_type_and_source
         if sort_by_type_and_source:
             ret.sort(key=lambda z: (z[1]['pub_ctype'], z[1]['short_title'], z[0]['title_title']))
         for (content_stuff, details) in ret:
-            output_function('%-15s %40s was first published in %10s %s' % (sanitized_title_type(content_stuff),
-                                                              content_stuff['title_title'][:40],
-                                                              details['pub_ctype'],
-                                                              # earliest['pub_title']
-                                                              details['short_title']
-                                                              ))
+            orig_pub = details['short_title']
+            orig_type = details['pub_ctype']
+            if details['original_pub_not_found']:
+                if noted_original := extract_orig_pub_from_note(content_stuff['note_note']):
+                    orig_pub = noted_original
+                    orig_type = 'UNKNOWN'
+
+            output_function('%-15s %40s was first published in %10s %s' % (
+                sanitized_title_type(content_stuff),
+                content_stuff['title_title'][:40],
+                orig_type,
+                orig_pub
+            ))
 
 
     except NoContentsFoundError as err:
