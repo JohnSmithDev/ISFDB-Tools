@@ -126,8 +126,6 @@ def get_finalists(conn, args, level_filter, ignore_no_award=True):
             continue
         finalists.append(AwardFinalist(*row._mapping.values()))
     return finalists
-    # return [AwardFinalist(*z.values()) for z in results]
-
 
     WIP_HACKERY = """
     ret = []
