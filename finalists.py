@@ -8,7 +8,7 @@ related reports.
 """
 
 from os.path import basename
-# import pdb
+import pdb
 import sys
 
 from sqlalchemy.sql import text
@@ -113,9 +113,7 @@ def get_finalists(conn, args, level_filter, ignore_no_award=True):
         LEFT OUTER JOIN award_cats ac ON ac.award_cat_id = a.award_cat_id
         LEFT OUTER JOIN title_awards ta ON ta.award_id = a.award_id
       WHERE %s ORDER BY year, CAST(award_level AS UNSIGNED)""" % fltr)
-    #print(query)
-    # pdb.set_trace()
-    results = conn.execute(query, **params).fetchall()
+    results = conn.execute(query, params).fetchall()
 
     finalists = []
     for row in results:
@@ -123,10 +121,10 @@ def get_finalists(conn, args, level_filter, ignore_no_award=True):
         # have the same value, but better safe than sorry.
         # print(row['award_author'])
         if ignore_no_award and \
-           (row['award_title'] in DODGY_TITLES_AND_PSEUDO_AUTHORS or
-            row['award_author'] in EXCLUDED_AUTHORS):
+           (row.award_title in DODGY_TITLES_AND_PSEUDO_AUTHORS or
+            row.award_author in EXCLUDED_AUTHORS):
             continue
-        finalists.append(AwardFinalist(*row.values()))
+        finalists.append(AwardFinalist(*row._mapping.values()))
     return finalists
     # return [AwardFinalist(*z.values()) for z in results]
 
