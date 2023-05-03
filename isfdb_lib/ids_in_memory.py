@@ -10,7 +10,7 @@ be optionally used with the id_checker.py Flask webserver to:
     the "original" version/functionality of id_checker.py
 
 UPDATE: Now has code to use the exported ISBN and ASIN data from Fixer
-(see email 2020-04-02 from Ahasuerus
+(see email 2020-04-02 from Ahasuerus)
 
 Stats as of end March 2020:
 
@@ -80,22 +80,28 @@ NEW_FIXER_STATUS_CODES = ['Insufficient information', # 0
                           ]
 
 
+DB_QUERIES = [('ASIN',"""SELECT DISTINCT identifier_value v
+    FROM identifiers i
+    LEFT OUTER JOIN identifier_types it ON i.identifier_type_id = it.identifier_type_id
+    WHERE it.identifier_type_name IN ('ASIN', 'Audible-ASIN');"""),
+              ('ISBN', """SELECT DISTINCT pub_isbn v FROM pubs
+                    WHERE pub_isbn IS NOT NULL;"""),
+              ('AudibleUK-ASIN', """SELECT asin v FROM
+                  (SELECT SUBSTRING_INDEX(url, '/', -1) asin
+                   FROM webpages
+                   WHERE url LIKE '%www.audible%' AND pub_id IS NOT NULL) foo
+                 WHERE asin LIKE 'B%';""")]
 
 def load_ids(conn, output_function=print):
     all_isfdb_ids = set()
     start = time.time()
     output_function('Loading ASINs and ISBNs into memory...')
-    for query in ("""SELECT DISTINCT identifier_value v
-    FROM identifiers i
-    LEFT OUTER JOIN identifier_types it ON i.identifier_type_id = it.identifier_type_id
-    WHERE it.identifier_type_name IN ('ASIN', 'Audible-ASIN');""",
-                    """SELECT DISTINCT pub_isbn v FROM pubs
-                    WHERE pub_isbn IS NOT NULL;"""):
+    for i, (label, query) in enumerate(DB_QUERIES, 1):
         results = conn.execute(text(query)).fetchall()
         all_isfdb_ids.update([z['v'] for z in results])
-    output_function('Loaded %d IDs in %.3f seconds, size=%.1fMB' %
-                    (len(all_isfdb_ids), time.time() - start,
-                     sys.getsizeof(all_isfdb_ids) / (1024 * 1024)))
+        output_function('%d/%s. Loaded %d cumulative IDs in %.3f seconds, size=%.1fMB' %
+                        (i, label, len(all_isfdb_ids), time.time() - start,
+                         sys.getsizeof(all_isfdb_ids) / (1024 * 1024)))
     return all_isfdb_ids
 
 def load_fixer_ids(output_function=print):
