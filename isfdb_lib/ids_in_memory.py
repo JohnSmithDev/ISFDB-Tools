@@ -52,9 +52,7 @@ all_isfdb_ids = {}
 isbn_mappings = {}
 asin_mappings = {}
 
-
 MAX_UNKNOWNS_TO_LOG = 10 # was 3, but this doesn't help debugging
-
 
 # TODO: make this an Enum?
 # I think these codes are for the pre July 2020 files; the newer files have
@@ -65,6 +63,7 @@ FIXER_STATUS_CODES = ['Not processed', # 0
                       'Suspended', # 3
                       'Rejected' # 4
                       ]
+
 # As of Sep 2020, there's also a priority/queue "n" for new, as yet unprioritized
 # IDs
 NEW_FIXER_STATUS_CODES = ['Insufficient information', # 0
@@ -98,7 +97,7 @@ def load_ids(conn, output_function=print):
     output_function('Loading ASINs and ISBNs into memory...')
     for i, (label, query) in enumerate(DB_QUERIES, 1):
         results = conn.execute(text(query)).fetchall()
-        all_isfdb_ids.update([z['v'] for z in results])
+        all_isfdb_ids.update([z.v for z in results])
         output_function('%d/%s. Loaded %d cumulative IDs in %.3f seconds, size=%.1fMB' %
                         (i, label, len(all_isfdb_ids), time.time() - start,
                          sys.getsizeof(all_isfdb_ids) / (1024 * 1024)))
