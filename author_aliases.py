@@ -74,21 +74,22 @@ def get_author_aliases(conn, author, search_for_additional_pseudonyms=True):
   left outer join pseudonyms p2 on p2.pseudonym = a1.author_id
   left outer join authors a3 on p2.author_id = a3.author_id
     where %s;""" % (fltr))
-    results = conn.execute(query, author=author).fetchall()
+    params = {'author': author}
+    results = conn.execute(query, params).fetchall()
     ret = set()
     for row in results:
-        if row['name3']:
+        if row.name3:
             if primary_name:
                 logging.warning('Not sure if %s or %s is the primary name?!' %
-                                (primary_name, row['name3']))
+                                (primary_name, row.name3))
             else:
                 primary_name = row['name3']
         for col in ('name1', 'name2', 'name3'):
-            if row[col]:
-                ret.add(row[col])
+            if row._mapping[col]:
+                ret.add(row._mapping[col])
         for col in ('legal1', 'legal2', 'legal3'):
-            if row[col]:
-                legal = unlegalize(row[col])
+            if row._mapping[col]:
+                legal = unlegalize(row._mapping[col])
                 if legal:
                     ret.add(legal)
 
@@ -164,7 +165,8 @@ def _get_author_alias_tuples(conn, author, ignore_gestalt_threshold=None,
   left outer join authors a3 on p2.author_id = a3.author_id
   where a1.author_canonical = :author
      or a1.author_legalname = :author;""")
-    results = conn.execute(query, author=author).fetchall()
+    params = {'author': author}
+    results = conn.execute(query, params).fetchall()
 
     # Uggh, horrible copypasting from above
     def name_words(name):
@@ -184,7 +186,7 @@ def _get_author_alias_tuples(conn, author, ignore_gestalt_threshold=None,
 
     for row in results:
         # print(row)
-        possible_primary_name = row['author3']
+        possible_primary_name = row.author3
         if possible_primary_name:
             if primary_name:
                 logging.warning('Not sure if %s or %s is the primary name?!' %
@@ -289,7 +291,8 @@ def get_real_author_id_and_name(conn, pseudonym_id):
     LEFT OUTER JOIN authors a ON (a.author_id = p.author_id)
     WHERE p.pseudonym = :pseudonym_id
     ORDER BY author_id;""") # The ORDER BY is just for consistency/ease of testing
-    results = conn.execute(query, pseudonym_id=pseudonym_id).fetchall()
+    params = {'pseudonym_id': pseudonym_id}
+    results = conn.execute(query, params).fetchall()
     if results:
         return [AuthorIdAndName(z.author_id, z.name) for z in results]
     else:
@@ -309,7 +312,9 @@ def get_real_author_id_and_name_from_name(conn, pseudonym):
     LEFT OUTER JOIN authors r_details ON (r_details.author_id = p.author_id)
     WHERE p_details.author_canonical = :pseudonym
     ORDER BY author_id;""") # The ORDER BY is just for consistency/ease of testing
-    results = conn.execute(query, pseudonym=pseudonym).fetchall()
+
+    params = {'pseudonym': pseudonym}
+    results = conn.execute(query, params).fetchall()
     if results:
         return [AuthorIdAndName(z.author_id, z.name) for z in results]
     else:
@@ -339,7 +344,8 @@ def get_author_name(conn, author_id):
     query = text("""SELECT author_canonical
     FROM authors
     WHERE author_id = :author_id;""")
-    result_thing = conn.execute(query, author_id=author_id)
+    params = {'author_id': author_id}
+    result_thing = conn.execute(query, params)
     result = result_thing.fetchone()
     return result[0]
 
@@ -365,6 +371,7 @@ if __name__ == '__main__':
     a_id = int(sys.argv[1])
     author_name = get_author_name(mconn, a_id)
     print('%s' % (author_name))
+    # I think the following stuff is just Unicode/non-ASCII related
     print('%s' % (type(author_name)))
     print('-'.join([str(ord(z)) for z in author_name]))
     print([(z, ord(z)) for z in author_name])
