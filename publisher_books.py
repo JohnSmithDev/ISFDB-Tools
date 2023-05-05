@@ -274,8 +274,8 @@ def get_publisher_books(conn, args, countries=None, original_adult_genre_only=Tr
     titleid_dict = {}
     # print(len(results))
     for row in results:
-        pubid = row['pub_id']
-        titleid = row['title_id']
+        pubid = row.pub_id
+        titleid = row.title_id
 
         # Could/should this be done in the SQL?
         if row.pub_ctype == 'COLLECTION' and \
