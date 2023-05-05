@@ -364,7 +364,7 @@ def get_raw_title_ids(conn, filters):
     WHERE %s
       AND title_language IN :title_languages; """ % (filter_string))
     rows = conn.execute(query, value_map)
-    interim = [(z['title_id'], z['title_parent']) for z in rows]
+    interim = [(z.title_id, z.title_parent) for z in rows]
     title_ids = set(chain(*interim))
     try:
         title_ids.remove(None)
@@ -530,7 +530,7 @@ WHERE award_type_id = 31 AND award_cat_id = 413 AND award_level = 1;""")
 
     rows = conn.execute(query)
 
-    ret = list(z['title_id'] for z in rows)
+    ret = list(z.title_id for z in rows)
     # But we also need the variants
     # Assumption: the award IDs are the parent titles
     # Hardcoding language 17 (English) is yet another hack
@@ -540,7 +540,7 @@ WHERE award_type_id = 31 AND award_cat_id = 413 AND award_level = 1;""")
     WHERE t.title_parent in :title_ids
     AND t.title_language = 17;""")
     more_rows = conn.execute(query2, {'title_ids': ret})
-    more_ids = list(z['title_id'] for z in more_rows)
+    more_ids = list(z.title_id for z in more_rows)
     # print(more_ids)
     merged = set(ret + more_ids)
     return list(merged)
