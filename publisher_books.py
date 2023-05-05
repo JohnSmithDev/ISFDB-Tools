@@ -92,28 +92,28 @@ class Publication(object):
 
 
 class CountrySpecificBook(object):
-    def __init__(self, value_dict, valid_countries=None, conn=None):
-        self.publisher = value_dict['publisher_name']
+    def __init__(self, value_obj, valid_countries=None, conn=None):
+        self.publisher = value_obj.publisher_name
         # set is used for authors to avoid stuff like Ken MacLeod being added
         # 3 times for The Corporration Wars Trilogy
-        self.authors = set([value_dict['author_canonical']])
-        self.author_ids = set([value_dict['author_id']])
+        self.authors = set([value_obj.author_canonical])
+        self.author_ids = set([value_obj.author_id])
         # author_id_to_name should supercede .authors and .author_ids (probably
         # with properties to cover any code that used them
-        self.author_id_to_name = {value_dict['author_id']: value_dict['author_canonical']}
-        self.title = value_dict['pub_title']
-        self.title_id = value_dict['title_id']
-        self.title_parent = value_dict['title_parent']
-        self.title_language = value_dict['title_language']
-        self.copyright_date = convert_dateish_to_date(value_dict['copyright_dateish'])
+        self.author_id_to_name = {value_obj.author_id: value_obj.author_canonical}
+        self.title = value_obj.pub_title
+        self.title_id = value_obj.title_id
+        self.title_parent = value_obj.title_parent
+        self.title_language = value_obj.title_language
+        self.copyright_date = convert_dateish_to_date(value_obj.copyright_dateish)
         if self.title_parent and conn:
             self.best_copyright_date = self._get_best_copyright_date(conn)
         else:
             self.best_copyright_date = self.copyright_date
 
-        self.publication_type = value_dict['title_ttype']
+        self.publication_type = value_obj.title_ttype
 
-        publication = Publication(value_dict, valid_countries, reference=self.title)
+        publication = Publication(value_obj, valid_countries, reference=self.title)
         self.publications = [publication]
 
         self.valid_countries = valid_countries
@@ -163,14 +163,14 @@ class CountrySpecificBook(object):
     def publication_ids(self):
         return [z.pub_id for z in self.publications]
 
-    def add_variant(self, value_dict):
+    def add_variant(self, value_obj):
         # This blind calling of add_coauthor depends on its use of set() to
         # avoid dupes
-        self.add_coauthor(value_dict['author_canonical'], value_dict['author_id'])
+        self.add_coauthor(value_obj.author_canonical, value_obj.author_id)
 
         # Maybe this should use sets too?  Or hash magic?
-        if value_dict['pub_id'] not in self.publication_ids:
-            self.add_publication(value_dict)
+        if value_obj.pub_id not in self.publication_ids:
+            self.add_publication(value_obj)
 
 
     @property
