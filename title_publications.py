@@ -23,7 +23,8 @@ class NoPublicationsFoundError(Exception):
 
 def get_raw_publications_for_title_ids(conn, title_ids):
     """
-    Base function that doesn't do anything clever with magazines
+    Base function that doesn't do anything clever with magazines (in terms of turning a
+    particular issue into the overall EDITOR/series.
     """
     query = text("""SELECT p.pub_id, pub_title, CAST(pub_year AS CHAR) pub_date,
     pub_ptype, pub_ctype, pub_price, pubc_page,
