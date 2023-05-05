@@ -4,6 +4,11 @@ Show what books a publisher published, optionally over a year range.
 
 This is intended for both standalone use and as a library module for use in
 more complicated scripts/reports/whatever.
+
+Example usage:
+
+  ./debut_novel_stats.py -P Gollancz -PP -n NOVEL -y 2020- -d -D
+
 """
 
 # from collections import namedtuple
@@ -142,12 +147,12 @@ class CountrySpecificBook(object):
             # Hopefully this is due to language mismatch
             return self.copyright_date
         stuff = results[0]
-        cdt = convert_dateish_to_date(stuff['copyright_dateish'])
+        cdt = convert_dateish_to_date(stuff.copyright_dateish)
         if are_dates_consistent(cdt, self.copyright_date):
             THIS_IS_TOO_NOISY = """
             logging.warning('Copyright year inconsistency for %d/%s vs %d/%s : %d != %d' %
                             (self.title_id, self.title,
-                             self.title_parent, stuff['title_title'],
+                             self.title_parent, stuff.title_title,
                              self.copyright_date.year, cdt.year))
             """
             pass
@@ -263,7 +268,7 @@ def get_publisher_books(conn, args, countries=None, original_adult_genre_only=Tr
     #print(params)
     #print(query)
 
-    results = conn.execute(query, **params).fetchall()
+    results = conn.execute(query, params).fetchall()
     ret_list = []
     pubid_dict = {}
     titleid_dict = {}
@@ -273,11 +278,11 @@ def get_publisher_books(conn, args, countries=None, original_adult_genre_only=Tr
         titleid = row['title_id']
 
         # Could/should this be done in the SQL?
-        if row['pub_ctype'] == 'COLLECTION' and \
-           row['title_ttype'] != 'COLLECTION':
+        if row.pub_ctype == 'COLLECTION' and \
+           row.title_ttype != 'COLLECTION':
             logging.warning('Skipping inconsistent title %d/%s/%s != pub %d/%s/%s' %
-                            (pubid, row['pub_title'], row['pub_ctype'],
-                            titleid, row['title_title'], row['title_ttype']))
+                            (pubid, row.pub_title, row.pub_ctype,
+                            titleid, row.title_title, row.title_ttype))
             continue
 
         try:
