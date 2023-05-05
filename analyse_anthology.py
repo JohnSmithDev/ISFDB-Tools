@@ -74,7 +74,7 @@ def get_container_title_id_for_pub(conn, pub_details):
         raise UnexpectedNumberOfRowsError('Got %d titles (%s), returned for pub_id %d, expected 1' %
                         (len(results), [z['title_id'] for z in results],
                          pub_details['pub_id']))
-    return results[0]['title_id']
+    return results[0].title_id
 
 def postprocess_publication_details(conn, pub_details, original_container_title=None):
     """
@@ -98,10 +98,10 @@ def postprocess_publication_details(conn, pub_details, original_container_title=
         ret['processed_title'] = 'Tor.com'
     elif pub_details['pub_ctype'] == 'MAGAZINE':
         magazine_details = get_title_editor_for_pub_id(conn, pub_details['pub_id'])
-        if not magazine_details['series_id'] and magazine_details['title_parent']:
-            magazine_details = get_title_editor_for_title_id(conn, magazine_details['title_parent'])
+        if not magazine_details.series_id and magazine_details.title_parent:
+            magazine_details = get_title_editor_for_title_id(conn, magazine_details.title_parent)
 
-        ret['processed_title'] = magazine_details['series_title']
+        ret['processed_title'] = magazine_details.series_title
     elif original_container_title and \
          original_container_title == ret['title_id']: # TODO (?) check variants
         ret['processed_title'] += ORIGIN_NOT_FOUND_MARKER

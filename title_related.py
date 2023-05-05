@@ -302,14 +302,14 @@ def get_all_related_title_ids(conn, title_id, only_same_types=True,
     FROM titles
     WHERE title_id IN :title_ids;""")
     results = conn.execute(query, query_params).fetchone()
-    if results['title_parent']:
-        query_params['title_ids'] = [title_id, results['title_parent']]
+    if results.title_parent:
+        query_params['title_ids'] = [title_id, results.title_parent]
     if only_same_types:
         extra_checks.append('title_ttype = :t_type')
-        query_params['t_type'] = results['title_ttype']
+        query_params['t_type'] = results.title_ttype
     if only_same_languages:
         extra_checks.append('title_language = :t_language')
-        query_params['t_language'] = results['title_language']
+        query_params['t_language'] = results.title_language
 
     if extra_checks:
         checks = ' AND '+ (' AND '.join(extra_checks))
@@ -326,7 +326,7 @@ def get_all_related_title_ids(conn, title_id, only_same_types=True,
     for row in results:
         id_set.update(row)
     """
-    id_set = {row['title_id'] for row in results}
+    id_set = {row.title_id for row in results}
     # I don't think this cleanup is needed for this implementation, but won't
     # hurt (much) to keep it, for now at least.
     for ignorable in (0, None):

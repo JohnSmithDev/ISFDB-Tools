@@ -47,10 +47,10 @@ def get_pub_contents(conn, pub_ids, exclude_container_types=True):
     results = conn.execute(query, {'pub_ids': pub_ids})
     ret = defaultdict(list)
     for row in results:
-        t_type = row['title_ttype']
+        t_type = row.title_ttype
         if not (exclude_container_types and \
            t_type in CONTAINER_TITLE_TYPES):
-            ret[row['pub_id']].append(dict(row))
+            ret[row.pub_id].append(dict(row._mapping))
 
     if len(ret) == 0:
         raise NoContentsFoundError('No contents found in pubs (%s)' %
@@ -92,8 +92,8 @@ def get_title_authors(conn, title_ids):
     results = conn.execute(query, {'title_ids': list(title_ids)})
     ret = defaultdict(list)
     for row in results:
-        author_stuff = AuthorIdAndName( row['author_id'], row['author_canonical'])
-        ret[row['title_id']].append(author_stuff)
+        author_stuff = AuthorIdAndName( row.author_id, row.author_canonical)
+        ret[row.title_id].append(author_stuff)
     return ret
 
 def analyse_pub_contents(pub_contents, output_function=print):

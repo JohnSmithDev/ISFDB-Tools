@@ -36,21 +36,21 @@ def get_series_entries(conn, series_id, exclude_children=True):
     results = conn.execute(query, {'series_id': series_id}).fetchall()
 
     if exclude_children:
-        results = [z for z in results if z['title_parent'] == 0]
+        results = [z for z in results if z.title_parent == 0]
     return results
 
 
-def title_heading(t):
+def title_heading(t_row):
     """
-    Given a dict with values derived from the titles table, return a readable string of
+    Given a row object with values derived from the titles table, return a readable string of
     them (__repr__ style)
     """
     bits = []
-    if t['title_seriesnum'] is not None:
-        bits.append(f"#{t['title_seriesnum']}")
-    bits.extend((t['title_title'],
-                 '[%d]' % t['year'],
-                 '(title_id=%d)' %  t['title_id']
+    if t_row.title_seriesnum is not None:
+        bits.append(f"#{t_row.title_seriesnum}")
+    bits.extend((t_row.title_title,
+                 '[%d]' % t_row.year,
+                 '(title_id=%d)' %  t_row.title_id
                  ))
     return ' '.join(bits)
 
@@ -64,4 +64,4 @@ if __name__ == '__main__':
         if i > 0:
             print()
         print('= %s =\n' % title_heading(t))
-        analyse_title(conn, t['title_id'])
+        analyse_title(conn, t.title_id)

@@ -75,6 +75,9 @@ WHERE pc.pub_id = :pub_id AND t.title_ttype = 'EDITOR';""")
 def get_publications_for_title_ids(conn, title_ids):
     """
     Given a list/iterable of title_ids, return a list of PubDetails
+    ... What are "PubDetails", they aren't referenced anywhere in the code except here ...
+
+    This returns a list of dicts (for now)
 
     Intended use case is that title_ids are author/title variants of the same
     fundamental story (or in theory non-fiction, art etc), but probably you
@@ -84,7 +87,7 @@ def get_publications_for_title_ids(conn, title_ids):
 
     results = []
     for r in raw_results:
-        new_r = dict(r)
+        new_r = dict(r._mapping)
         if r.pub_ctype == 'MAGAZINE':
             # new_r.append(get_title_editor_for_pub_id(conn, r.pub_id))
             mag_stuff = get_title_editor_for_pub_id(conn, r.pub_id)
