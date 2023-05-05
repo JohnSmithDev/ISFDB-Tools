@@ -25,6 +25,7 @@ from isfdb_utils import convert_dateish_to_date
 from author_aliases import (get_author_aliases, AuthorIdAndName,
                             get_real_author_id_and_name)
 from award_related import extract_authors_from_author_field
+from custom_exceptions import BookNotFoundError
 
 AuthorBook = namedtuple('AuthorBook', 'author, book')
 
@@ -414,3 +415,31 @@ def get_definitive_authors(conn, book):
 
     return author_bits
 
+
+def get_exact_matching_title(conn, author, title, title_types=None):
+    """
+    A bog standard search that doesn't try to do anything clever.  Might be
+    worth trying this before getting into the pain or author and/or title
+    variants.
+
+    TODO: support language, for cases where the translation has the same title
+    as the original
+    """
+
+    if not title_types:
+        title_types = DEFAULT_TITLE_TYPES
+
+    query = text("""SELECT DISTINCT a.author_id, t.title_id
+    FROM titles t
+    LEFT OUTER JOIN canonical_author ca ON ca.title_id = t.title_id
+    LEFT OUTER JOIN authors a ON a.author_id = ca.author_id
+    WHERE t.title_title = :title
+    AND a.author_canonical = :author
+    AND t.title_ttype IN :title_types;""")
+
+    params = {'title': title, 'author': author, 'title_types': title_types}
+
+    results = conn.execute(query, params).fetchall()
+    if not results:
+        raise BookNotFoundError(f'Could not find book "{title}" by {author}')
+    return results
