@@ -324,7 +324,9 @@ def get_real_author_id_and_name_from_name(conn, pseudonym):
         query2 = text("""SELECT author_id, author_canonical name
         FROM authors
         WHERE author_canonical = :pseudonym""")
-        results2 = conn.execute(query2, pseudonym=pseudonym).fetchone()
+        params = {'pseudonym': pseudonym}
+        results2 = conn.execute(query2, params).fetchone()
+
         # print(pseudonym, results2, results2.author_id, results2.name)
         if results2:
             return [AuthorIdAndName(results2.author_id, results2.name)]
@@ -340,6 +342,8 @@ def get_author_name(conn, author_id):
     has been created as a testbed for understanding differences in returned values
     for non-ASCII names that I'm seeing on different machines (with different
     versions of Python, MariaDB, etc).
+
+    Note that this won't actually do anything with the aliases/pseudonyms!
     """
     query = text("""SELECT author_canonical
     FROM authors
