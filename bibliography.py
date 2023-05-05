@@ -104,22 +104,22 @@ class BookByAuthor(object):
     def __init__(self, row,
                  allow_duplicates=False):
         # Q: I don't see that allow_duplicates is ever used?
-        self.title_id = row['title_id']
-        self.parent_id = row['title_parent']
-        self.title_title = row['title_title'] # Use the .title property over this
-        self.title_ttype = row['title_ttype']
+        self.title_id = row.title_id
+        self.parent_id = row.title_parent
+        self.title_title = row.title_title # Use the .title property over this (not sure what this means?)
+        self.title_ttype = row.title_ttype
 
-        self.copyright_date = convert_dateish_to_date(row['t_copyright'])
+        self.copyright_date = convert_dateish_to_date(row.t_copyright)
         self._copyright_dates = [self.copyright_date]
 
-        self.pub_id = row['pub_id']
-        self.pub_title = row['pub_title']
-        self.publication_date = convert_dateish_to_date(row['p_publication_date'])
+        self.pub_id = row.pub_id
+        self.pub_title = row.pub_title
+        self.publication_date = convert_dateish_to_date(row.p_publication_date)
         self._publication_dates = [self.publication_date]
-        self.isbns = [row['pub_isbn']]
-        self.pub_ctype = row['pub_ctype'] # e.g. This could be COLLECTION/ANTHOLOGY for title=NOVEL
+        self.isbns = [row.pub_isbn]
+        self.pub_ctype = row.pub_ctype # e.g. This could be COLLECTION/ANTHOLOGY for title=NOVEL
 
-        pn = row['publisher_name']
+        pn = row.publisher_name
         sanitised_publisher = REVERSE_PUBLISHER_VARIANTS.get(pn, pn)
         self.publishers = {sanitised_publisher}
 
@@ -129,20 +129,20 @@ class BookByAuthor(object):
         #    dupes.
         if self.title_ttype != self.pub_ctype:
             logging.debug(f'REPACK {self.title_title} {self.title_ttype} '
-                          f'{self.pub_title} {row["pub_ctype"]}')
+                          f'{self.pub_title} {row.pub_ctype}')
             self._repackagings = {Repackaging(self.pub_title, self.pub_ctype,
                                               self.publication_date)}
             valid_titles = {self.title_title}
         else:
             logging.debug(f'= {self.title_title}, {self.title_id}, {self.title_ttype}, '
-                          f'{self.pub_title}, {row["pub_ctype"]}')
+                          f'{self.pub_title}, {row.pub_ctype}')
             self._repackagings = set()
             valid_titles = {z for z in [self.title_title, self.pub_title] if z}
 
         self._titles = Counter(valid_titles)
 
         self.pub_stuff = PubStuff(self.pub_id, self.publication_date,
-                                  row['pub_ptype'], row['pub_price'], sanitised_publisher)
+                                  row.pub_ptype, row.pub_price, sanitised_publisher)
         self.all_pub_stuff = [self.pub_stuff]
 
 

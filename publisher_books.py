@@ -70,13 +70,13 @@ class InvalidCountryError(Exception):
 
 
 class Publication(object):
-    def __init__(self, value_dict, valid_countries=None, reference=None):
+    def __init__(self, value_obj, valid_countries=None, reference=None):
         self.reference = reference
-        self.pub_id = value_dict['pub_id']
-        self.publication_date = convert_dateish_to_date(value_dict['pub_dateish'])
-        self.format = value_dict['pub_ptype']
-        self.price = value_dict['pub_price']
-        self.isbn = value_dict['pub_isbn']
+        self.pub_id = value_obj.pub_id
+        self.publication_date = convert_dateish_to_date(value_obj.pub_dateish)
+        self.format = value_obj.pub_ptype
+        self.price = value_obj.pub_price
+        self.isbn = value_obj.pub_isbn
         if valid_countries:
             if self.country and self.country not in valid_countries:
                 raise InvalidCountryError('Price %s is not valid for country %s' %
