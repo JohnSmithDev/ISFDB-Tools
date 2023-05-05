@@ -1,3 +1,6 @@
 [submodule "country-codes"]
 	path = country-codes
 	url = https://github.com/datasets/country-codes.git
+[submodule "human-names"]
+	path = human-names
+	url = https://github.com/AlessandroMinoccheri/human-names
