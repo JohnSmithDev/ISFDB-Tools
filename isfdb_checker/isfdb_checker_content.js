@@ -11,7 +11,9 @@
 
 var options = {}; // Is it safe/preferable/avoidable to have this as a global?
 
-const serverUrl = "http://127.0.0.1:5000";
+// const serverUrl = "http://127.0.0.1:5000";
+// const serverUrl = "https://127.0.0.1:5000"; // This now works
+const serverUrl = "https://isfdbchecker:5000"; // This now works
 // const serverUrl = "http://isfdbchecker:5000"; // TODO: proper config options
 
 
