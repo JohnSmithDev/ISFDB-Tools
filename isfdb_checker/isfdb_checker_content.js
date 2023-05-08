@@ -238,6 +238,36 @@ function isAmazonISBNSearch(urlArg) {
     return sanitisedVal;
 }
 
+function newBookshopDotOrgPattern(urlArg) {
+    /*
+      Given a URL, return an ISBN if this is a new (April 2023?) bookshop.org URL,
+      else null or some other falsey value.
+
+      As of April 2023 ish, uk.bookshop.org has switched from URLs like
+       https://uk.bookshop.org/books/the-magic-faraway-tree-a-new-adventure/9781444963410
+      to
+       https://uk.bookshop.org/p/books/the-magic-faraway-tree-a-new-adventure-jacqueline-wilson/5733507?ean=9781444963380
+      (and the former URLs now 404, although that's not pertinent here)
+      The new URLs aren't extracted by the default algorithm.
+
+      I think there's a publisher site (Penguin or HC maybe?) that has something similar, in
+      which case this could be made more generic/flexible in the hostname check.
+    */
+    let url = urlArg;
+    if (typeof urlArg == 'string') {
+        url = new URL(urlArg);
+    }
+    if (url.hostname.search("bookshop.org") < 0) {
+        return null;
+    }
+    const ean = url.searchParams.get('ean'); // Returns null if no ean value
+    if (ean && ((ean.length == 10) || (ean.length == 13))) {
+        return ean;
+    } else {
+        return null;
+    }
+
+}
 
 function extractIdFromURL(urlArg) {
     /** Given a URL, return any embedded ISBN or ASIN, or null if no ID could be
@@ -319,14 +349,8 @@ function extractIdFromURL(urlArg) {
         }
     }
 
-    // Special cases
-    const amazonSearchISBN = isAmazonISBNSearch(url);
-    if (amazonSearchISBN) {
-        return amazonSearchISBN;
-    }
-
-    // clog("Returning null for " + urlArg);
-    return null;
+    // Special cases - will return null if none are any good
+    return isAmazonISBNSearch(url) || newBookshopDotOrgPattern(url);
 }
 
 
