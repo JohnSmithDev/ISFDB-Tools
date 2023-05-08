@@ -11,6 +11,10 @@
 
 var options = {}; // Is it safe/preferable/avoidable to have this as a global?
 
+const serverUrl = "http://127.0.0.1:5000";
+// const serverUrl = "http://isfdbchecker:5000"; // TODO: proper config options
+
+
 function clog(txt) {
     console.log("isfdb_checker_content.js: " + txt);
 }
@@ -461,7 +465,8 @@ function sendLinksToBackgroundScript() {
     if (modifiedLinkCount > 0) {
         sendBatchCheckRequestsToServer(Object.keys(id2LinkEls),
                                    callback2,
-                                   "http://127.0.0.1:5000");
+                                   serverUrl);
+
     }
 
 }
