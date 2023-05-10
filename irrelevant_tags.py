@@ -37,6 +37,7 @@ ISFDB_IRRELEVANT_TAGS = {
     "biography and true stories / true stories / true crime",
     "biography and true stories / biography: general / biography: historical",
     "autobiography: science",
+    "business & industry biographies",
 
     "business strategy", "business & management", "business",
     "business/economics", "economic history", "economics: professional & general",
@@ -54,6 +55,7 @@ ISFDB_IRRELEVANT_TAGS = {
     "anf: business and management",
     "popular economics",
     "macroeconomics",
+    "entrepreneurship",
 
     "car racing", "automobile racing", "motor sports", "formula 1 & grand prix",
 
@@ -112,6 +114,8 @@ ISFDB_IRRELEVANT_TAGS = {
     "ecosystems & habitats",
     "nature / ecosystems & habitats / mountains",
     "nature / ecosystems & habitats / rivers",
+    "the environment", "conservation of the environment",
+    "pollution & threats to the environment",
 
     "entertainment & performing arts", "other performing arts",
 
@@ -120,6 +124,7 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "fiction / romance / historical / 20th century",
     "fiction and related items / historical fiction",
+    "historical romance", "sagas",
     "fiction / historical / general", "fiction / historical / world war ii",
     "fiction: general & literary",
     "fiction / general",
@@ -329,6 +334,8 @@ ISFDB_IRRELEVANT_TAGS = {
     "science / physics / quantum theory",
     "science / physics / general",
     "science/research & methodology",
+    "botany & plant sciences", "mycology / fungi (non-medical)", "biology / life sciences",
+    "zoology & animal sciences", "science, technology & medicine",
 
     "life sciences",
     "life sciences - general",
