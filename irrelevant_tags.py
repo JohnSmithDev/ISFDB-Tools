@@ -38,6 +38,7 @@ ISFDB_IRRELEVANT_TAGS = {
     "biography and true stories / biography: general / biography: historical",
     "autobiography: science",
     "business & industry biographies",
+    "historical, political & military biographies",
 
     "business strategy", "business & management", "business",
     "business/economics", "economic history", "economics: professional & general",
@@ -116,6 +117,9 @@ ISFDB_IRRELEVANT_TAGS = {
     "nature / ecosystems & habitats / rivers",
     "the environment", "conservation of the environment",
     "pollution & threats to the environment",
+    "botany & plant sciences", "zoology & animal sciences",
+    "biology / life sciences", "mycology / fungi (non-medical)",
+    "food & society",
 
     "entertainment & performing arts", "other performing arts",
 
@@ -140,7 +144,7 @@ ISFDB_IRRELEVANT_TAGS = {
     "games / trivia",
     "sport and leisure / hobbies",
 
-    "great britain/british isles",
+    "great britain/british isles", "britain & ireland",
 
     "health & fitness / healthy living", "health & fitness / longetivity",
     "health & fitness / women's health", "health & fitness / pregnancy & childbirth",
@@ -161,6 +165,8 @@ ISFDB_IRRELEVANT_TAGS = {
     "postwar 20th century history",
     "history / expeditions & discoveries",
     "history / essays",
+    "20th century history: 1900 to 2000",
+    "early modern history: 1500 to 1700",
 
     "british & irish history", "history / europe / great britain",
     "history / europe / ireland",
@@ -241,6 +247,7 @@ ISFDB_IRRELEVANT_TAGS = {
     "history / military / general", "history / military / special forces",
     "military / korean war", "war & defence operations",
     "history / military / world war ii", "history / military / world war i",
+    "aerospace & aviation technology", "post-ww2 conflicts",
 
 
     "music / individual composer & musician", "rock & pop music",
@@ -293,6 +300,8 @@ ISFDB_IRRELEVANT_TAGS = {
     "political activism",
     "comparative politics",
     "politics, society & education",
+    "social theory", "globalisation",
+    "democracy",
 
     "great britain/politics and government",
     "american government", "government & constitution",
@@ -365,6 +374,9 @@ ISFDB_IRRELEVANT_TAGS = {
 
     "spiritualism", "self-help",
     "mind & spirit: mindfulness & meditation",
+
+    "sports training & coaching", "sports books",
+    "sports psychology", "the sports book awards",
 
     "teaching staff", "secondary schools", "classroom management",
     "teaching skills & techniques", "study & teaching",
