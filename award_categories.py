@@ -85,18 +85,7 @@ class AwardCategory(object):
 
     @property
     def pretty_year_range(self):
-        if self.year_from == self.year_to:
-            year_bit = self.year_from
-        else:
-            if self.year_to == this_year:
-                # This logic is maybe dubious if this year's awards
-                # haven't been nominated/presented yet - but I don't know
-                # how we could discriminate between that, and a category
-                # which finished last year.
-                year_bit = '%s-present' % (self.year_from)
-            else:
-                year_bit = '%d-%d' % (self.year_from, self.year_to)
-        return year_bit
+        return render_year_ranges(self.all_years)
 
     def __repr__(self):
         return '%s %s running %s' % (self.award, self.category,
@@ -150,8 +139,7 @@ if __name__ == '__main__':
             print()
         print('= %s =' % (award))
         for cat in cats:
-            year_bit = render_year_ranges(cat.all_years)
-            print('* %s (%s)' % (cat.category, year_bit))
+            print('* %s [%s]' % (cat.category, cat.pretty_year_range))
 
 
 
