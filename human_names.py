@@ -22,20 +22,25 @@ import sys
 LANGUAGES = os.environ.get('HUMAN_NAMES_LANGUAGES') or ('en',)
 gendered_names = defaultdict(set)
 
-HNR_DIR = os.environ.get('HUMAN_NAMES_REPO_DIR')
-if not HNR_DIR:
-    logging.warning('Environment variable HUMAN_NAMES_REPO_DIR not set')
-else:
-    for gender in ('female', 'male'):
-        for lang in LANGUAGES:
-            fn = os.path.join(HNR_DIR, 'data',
-                              '%s-human-names-%s.json' % (gender, lang))
-            with open(fn) as inputstream:
-                name_list = json.load(inputstream)
-                gendered_names[gender].update(name_list)
+hnr_base_dir = os.environ.get('HUMAN_NAMES_REPO_DIR')
+if not hnr_base_dir:
+    hnr_base_dir = os.path.join(os.path.dirname(__file__), 'human-names')
+hnr_data_dir = os.path.join(hnr_base_dir, 'data')
+if not os.path.exists(hnr_data_dir):
+    raise FileNotFoundError('No human-names data directory found, '
+                            'try setting HUMAN_NAMES_REPO_DIR and/or '
+                            'checking out the human-names repo/submodule')
 
-    gendered_names['male-only'] = gendered_names['male'].difference(gendered_names['female'])
-    gendered_names['female-only'] = gendered_names['female'].difference(gendered_names['male'])
+for gender in ('female', 'male'):
+    for lang in LANGUAGES:
+        fn = os.path.join(hnr_data_dir,
+                          '%s-human-names-%s.json' % (gender, lang))
+        with open(fn) as inputstream:
+            name_list = json.load(inputstream)
+            gendered_names[gender].update(name_list)
+
+gendered_names['male-only'] = gendered_names['male'].difference(gendered_names['female'])
+gendered_names['female-only'] = gendered_names['female'].difference(gendered_names['male'])
 
 
 def derive_gender_from_name(name, strict=True):
