@@ -13,13 +13,20 @@ from sqlalchemy.sql import text
 
 from common import get_connection, parse_args, get_filters_and_params_from_args
 
-def render_year_ranges(year_list_string, range_link='-', range_separator=', '):
-    """
-    Given a string list of comma separated years or dates, return a prettier string of the
-    distinct ranges e.g.
+def convert_list_string_to_unique_years(year_list_string):
+    unique_pseudo_dates = set(year_list_string.split(','))
+    years = sorted([int(z.split('-')[0]) for z in unique_pseudo_dates if z])
+    return years
 
-    >>>> render_year_ranges('2000,2005,2006,2008,2015,2016')
+
+def render_year_ranges(years, range_link='-', range_separator=', '):
+    """
+    Given an iterable of sorted years, return a prettier string of the distinct ranges e.g.
+
+    >>>> render_year_ranges([2000,2005,2006,2008,2015,2016])
     '2000,2005-2008,2015-2016'
+
+    Use convert_list_string_to_unique_years() to preprocess the data first if necessary)
     """
 
     # This probably works, except that MySQL truncates GROUP_CONCAT to 1024 chars.
@@ -33,13 +40,6 @@ def render_year_ranges(year_list_string, range_link='-', range_separator=', '):
     # Although re-reading the docs, you can do GROUP_CONCAT(DISTINCT ...) which should
     # avoid the problem for any version.
 
-
-    #print(len(year_list_string))
-    unique_pseudo_dates = set(year_list_string.split(','))
-    years = sorted([int(z.split('-')[0]) for z in unique_pseudo_dates if z])
-    # I thought I had a nice function elsewhere to do the next bit,
-    # but I can't find it (or the code that I have found is much less nice
-    # than I thought...)
     if len(years) == 0:
         return ''
     if len(years) == 1:
@@ -84,8 +84,15 @@ class AwardCategory(object):
         pass # TODO
 
     @property
+    def numeric_years(self):
+        """
+        Return the years as a sorted list of ints with no dupes
+        """
+        return convert_list_string_to_unique_years(self.all_years)
+
+    @property
     def pretty_year_range(self):
-        return render_year_ranges(self.all_years)
+        return render_year_ranges(self.numeric_years)
 
     def __repr__(self):
         return '%s %s running %s' % (self.award, self.category,
@@ -134,12 +141,25 @@ if __name__ == '__main__':
                       supported_args='cwy')
     conn = get_connection()
     results = get_award_categories(conn, args)
+
+    min_year = 9999
+    max_year = -9999
+    all_years = set()
+
     for i, (award, cats) in enumerate(results):
         if i > 0:
             print()
         print('= %s =' % (award))
         for cat in cats:
             print('* %s [%s]' % (cat.category, cat.pretty_year_range))
+            min_year = min(cat.year_from, min_year)
+            max_year = max(cat.year_to, max_year)
+            all_years.update(cat.numeric_years)
 
+    potential_years = set(range(min_year, max_year))
+    missing_years = potential_years - all_years # set difference
 
+    if missing_years:
+        missing_string = render_year_ranges(sorted(missing_years))
+        print(f'\n# There are no awards on record for the years {missing_string}')
 
