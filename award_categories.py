@@ -19,10 +19,10 @@ class AwardCategory(object):
     """
 
     def __init__(self, row):
-        self.award = row['award_type_name']
-        self.category = row['award_cat_name']
-        self.year_from = row['from_year']
-        self.year_to = row['to_year']
+        self.award = row.award_type_name
+        self.category = row.award_cat_name
+        self.year_from = row.from_year
+        self.year_to = row.to_year
 
     @property
     def isfdb_url(self):
@@ -64,7 +64,7 @@ def get_award_categories(conn, args):
        ORDER BY award_type_name, award_cat_name
        """ % fltr)
     # print(query)
-    results = conn.execute(query, **params).fetchall()
+    results = conn.execute(query, params).fetchall()
 
     # Could this conversion be done more pythonically? (zip, itertools perhaps?)
     raw_dict = defaultdict(list)
