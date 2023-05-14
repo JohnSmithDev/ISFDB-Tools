@@ -13,6 +13,60 @@ from sqlalchemy.sql import text
 
 from common import get_connection, parse_args, get_filters_and_params_from_args
 
+def render_year_ranges(year_list_string, range_link='-', range_separator=', '):
+    """
+    Given a string list of comma separated years or dates, return a prettier string of the
+    distinct ranges e.g.
+
+    >>>> render_year_ranges('2000,2005,2006,2008,2015,2016')
+    '2000,2005-2008,2015-2016'
+    """
+
+    # This probably works, except that MySQL truncates GROUP_CONCAT to 1024 chars.
+    # (Bear in mind the query will return one date/year for each finalist, so whilst you
+    # might have ~50 distinct years for long running awards, that needs multiplying by the
+    # number of finalists (5 say) and then by the string length)
+    # Can be overridden at a system/session level, but not really viable here?
+    # https://dev.mysql.com/doc/refman/8.0/en/group-by-functions.html#function_group-concat
+    # Update has been massively increased to 1M in MariaDB 10.2.4 per
+    # https://database.guide/mariadb-group_concat/
+    # Although re-reading the docs, you can do GROUP_CONCAT(DISTINCT ...) which should
+    # avoid the problem for any version.
+
+
+    #print(len(year_list_string))
+    unique_pseudo_dates = set(year_list_string.split(','))
+    years = sorted([int(z.split('-')[0]) for z in unique_pseudo_dates if z])
+    # I thought I had a nice function elsewhere to do the next bit,
+    # but I can't find it (or the code that I have found is much less nice
+    # than I thought...)
+    if len(years) == 0:
+        return ''
+    if len(years) == 1:
+        return '%s' % (years[0])
+    bits = []
+    prev = range_start = years[0]
+    in_range = False
+    for this_year in years[1:]:
+        if this_year == prev + 1:
+            prev = this_year
+            in_range = True
+        else:
+            if in_range:
+                bits.append('%d%s%d' % (range_start, range_link, prev))
+            else:
+                bits.append('%d' % (range_start))
+            range_start = prev = this_year
+            in_range = False
+
+    if in_range:
+        bits.append('%d%s%d' % (range_start, range_link, prev))
+    else:
+        bits.append('%d' % (range_start))
+    ret = (range_separator.join(bits))
+    return ret
+
+
 class AwardCategory(object):
     """
     Basically a namedtuple with a nicer __repr__ and some derived properties
@@ -23,6 +77,7 @@ class AwardCategory(object):
         self.category = row.award_cat_name
         self.year_from = row.from_year
         self.year_to = row.to_year
+        self.all_years = row.all_years
 
     @property
     def isfdb_url(self):
@@ -53,9 +108,9 @@ def get_award_categories(conn, args):
     """
     fltr, params = get_filters_and_params_from_args(args)
 
-    query = text("""SELECT  award_type_name, award_cat_name,
-         MIN(YEAR(award_year)) from_year, MAX(YEAR(award_year)) to_year
-         -- GROUP_CONCAT(CAST(award_year AS CHAR) SEPARATOR ',') years
+    query = text("""SELECT award_type_name, award_cat_name,
+         MIN(YEAR(award_year)) from_year, MAX(YEAR(award_year)) to_year,
+         GROUP_CONCAT(DISTINCT CAST(YEAR(award_year) AS CHAR) SEPARATOR ',') all_years
        FROM awards a
          LEFT OUTER JOIN award_types at ON at.award_type_id = a.award_type_id
          LEFT OUTER JOIN award_cats ac ON ac.award_cat_id = a.award_cat_id
@@ -81,41 +136,6 @@ def get_award_categories(conn, args):
     ret = sorted(raw_dict.items())
     return ret
 
-def render_year_ranges(year_list_string):
-    # This probabky works, except that MySQL truncates GROUP_CONCAT to 1024 chars.
-    # Can be overridden at a system/session level, but not really viable here?
-    # https://dev.mysql.com/doc/refman/8.0/en/group-by-functions.html#function_group-concat
-    # print(len(year_list_string))
-    unique_pseudo_dates = set(year_list_string.split(','))
-    years = sorted([int(z.split('-')[0]) for z in unique_pseudo_dates])
-    # I thought I had a nice function elsewhere to do the next bit,
-    # but I can't find it (or the code that I have found is much less nice
-    # than I thought...)
-    if len(years) == 1:
-        return '%s' % (years[0])
-    # print(years)
-    bits = []
-    prev = range_start = years[0]
-    in_range = False
-    for this_year in years[1:]:
-        if this_year == prev + 1:
-            prev = this_year
-            in_range = True
-        else:
-            if in_range:
-                bits.append('%d-%d' % (range_start, prev))
-            else:
-                bits.append('%d' % (range_start))
-            range_start = prev = this_year
-            in_range = False
-
-    if in_range:
-        bits.append('%d-%d' % (range_start, prev))
-    else:
-        bits.append('%d' % (range_start))
-    ret = (','.join(bits))
-    # print(ret)
-    return ret
 
 
 if __name__ == '__main__':
@@ -130,8 +150,8 @@ if __name__ == '__main__':
             print()
         print('= %s =' % (award))
         for cat in cats:
-            # year_bit = render_year_ranges(cat[1])
-            print('* %s (%s)' % (cat.category, cat.pretty_year_range))
+            year_bit = render_year_ranges(cat.all_years)
+            print('* %s (%s)' % (cat.category, year_bit))
 
 
 
