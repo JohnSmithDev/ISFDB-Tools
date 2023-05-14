@@ -4,3 +4,4 @@ country_hacks/
 download_cache/
 download_cache
 hacks/
+*.pem
