@@ -35,7 +35,7 @@ def get_ids_from_goodreads_id(conn, gr_id):
                                    'gr_id_id': GOODREADS_ID_ID})
     ret = []
     for row in results:
-        ret.append(dict(row))
+        ret.append(row._mapping)
     if not ret:
         raise BookNotFoundError(f'Goodreads ID {gr_id} is not known to ISFDB')
     return ret
