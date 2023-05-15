@@ -128,7 +128,7 @@ def fetch_title_details(conn, fltr, params, extra_col_str):
     #print(query)
     #print(params)
 
-    return conn.execute(query, **params).fetchall()
+    return conn.execute(query, params).fetchall()
 
 
 
@@ -175,8 +175,8 @@ def get_title_details_from_id(conn, title_id, extra_columns=None,
     results = conn.execute(query, {'title_id': title_id}).fetchall()
     if results:
         res = results[0]
-        if res['title_parent'] and parent_search_depth:
-            return get_title_details_from_id(conn, res['title_parent'],
+        if res.title_parent and parent_search_depth:
+            return get_title_details_from_id(conn, res.title_parent,
                                              extra_columns=extra_columns,
                                              parent_search_depth=parent_search_depth-1)
         return res
@@ -193,7 +193,7 @@ def postprocess_titles(title_rows):
     results = list(title_rows)
     # print(results)
     #title_ids = set([z[0] for z in results])
-    title_ids = set([z['title_id'] for z in results])
+    title_ids = set([z.title_id for z in results])
     ret = []
     for bits in results:
         # Exclude rows that have a parent that is in the results (I think these
@@ -212,7 +212,7 @@ def postprocess_titles(title_rows):
         # http://www.isfdb.org/wiki/index.php/Schema:titles isn't much help
 
         # TODO: merge these into the returned results
-        if not bits['title_parent'] and bits['title_parent'] not in title_ids:
+        if not bits.title_parent and bits.title_parent not in title_ids:
             ret.append(bits)
     # print(ret)
     return ret
