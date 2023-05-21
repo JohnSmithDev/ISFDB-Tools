@@ -68,8 +68,8 @@ class PublicationDetails(object):
 
 
 def create_publication_details_from_row(row):
-    return PublicationDetails(row['type'], row['format'],
-                              row['dateish'], row['isbn'])
+    return PublicationDetails(row.type, row.format,
+                              row.dateish, row.isbn)
 
 
 def _get_publications(conn, title_ids, verbose=False, allowed_ctypes=None):
@@ -91,8 +91,9 @@ def _get_publications(conn, title_ids, verbose=False, allowed_ctypes=None):
       LEFT OUTER JOIN pubs p ON p.pub_id = pc.pub_id
       WHERE %s
         ORDER BY p.pub_year""" % (' AND '.join(fltrs)))
-    results = conn.execute(query, title_ids=title_ids,
-                           allowed_ctypes=allowed_ctypes)
+    query_params = {'title_ids': title_ids,
+                    'allowed_ctypes': allowed_ctypes}
+    results = conn.execute(query, query_params)
     return results
 
 
@@ -111,12 +112,12 @@ def get_publications_by_country(conn, title_ids, verbose=False, allowed_ctypes=N
     ret = defaultdict(list)
     for row in rows:
         # print(row['pub_price'])
-        ref = 'title_id=%d,ISBN=%s' % (row['title_id'], row['isbn'])
-        country = derive_country_from_price(row['price'], ref=ref)
+        ref = 'title_id=%d,ISBN=%s' % (row.title_id, row.isbn)
+        country = derive_country_from_price(row.price, ref=ref)
         if not country:
             if verbose:
                 logging.warning('Unable to derive country fom price "%s"' %
-                                row['price'])
+                                row.price)
             country = UNKNOWN_COUNTRY
         ret[country].append(create_publication_details_from_row(row))
     return ret
