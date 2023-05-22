@@ -63,21 +63,21 @@ class ReviewedWork(object):
     _known_keys = {}
 
     def __init__(self, row, allow_duplicates=RepeatReviewBehaviour.ALLOW):
-        self.title = row['work_title']
-        self.authors = {row['work_author']}
-        self.title_id = row['work_id']
-        self.pub_id = row['pub_id']
-        self.review_month = normalize_month(convert_dateish_to_date(row['review_month']))
+        self.title = row.work_title
+        self.authors = {row.work_author}
+        self.title_id = row.work_id
+        self.pub_id = row.pub_id
+        self.review_month = normalize_month(convert_dateish_to_date(row.review_month))
         if self.review_month is None:
             # Maybe another review in this issue has the date?
             fallback = pub_months.get(row['pub_id'], None)
             logging.warning('Undefined review month for %s (review.title_id=%d,'
                             'work.title_id=%d), using fallback %s' %
-                            (self.title, row['title_id'], self.title_id,
+                            (self.title, row.title_id, self.title_id,
                              fallback))
             self.review_month = fallback
         else:
-            pub_months[row['pub_id']] = self.review_month
+            pub_months[row.pub_id] = self.review_month
 
         if allow_duplicates != RepeatReviewBehaviour.ALLOW:
             if allow_duplicates == RepeatReviewBehaviour.DIFFERENT_MONTHS_ONLY:
@@ -112,12 +112,11 @@ class ReviewedWork(object):
                                                          self.review_month)
 
 
-
-
-def get_reviews(conn, args, repeats=RepeatReviewBehaviour.DIFFERENT_MONTHS_ONLY):
-    fltr, params = get_filters_and_params_from_args(
-        args, column_name_mappings={'year': 'pub_year'})
-
+def _get_reviews(conn, magazine, fltr, params, repeats):
+    """
+    The core of get_reviews(), but without the dependency on a proper Arguments object, to
+    make it easier for testing
+    """
 
     # r_t.title_title and w_t.title_title are probably the same, however
     # they could be different e.g.
@@ -152,8 +151,8 @@ WHERE pub_id IN (
 """ % fltr)
     params['review_ttypes'] = REVIEW_TTYPES_OF_INTEREST
     params['work_ttypes'] = WORK_TTYPES_OF_INTEREST
-    params['magazine'] = args.magazine
-    results = conn.execute(query, **params).fetchall()
+    params['magazine'] = magazine
+    results = conn.execute(query, params).fetchall()
 
     def make_list_excluding_duplicates(accumulator, new_value):
         if not accumulator:
@@ -166,7 +165,13 @@ WHERE pub_id IN (
         return accumulator
 
     reviews = reduce(make_list_excluding_duplicates, results, None)
-    return sorted(reviews, key=lambda z: z.review_month)
+    return sorted(reviews, key=lambda z: (z.review_month, z.title))
+
+def get_reviews(conn, args, repeats=RepeatReviewBehaviour.DIFFERENT_MONTHS_ONLY):
+    fltr, params = get_filters_and_params_from_args(
+        args, column_name_mappings={'year': 'pub_year'})
+
+    return _get_reviews(conn, args.magazine, fltr, params, repeats)
 
 
 if __name__ == '__main__':
