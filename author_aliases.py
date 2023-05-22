@@ -83,7 +83,7 @@ def get_author_aliases(conn, author, search_for_additional_pseudonyms=True):
                 logging.warning('Not sure if %s or %s is the primary name?!' %
                                 (primary_name, row.name3))
             else:
-                primary_name = row['name3']
+                primary_name = row.name3
         for col in ('name1', 'name2', 'name3'):
             if row._mapping[col]:
                 ret.add(row._mapping[col])
