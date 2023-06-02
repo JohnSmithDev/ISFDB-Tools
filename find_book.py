@@ -17,26 +17,43 @@ from collections import defaultdict, namedtuple
 from datetime import datetime
 # from functools import reduce, lru_cache
 import pdb
-import sys
+# import sys
 
 from sqlalchemy.sql import text
 
 from common import (get_connection, parse_args, AmbiguousArgumentsError)
 from author_aliases import (get_author_alias_ids)
-from title_related import get_title_details
+from title_related import (get_title_details, get_exact_matching_title)
+from custom_exceptions import BookNotFoundError
 
-class BookNotFoundError(Exception):
+
+class BookNotFoundErrorXXX(Exception):
     pass
 
 AuthorAndTitleIds = namedtuple('AuthorAndTitleIds', 'author_id, title_id')
 
+PUBLISHED_TITLE_TYPES = ['NOVEL', 'CHAPBOOK', 'ANTHOLOGY', 'COLLECTION']
+# Maybe magazine too?
 
-def find_book_for_author_and_title(conn, author, title):
+
+def find_book_for_author_and_title(conn, author, title, title_types=None):
     """
     Return a list of tuple of (author_id, title_id) for matching book(s).
-
-    TODO: optional filtering for certain types of title
     """
+    if not title_types:
+        title_types = PUBLISHED_TITLE_TYPES
+
+    # Try the bog standard search first
+    # (This is a hack due to bug in get_title_details() for Ted Chiang's Arrival
+    # collection)
+    try:
+        results = get_exact_matching_title(conn, author, title, title_types)
+        ret = []
+        for row in results:
+            ret.append(AuthorAndTitleIds(row.author_id, row.title_id))
+        return ret
+    except BookNotFoundError:
+        pass
 
     # Q: How much does this replicate discover_title_details() in title_related?
 
@@ -45,6 +62,7 @@ def find_book_for_author_and_title(conn, author, title):
     # Get title IDs.
     title_filter_args = parse_args(['-T', title], description='whatever')
     title_list = get_title_details(conn, title_filter_args,
+                                   title_types=title_types,
                                    extra_columns=['a.author_id'])
 
     if alias_ids and title_list:
@@ -71,6 +89,7 @@ def find_book_for_author_and_title(conn, author, title):
 if __name__ == '__main__':
     conn = get_connection()
 
+    HACKS = """
     # ret = find_book_for_author_and_title(conn, 'Alastair Reynolds', 'Revenger')
     # print(ret)
 
@@ -79,4 +98,10 @@ if __name__ == '__main__':
 
     ret = find_book_for_author_and_title(conn, 'C.L. Moore', 'Doomsday Morning')
     # ISFDB has "C. L. Moore"
+    print(ret)
+    """
+    import sys
+    author = sys.argv[1]
+    title = sys.argv[2]
+    ret = find_book_for_author_and_title(conn, author, title)
     print(ret)
