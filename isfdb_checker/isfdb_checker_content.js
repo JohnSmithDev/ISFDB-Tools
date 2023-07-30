@@ -9,8 +9,15 @@
 
 "use strict";
 
-var options = {}; // Is it safe/preferable/avoidable to have this as a global?
+/* Define values here in the short term; medium term there should be a proper configuration
+   page */
+var options = {
+    "serverUrl": "https://kyiv:5000",
+    "ignoredDomains": ["weibo.com", "s.weibo.com"]
+}; // Is it safe/preferable/avoidable to have this as a global?
 
+
+/* TODO: deprecate use of serverUrl in favour of options.serverUrl */
 // const serverUrl = "http://127.0.0.1:5000";
 // const serverUrl = "https://127.0.0.1:5000"; // This now works
 const serverUrl = "https://isfdbchecker:5000"; // This now works
@@ -28,7 +35,13 @@ function cdir(obj) {
     console.dir(obj);
 }
 
-/* Known false positives that shouldn't be highlighted */
+/* Known false positives that shouldn't be highlighted
+   TODO: move this into options object
+   This is slightly different from options.ignoredDomains:
+   * If the page is on one of the ignoredDomains, no links will be checked
+   * PATTERNS_TO_IGNORE applies to the individual links on any web page; the code will not
+     get as far as checking those if the ignoredDomains logic bailed out first
+     */
 const PATTERNS_TO_IGNORE = [
     /* I don't think Goodreads uses ISBNs or ASINs anywhere (except maybe in
        search results pages if you searched on them?), and has 10-digit IDs
@@ -37,7 +50,7 @@ const PATTERNS_TO_IGNORE = [
 ];
 
 
-function sendDownloadRequest(url) {
+function XXXsendDownloadRequest(url) {
     /* NB: the options.subaction=resave doesn't currently have any effect,
        due to poor control of the saved filename across browsers (see comments
        in the download() function.  Maybe one day we can support it? */
@@ -77,7 +90,7 @@ function sendGenericMessage(req) {
 
 
 
-function savePageViaExternalServer(server, extraHeaders) {
+function XXXsavePageViaExternalServer(server, extraHeaders) {
     /* Seems like documentElement.outerHTML omits the doctype -
        it's in document.doctype, perhaps we could pass it some other way.
        NB: that's an object, use the .name property
@@ -178,9 +191,9 @@ function sendBatchCheckRequestsToServer(idsToCheck, callback, server, extraHeade
 
 }
 
+/*
 
-
-function isPageToBeDownloaded(url) {
+function XXXisPageToBeDownloaded(url) {
     if (options.site_patterns) {
         return options.site_patterns.some( function checkSitePattern(sp) {
             return sp.doesDomainMatch(document.domain) &&
@@ -192,6 +205,7 @@ function isPageToBeDownloaded(url) {
     }
 }
 
+*/
 
 
 function isAmazonISBNSearch(urlArg) {
@@ -528,6 +542,14 @@ function insertStyles(doc) {
 }
 
 function main(options) {
+    try {
+        if (options.ignoredDomains.includes(document.location.host)) {
+            clog("Ignoring page hosted on ignored domain " + document.location.host);
+            return;
+        }
+    } catch (e) {
+        clog("Error encountered checkking ignoredDomains list, will still process. " + e);
+    }
     insertStyles(document);
     sendLinksToBackgroundScript();
 }
@@ -598,7 +620,8 @@ function mainWrapper(opts) {
         console.error("Options were not parsed correctly - aborting");
     }
     */
-    main({});
+    // main({});
+    main(options); /* use the global object (as a step towards being properly configurable) */
 }
 
 var getting = browser.storage.local.get(null,
