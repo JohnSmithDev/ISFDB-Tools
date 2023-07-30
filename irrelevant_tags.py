@@ -15,6 +15,9 @@ TODO (maybe): Make this JSON for wider compatibility?  (So use " rather than ')
 ISFDB_IRRELEVANT_TAGS = {
     "advertising & society",
 
+    "art, fashion & photography", "art & design styles / hisory of art",
+    "oriental art",
+
     "atlases"
 
     "biography: sport",
@@ -55,7 +58,7 @@ ISFDB_IRRELEVANT_TAGS = {
     "management: innovation",
     "anf: business and management",
     "popular economics",
-    "macroeconomics",
+    "macroeconomics", "monetary economics", "political economy",
     "entrepreneurship",
 
     "car racing", "automobile racing", "motor sports", "formula 1 & grand prix",
