@@ -34,8 +34,11 @@ class ISFDBWebAPIError(Exception):
     """
     pass
 
+###
+### Publication image fixes
+###
 
-def get_bad_records(conn, offset, qty):
+def get_bad_pub_records(conn, offset, qty):
 
     query = text("""select pub_id, pub_title, pub_frontimage
     from pubs where pub_frontimage like '%imagerendering%'
@@ -66,6 +69,91 @@ def generate_pubupdate_imagefix(pid, subject, bad_image_url):
 '''
     return xml_text
 
+###
+### Author webpage fixes
+###
+
+
+def get_bad_author_records(conn, offset, qty):
+    """
+    Return a list of author_ids that need updating.
+    Note that a follow-up query has to be done to pull all that author's URLs, due to
+    how AuthorUpdate edits work
+    """
+    query = text("""SELECT DISTINCT author_id
+    FROM webpages
+    WHERE url LIKE 'https://csfdb.scifi-wiki.com/%'
+    AND author_id IS NOT NULL
+    ORDER BY author_id
+    LIMIT :qty OFFSET :offset;""")
+
+    params = {'qty': qty, 'offset': offset}
+    results = conn.execute(query, params).fetchall()
+    return results
+
+
+def get_author_urls(conn, author_id):
+    """
+    Return a list of URLs associated with an author.
+    Also includes the author name as a convenience for populating the subject field of an
+    edit submission
+    """
+    query = text("""SELECT a.author_id, a.author_canonical, w.url
+    FROM authors a
+    NATURAL JOIN webpages w
+    WHERE a.author_id = :author_id;""")
+
+    params = {'author_id': author_id}
+    results = conn.execute(query, params).fetchall()
+    return results
+
+
+def generate_fixed_author_urls(conn, author_id):
+    """
+    Return 2-element tuple of (author name, list of fixed author URLs)
+    """
+    url_rows = get_author_urls(conn, author_id)
+    ret = []
+    for url_row  in url_rows:
+        bits = urlparse(url_row.url)
+        # print(bits.netloc)
+        if bits.netloc == 'csfdb.scifi-wiki.com':
+            # Using a protected method feels a bit yucky, but that's what
+            # https://docs.python.org/3/library/urllib.parse.html does
+            ret.append(bits._replace(netloc='csfdb.cn').geturl())
+        else:
+            ret.append(url_row.url)
+    # print(ret)
+    return url_rows[0].author_canonical, ret
+
+
+def generate_authorupdate_webpages(record_id, subject, webpages):
+    """
+    Note that webpages should include all the links associated with the author, including
+    unchanged ones.
+    """
+    xml_text = [f'''<?xml version="1.0" encoding="iso-8859-1" ?>
+<IsfdbSubmission>
+<AuthorUpdate>
+<Record>{record_id}</Record>
+<Submitter>{USERNAME}</Submitter>
+<LicenseKey>{API_KEY}</LicenseKey>
+<Subject>{subject}</Subject>
+<Webpages>
+''']
+    for url in webpages:
+        xml_text.append(f'<Webpage>{url}</Webpage>\n')
+    xml_text.append('''</Webpages>
+<ModNote>Semi-automated fixing of updated CSFDB domain URLs</ModNote>
+</AuthorUpdate>
+</IsfdbSubmission>
+''')
+    return ''.join(xml_text)
+
+###
+###
+###
+
 def post_request(payload):
     # https://stackoverflow.com/questions/12509888/how-can-i-send-an-xml-body-using-requests-library
     headers = {'Content-Type': 'text/xml; charset="iso-8859-1"',
@@ -92,7 +180,8 @@ if __name__ == '__main__':
         quantity = 10
 
     mconn = get_connection()
-    for i, row in enumerate(get_bad_records(mconn, offset, quantity)):
+    PUB_COVER_EDITS = """
+    for i, row in enumerate(get_bad_pub_records(mconn, offset, quantity)):
         if i > 0:
             time.sleep(PAUSE_BETWEEN_REQUESTS)
         print(f'\n= {offset}+{i} =\n')
@@ -102,9 +191,21 @@ if __name__ == '__main__':
         payload = generate_pubupdate_imagefix(row.pub_id, subject, row.pub_frontimage)
         print(payload)
         post_request(payload)
+    """
 
+    for i, row in enumerate(get_bad_author_records(mconn, offset, quantity)):
+        if i > 0:
+            time.sleep(PAUSE_BETWEEN_REQUESTS)
 
+        author_name, fixed_urls = generate_fixed_author_urls(mconn, row.author_id)
 
+        print(f'\n= {offset}+{i} {author_name} =\n')
+        subject = f'CSFDB URL fix {offset+i} - ' + (re.sub('\W', '_', author_name))
+
+        # For now at least, don't catch any exceptions
+        payload = generate_authorupdate_webpages(row.author_id, subject, fixed_urls)
+        print(payload)
+        post_request(payload)
 
 
 
