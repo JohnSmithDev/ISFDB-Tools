@@ -1,9 +1,19 @@
 #!/usr/bin/env python3
 """
-Submit some edits via the API to fix broken Amazon images
+Submit a batch of edits via the API to fix broken Amazon images, update domain names, etc.
 
 cf https://isfdb.org/wiki/index.php/User_talk:Ahasuerus#Weird_broken_Amazon_image_URLs
 
+Usage:
+
+ISFDB_USERNAME=whatever ISFDB_WEB_API_KEY=whatever tools/submit_edits_via_api.py 0 20
+
+(You probably want to make ISFDB_USERNAME and ISFDB_WEB_API_KEY environment variables, so
+that you don't have to specify them each time.)
+
+The first argument is an offset into the list of matching records, the second is the number
+of records to process.  It's best to keep to no more than batches of 20-25 submitted edits,
+and to get them accepted into ISFDB before doing another batch.
 """
 
 import os
@@ -70,29 +80,32 @@ def generate_pubupdate_imagefix(pid, subject, bad_image_url):
     return xml_text
 
 ###
-### Author webpage fixes
+### Author/title/etc webpage fixes
 ###
 
 
-def get_bad_author_records(conn, offset, qty):
+def get_bad_webpage_records(conn, offset, qty, column_name='author_id'):
     """
-    Return a list of author_ids that need updating.
+    Return a list of author_ids that need updating (or other IDs if you pass column_name)
     Note that a follow-up query has to be done to pull all that author's URLs, due to
     how AuthorUpdate edits work
     """
-    query = text("""SELECT DISTINCT author_id
+    # SQLAlchemy doesn't like you injecting column name with :column_name - I'm sure there
+    # must be a way to do it that's more secure than {column_name} ?
+    query = text(f"""SELECT DISTINCT {column_name} record_id
     FROM webpages
     WHERE url LIKE 'https://csfdb.scifi-wiki.com/%'
-    AND author_id IS NOT NULL
-    ORDER BY author_id
+    AND {column_name} IS NOT NULL
+    ORDER BY {column_name}
     LIMIT :qty OFFSET :offset;""")
 
-    params = {'qty': qty, 'offset': offset}
+    params = {'qty': qty, 'offset': offset, 'column_name': column_name}
     results = conn.execute(query, params).fetchall()
+    # pdb.set_trace()
     return results
 
 
-def get_author_urls(conn, author_id):
+def DEPRECATED_get_author_urls(conn, author_id):
     """
     Return a list of URLs associated with an author.
     Also includes the author name as a convenience for populating the subject field of an
@@ -108,33 +121,62 @@ def get_author_urls(conn, author_id):
     return results
 
 
-def generate_fixed_author_urls(conn, author_id):
+def get_urls(conn, record_id, table_name='authors', column_name='author_id',
+             title_column_name='authors.author_canonical'):
+    """
+    Return a list of URLs associated with an record.  The returned rows includes the record
+    title/lable/name as a convenience for populating the subject field of an edit submission.
+    """
+
+    # Note: We can't use NATURAL JOIN as the titles table has both title_id and series_id
+    query = text(f"""SELECT {table_name}.{column_name}, {title_column_name} label, w.url
+    FROM {table_name}
+    LEFT OUTER JOIN webpages w ON w.{column_name} = {table_name}.{column_name}
+    WHERE {table_name}.{column_name} = :record_id;""")
+
+    params = {'record_id': record_id,
+              'table_name': table_name,
+              'column_name': column_name,
+              'title_column_name': title_column_name}
+    results = conn.execute(query, params).fetchall()
+    return results
+
+
+def get_title_urls(conn, title_id):
+    return get_urls(conn, title_id, 'titles', 'title_id', 'title_title')
+
+def get_author_urls(conn, author_id):
+    return get_urls(conn, author_id, 'authors', 'author_id', 'author_canonical')
+
+
+def generate_fixed_urls(conn, record_id, get_urls_function=get_author_urls):
     """
     Return 2-element tuple of (author name, list of fixed author URLs)
+
+    BUG: URLs that have characters such as ampersand in will cause a server 400 error, as IIRC
+    they need to be converted to &amp; entities for XML.
     """
-    url_rows = get_author_urls(conn, author_id)
+    url_rows = get_urls_function(conn, record_id)
     ret = []
     for url_row  in url_rows:
         bits = urlparse(url_row.url)
-        # print(bits.netloc)
         if bits.netloc == 'csfdb.scifi-wiki.com':
-            # Using a protected method feels a bit yucky, but that's what
+            # Using a protected method feels a bit yucky to me, but that's what
             # https://docs.python.org/3/library/urllib.parse.html does
             ret.append(bits._replace(netloc='csfdb.cn').geturl())
         else:
             ret.append(url_row.url)
-    # print(ret)
-    return url_rows[0].author_canonical, ret
+    return url_rows[0].label, ret
 
 
-def generate_authorupdate_webpages(record_id, subject, webpages):
+def generate_update_webpages(record_id, subject, webpages, edit_type='AuthorUpdate'):
     """
-    Note that webpages should include all the links associated with the author, including
+    Note that webpages should include all the links associated with the record, including
     unchanged ones.
     """
     xml_text = [f'''<?xml version="1.0" encoding="iso-8859-1" ?>
 <IsfdbSubmission>
-<AuthorUpdate>
+<{edit_type}>
 <Record>{record_id}</Record>
 <Submitter>{USERNAME}</Submitter>
 <LicenseKey>{API_KEY}</LicenseKey>
@@ -143,9 +185,9 @@ def generate_authorupdate_webpages(record_id, subject, webpages):
 ''']
     for url in webpages:
         xml_text.append(f'<Webpage>{url}</Webpage>\n')
-    xml_text.append('''</Webpages>
+    xml_text.append(f'''</Webpages>
 <ModNote>Semi-automated fixing of updated CSFDB domain URLs</ModNote>
-</AuthorUpdate>
+</{edit_type}>
 </IsfdbSubmission>
 ''')
     return ''.join(xml_text)
@@ -167,6 +209,7 @@ def post_request(payload):
     if resp_obj.ISFDB.Status.cdata != 'OK':
         raise ISFDBWebAPIError(f'API returned XML error response {resp_obj.text}')
     return resp.status_code
+
 
 if __name__ == '__main__':
     try:
@@ -193,7 +236,9 @@ if __name__ == '__main__':
         post_request(payload)
     """
 
-    for i, row in enumerate(get_bad_author_records(mconn, offset, quantity)):
+    # This next one won't work as-is, due to subsequent function renamings and tweaks
+    AUTHOR_CSFDB_EDITS = """
+    for i, row in enumerate(get_bad_webpage_records(mconn, offset, quantity)):
         if i > 0:
             time.sleep(PAUSE_BETWEEN_REQUESTS)
 
@@ -203,11 +248,28 @@ if __name__ == '__main__':
         subject = f'CSFDB URL fix {offset+i} - ' + (re.sub('\W', '_', author_name))
 
         # For now at least, don't catch any exceptions
-        payload = generate_authorupdate_webpages(row.author_id, subject, fixed_urls)
+        payload = generate_update_webpages(row.author_id, subject, fixed_urls)
         print(payload)
         post_request(payload)
+    """
 
+    for i, row in enumerate(get_bad_webpage_records(mconn, offset, quantity,
+                                                    column_name='title_id' )):
+        if i > 0:
+            time.sleep(PAUSE_BETWEEN_REQUESTS)
 
+        print(row.record_id)
+        record_title, fixed_urls = generate_fixed_urls(mconn, row.record_id,
+                                                       get_urls_function=get_title_urls)
+
+        print(f'\n= {offset}+{i} {record_title} =\n')
+        subject = f'CSFDB URL fix {offset+i} - ' + (re.sub('\W', '_', record_title))
+
+        # For now at least, don't catch any exceptions
+        payload = generate_update_webpages(row.record_id, subject, fixed_urls,
+                                           edit_type='TitleUpdate')
+        print(payload)
+        post_request(payload)
 
 
 
