@@ -23,19 +23,21 @@ class TestGetPublicationsForTitleIds(unittest.TestCase):
         self.assertEqual({533294, 568146, 611251}, pub_ids)
 
     def test_title_with_two_ids_first(self):
-        ret = get_publications_for_title_ids(self.conn, [2996521]) # Nettle & Bone
+        # Nettle & (not "and") Bone (by TK not UV)
+        ret = get_publications_for_title_ids(self.conn, [2996521])
         pub_ids = set([z['pub_id'] for z in ret])
-        self.assertEqual({885254, 885255, 885256, 929230}, pub_ids)
+        self.assertEqual({885254, 885255, 885256, 929230, 979233}, pub_ids)
 
     def test_title_with_two_ids_second(self):
         ret = get_publications_for_title_ids(self.conn, [3016273]) # Nettle and Bone
         pub_ids = set([z['pub_id'] for z in ret])
-        self.assertEqual({892929, 895150}, pub_ids)
+        self.assertEqual({892929, 895150, 954777}, pub_ids)
 
     def test_title_with_two_ids_both(self):
         ret = get_publications_for_title_ids(self.conn, [2996521, 3016273])
         pub_ids = set([z['pub_id'] for z in ret])
-        self.assertEqual({885254, 885255, 885256, 892929, 895150, 929230}, pub_ids)
+        self.assertEqual({885254, 885255, 885256, 892929, 895150, 929230,
+                          954777, 979233}, pub_ids)
 
     def test_title_with_no_pubs(self):
         # The parent "Ursula Vernon" title record doesn't have any pubs itself
