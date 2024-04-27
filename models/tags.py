@@ -17,7 +17,8 @@ https://docs.sqlalchemy.org/en/13/orm/tutorial.html
 
 # import pdb
 
-from sqlalchemy.ext.declarative import declarative_base
+# from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 
