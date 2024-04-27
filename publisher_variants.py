@@ -34,7 +34,19 @@ PUBLISHER_VARIANTS = {
 
     # Del Rey? Penguin ?
 
-    # Hodder ?
+    "Hodder": [
+        "Hodder",
+        "Hodder & Stoughton",
+        "Hodder & Stoughton Audio Books",
+        "Hodder & Stoughton Ltd",
+        "Hodder and Stoughton",
+        "Hodder Paperbacks",
+        "Hodder Studio",
+        "Hodder Headline",
+        "Hodder Headline Audiobooks",
+        "New English Library / Hodder and Stoughton",
+        "Hodderscape"
+    ],
 
     # Jo Fletcher?
 
