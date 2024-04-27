@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
 """
-A simple (?) Flask HTTP(S?) server to check if supplied ID(s) - ASINs and/or
+A simple (?) Flask/gunicorn HTTP(S?) server to check if supplied ID(s) - ASINs and/or
 ISBNs) are known to a running instance of the ISFDB database, returning a
 JSON response.
 
 Dependencies:
 
-  Flash (installed from PyPI, or your distro's package manager, etc
+  Flask (installed from PyPI, or your distro's package manager, etc
+or
+  gunicorn (ditto)
 
 Usage:
 
   export FLASK_ENV=development ; export FLASK_APP=tools/id_checker.py ; flask run
+
+or
+  gunicorn -w 4 --access-logfile=- --certfile cert.pem --keyfile key.pem -b 0.0.0.0:5000 tools.id_checker:app
+
 
 References:
 * https://medium.com/@onejohi/building-a-simple-rest-api-with-python-and-flask-b404371dc699
@@ -98,11 +104,20 @@ def batch_check_via_database(vals, output_function=print):
                     (len(ret), known_count, time.time() - start))
     return ret
 
+#for k, v in sorted(os.environ.items()):
+#    print(f'ENVIRON: {k} =  {v}')
+
 
 if IN_MEMORY_DATA:
-    # Don't run this twice, per
+    # Try not to run this twice, per
     # https://stackoverflow.com/questions/9449101/how-to-stop-flask-from-initialising-twice-in-debug-mode
-    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+    # Not sure if/how that can be done in gunicorn, hence the nasty hack that causes multiple
+    # (re)loads
+
+    need_to_load = (os.environ.get('WERKZEUG_RUN_MAIN') == 'true') or \
+        ('gunicorn' in os.environ.get('SERVER_SOFTWARE'))
+
+    if need_to_load:
         checker_function = batch_check_in_memory
         def batch_stats_wrapper(vals):
             return batch_stats(vals, do_fixer_checks=True,
@@ -114,7 +129,9 @@ if IN_MEMORY_DATA:
         print('Returned from initialise().')
         conn.close()
 else:
+    print(f'Have not initialized - IN_MEMORY_DATA={IN_MEMORY_DATA}')
     checker_function = batch_check_via_database
+
 
 @app.route('/batch_check/', methods=['POST'])
 @cross_origin()
@@ -130,4 +147,14 @@ def batch_check_response():
     # return jsonify(ret)
     return json_response(ret)
 
+
+SEEMINGLY_NEVER_WORKED_PROPERLY = """
+if __name__ == '__main__':
+    # https://zhangtemplar.github.io/flask/
+    # I'm not sure I ever got this running properly the way I wanted (switched to gunicorn
+    # instead), so caveat emptor...
+    # app.run(ssl_context='adhoc', host='0.0.0.0')
+    app.run(ssl_context=('cert.pem', 'key.pem'),
+            host='0.0.0.0')
+"""
 
