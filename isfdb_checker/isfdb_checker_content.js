@@ -290,7 +290,7 @@ function extractIdFromURL(urlArg) {
         determined..
         (More accurately, return anything that looks like it might be one of
         those IDs) */
-    // clog('urlArg is ' + urlArg); // Way too chatty
+    // clog('extractIdFromURL: urlArg is ' + urlArg); // Way too chatty
     if (!urlArg.startsWith("http")) {
         return null;
     }
@@ -300,7 +300,14 @@ function extractIdFromURL(urlArg) {
         }
     }
 
-    const url = new URL(urlArg);
+    let url;
+    try {
+        url = new URL(urlArg);
+    } catch (e) {
+        /* Piatkus aka https://www.yourswithlove.co.uk has "http:/#" which fails to parse */
+        clog('Failed to convert ' + urlArg + ' to a URL object');
+        return null;
+    }
     /* Originally the next bit just split on / , but (as of early 2022?) this is missing
        ASINs in Audible links of the form
        https://www.audible.co.uk/pd/Doctor-Who-The-Power-of-the-Daleks-Audiobook/B0B3PRC63S?qid=16....
@@ -317,7 +324,7 @@ function extractIdFromURL(urlArg) {
         }
 
 
-        // clog("Checking " + pathBits[i]);
+        // clog("Checking " + pathBits[i]); // Way too chatty, but maybe useful for debugging
         if (val == "dp" && i < pathBits.length-1 &&
             pathBits[i+1].length == 10) {
             clog(pathBits[i+1] + " is an ASIN");
@@ -388,17 +395,54 @@ function _modifyLinkEl(linkEl, colour) {
 }
 
 function highlightLinkElAsUnknownToISFDB(linkEl,) {
-    // _modifyLinkEl(linkEl, "pink");
     linkEl.classList.add("isfdb-checker-highlight-unknown");
     // Q: do we need to apply this to child img/span/divs?  Seems not...
+
+    // But we do need some faffery for Amazon links within web components...
+    try {
+        let containerEl = linkEl.getRootNode().host;
+        if (!containerEl) {
+            // clog("No container");
+            return;
+        }
+        let containerType = containerEl.tagName.toLowerCase();
+        // clog("containerType=" + containerType);
+
+        if (containerType === "bds-unified-book-faceout" ||
+            containerType === "bds-carousel-item") {
+            // The web component is invisible, we need to style its parent (a div, probably)
+            let cp = containerEl.parentElement;
+            // clog("cp type=" + cp.tagName);
+            cp.classList.add("isfdb-checker-highlight-unknown");
+        }
+    } catch(e) {
+        clog("Fuckup " + e);
+    }
+
+
 }
+
 function highlightLinkElAsKnownToFixer(linkEl,) {
     // _modifyLinkEl(linkEl, "purple");
     linkEl.classList.add("isfdb-checker-highlight-known-to-fixer");
+    // TODO: similar code to previous function, once that is finished
 }
 
 function sendLinksToBackgroundScript() {
     let links = Array.from(document.querySelectorAll('a')); // NodeList doesn't support .map(), so convert to array
+
+    /* Hacky solution for (some) Amazon pages that use <a> elements buried within the shadow
+       DOM of web components, and aren't picked up by the above selector.
+       Maybe there's a cleverer way to do this, but an initial skim of a few docs pages
+       completely stumped me, so doing this a cruder way for now... */
+    Array.from(document.querySelectorAll('bds-unified-book-faceout')).forEach((el) => {
+        let a = Array.from(el.shadowRoot.querySelectorAll('a'));
+        // clog('Found ' + a.length + ' links in shadowRoot of component')
+        if (a.length > 0) {
+           // clog(a[0].href);
+           links = links.concat(a);
+        }
+    });
 
     /* Because the background script can't access the page DOM, send it everything
        it needs now.  Downside of this approach if that any links get added after
@@ -552,6 +596,8 @@ function main(options) {
     }
     insertStyles(document);
     sendLinksToBackgroundScript();
+    // Redo to try to catch content inserted after page load by Javascript
+    setTimeout(sendLinksToBackgroundScript, 5000)
 }
 
 
