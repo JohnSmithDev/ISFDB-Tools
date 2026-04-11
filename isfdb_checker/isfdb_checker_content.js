@@ -314,7 +314,13 @@ function extractIdFromURL(urlArg) {
        Similar ISBN-10 based links did work, presumably due to a check a bit further down
        */
 
-    const pathBits = url.pathname.split( /[\/\?]/ );
+    let splitter = /[\/\?]/
+    if (url.hostname.search("bloomsbury") >= 0) {
+       /* Example: https://www.bloomsbury.com/uk/dance-of-lies-9781526681447/ */
+       // Possibly this could be applied for all cases without breaking anything?
+       splitter =  /[\-\/\?]/
+    }
+    const pathBits = url.pathname.split(splitter);
     for (let i=0; i<pathBits.length; i++) {
         let val = pathBits[i];
         if (val.endsWith(".html")) { // Penguin does this
